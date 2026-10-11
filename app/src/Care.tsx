@@ -3,7 +3,7 @@ import {AssessmentMethodology} from './AssessmentMethodology';
 import {CustomAssessmentFlow} from './CustomAssessmentFlow';
 import {assessmentTitle,assessmentScore,assessmentAnswerLines} from './assessments';
 import {useState} from 'react';
-import {Alert,Button,Group,Select,Switch,Textarea,TextInput} from '@mantine/core';
+import {Alert,Button,Group,Switch,Textarea,TextInput} from '@mantine/core';
 import {api,errorText} from './api';
 import {Empty,ErrorBox,formatDate,PageHead} from './ui';
 import {navigate} from './App';
@@ -36,7 +36,6 @@ export function AssessmentReview({assessments,doctor=false,id,onSaved,currentDoc
  </section>;
 }
 export function AssessmentResults({assessments,doctor=false,id,onSaved,timezone="Asia/Almaty"}:{assessments:Assessment[];doctor?:boolean;id?:string;onSaved:()=>Promise<void>;timezone?:string;currentDoctorId?:string|null}){
- const [error,setError]=useState(''),[message,setMessage]=useState('');
  const pending=assessments.filter(a=>!a.completed_at);
  if(!doctor&&!pending.length)return null;
  return <section className="care-section">
@@ -48,7 +47,6 @@ export function AssessmentResults({assessments,doctor=false,id,onSaved,timezone=
     <Button variant="outline" disabled={a.due_date>todayInTimezone(timezone)} onClick={()=>navigate(`/assessment/${a.id}`)}>Заполнить опросник</Button>
    </article>):<p className="muted">Врач пока не назначил опросники</p>}
   </>:<div className="custom-surveys"><SurveyBuilder patientId={id!} dueDate={today()} onAssigned={onSaved}/></div>}
-  {error?<ErrorBox message={error}/>:null}{message?<Alert color="forest" role="status">{message}</Alert>:null}
  </section>;
 }
 export function Treatment({data,doctor=false,id,onSaved,canRx=false}:{data:PatientData;doctor?:boolean;id?:string;onSaved:()=>Promise<void>;canRx?:boolean}){

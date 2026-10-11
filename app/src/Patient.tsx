@@ -7,7 +7,7 @@ import {ProfileSettings,DoctorProfileDetails} from './ProfileSettings';
 import { useRefreshOnReturn } from './useRefreshOnReturn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Switch, Textarea, TextInput } from '@mantine/core';
-import { IconArrowLeft, IconArrowRight, IconCheck, IconChevronRight, IconClock, IconFileText, IconLeaf, IconLink, IconMoon, IconShieldCheck } from '@tabler/icons-react';
+import { IconArrowLeft, IconArrowRight, IconCheck, IconFileText, IconLeaf, IconLink, IconMoon, IconShieldCheck } from '@tabler/icons-react';
 import { api, errorText } from './api';
 import { Empty, ErrorBox, Face, formatDate, HistoryChart, PageHead, SleepInput} from './ui';
 import { navigate } from './App';
