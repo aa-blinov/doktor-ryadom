@@ -3,7 +3,7 @@ import {Button,Group,Loader,TextInput} from '@mantine/core';
 import {api,errorText} from './api';
 import {ErrorBox,formatDate} from './ui';
 
-type InviteRow={id:number;expires:number};
+type InviteRow={id:number;expires:number;token:string|null};
 
 export function DoctorInvites(){
  const [invites,setInvites]=useState<InviteRow[]>([]),[active,setActive]=useState<{id:number;token:string;expires:number}|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[copied,setCopied]=useState('');
@@ -21,15 +21,16 @@ export function DoctorInvites(){
    <TextInput label="Ссылка для пациента" value={link} readOnly onFocus={e=>e.currentTarget.select()} mt="md"/>
    <Group mt="sm"><Button variant="outline" onClick={()=>void copy(link)}>Скопировать ссылку</Button><Button variant="subtle" color="red" loading={busy===String(active.id)} onClick={()=>void revoke(active.id)}>Отозвать</Button></Group>
    {copied?<p role="status">{copied}</p>:null}
-   <p className="muted small">Действует до {formatDate(new Date(active.expires).toISOString().slice(0,10),true).replace(/\.$/,'')}. Показана только сейчас — сохраните её, пока не отправили пациенту.</p>
+   <p className="muted small">Действует до {formatDate(new Date(active.expires).toISOString().slice(0,10),true).replace(/\.$/,'')}. Ссылку можно скопировать повторно, пока её не использовали или не отозвали.</p>
   </>:null}
   <h3 style={{marginTop:24}}>Неиспользованные</h3>
   {loading?<Loader size="sm"/>:null}
   {!loading&&!invites.length?<p className="muted small">Активных ссылок нет.</p>:null}
-  {invites.map(row=><Group key={row.id} justify="space-between" py={8} style={{borderTop:'1px solid var(--line)'}}>
+  {invites.map(row=>{const rowLink=row.token?`${window.location.origin}/?invite=${row.token}`:'';return <Group key={row.id} justify="space-between" py={8} style={{borderTop:'1px solid var(--line)'}}>
    <span className="small">до {formatDate(new Date(row.expires).toISOString().slice(0,10),true).replace(/\.$/,'')}</span>
-   <Button size="xs" variant="subtle" color="red" loading={busy===String(row.id)} onClick={()=>void revoke(row.id)}>Отозвать</Button>
-  </Group>)}
+   <Group gap="xs">{row.token?<Button size="xs" variant="outline" onClick={()=>void copy(rowLink)}>Скопировать ссылку</Button>:null}
+   <Button size="xs" variant="subtle" color="red" loading={busy===String(row.id)} onClick={()=>void revoke(row.id)}>Отозвать</Button></Group>
+  </Group>;})}
   {error?<ErrorBox message={error} retry={invites.length?undefined:load}/>:null}
  </section>;
 }

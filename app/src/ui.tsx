@@ -68,3 +68,15 @@ export function SleepInput({value,onChange,label='Сон, часов',showTitle=
   <label><span>минут</span><select value={minutes} onChange={e=>setParts(hours,e.currentTarget.value)}><option value="">—</option>{['0','15','30','45'].map(m=><option key={m} value={m}>{m.padStart(2,'0')}</option>)}</select></label>
  </div></div>;
 }
+
+export function ScaleRow({label,options,value,onChange,ends}:{label:string;options:{value:number;label:string}[];value:number|null;onChange:(v:number)=>void;ends:[string,string]}){
+ const shown=options;
+ return <div className="scale-row" role="group" aria-label={label}>
+  <p className={value===null?"scale-hint":"scale-hint scale-hint-chosen"}>{options.find(o=>o.value===value)?.label??"Не выбрано"}</p>
+  <div className="scale-steps" style={{gridTemplateColumns:`repeat(${options.length},minmax(0,1fr))`}}>
+   {shown.map(o=><button type="button" key={o.value} className={value===o.value?'scale-step selected':'scale-step'} aria-pressed={value===o.value} aria-label={o.label} onClick={()=>onChange(o.value)}><span className="scale-dot" aria-hidden="true"/><span className="scale-text">{o.label}</span></button>)}
+  </div>
+  <div className="scale-ends"><span>{ends[0]}</span><span>{ends[1]}</span></div>
+ </div>;
+}
+

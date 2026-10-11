@@ -1,15 +1,59 @@
 import {useState} from 'react';
-import {Button,Group,Select,Textarea} from '@mantine/core';
+import {Button,Group,Textarea} from '@mantine/core';
 import {api,errorText} from './api';
-import {ErrorBox,PageHead,formatDate, SleepInput} from './ui';
+import {ErrorBox,PageHead,formatDate, ScaleRow, SleepInput} from './ui';
 import {navigate} from './App';
 import {moods,type Entry} from './shared';
-// Back to whatever screen opened the edit (home strip or history).
+
 function goBack(){if(window.history.length>1)window.history.back();else navigate('/history');}
+
 export function EditEntry({entry,onSaved}:{entry:Entry;onSaved:()=>Promise<void>}){
  const [value,setValue]=useState(entry),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const update=(key:keyof Entry,v:unknown)=>setValue(e=>({...e,[key]:v,...(key==='sleep'&&(v===null||Number(v)>=6)?{sleepContext:null}:{})}));
  async function save(){setBusy(true);setError('');try{await api(`/patient/checkins/${entry.id}`,{...value,expectedVersion:entry.version??1},'PUT');await onSaved();goBack();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
- const numeric=(key:'anxiety'|'energy'|'functioning',labels:string[],start:number)=> <Select label={key==='anxiety'?'Тревога':key==='energy'?'Энергия':'Обычные дела'} value={value[key]===null?'':String(value[key])} data={[{value:'',label:'Не выбрано'},...labels.map((label,i)=>({value:String(i+start),label}))]} onChange={v=>update(key,v===''||v===null?null:Number(v))}/>;
- return <div className="edit-entry"><button className="back-link" onClick={()=>navigate('/history')}>История</button><PageHead title="Исправить запись" description={formatDate(entry.date,true)}/><form className="care-form" onSubmit={e=>{e.preventDefault();void save();}}><Select label="Самочувствие" value={String(value.mood)} data={moods.map((label,i)=>({value:String(i+1),label}))} onChange={v=>v&&update('mood',Number(v))}/><SleepInput value={value.sleep} onChange={v=>update('sleep',v)} label="Часов сна"/>{value.sleep!==null&&value.sleep<6?<Select label="После короткого сна" value={value.sleepContext??''} data={[{value:'',label:'Не выбрано'},{value:'tired',label:'Усталость'},{value:'usual',label:'Как обычно'},{value:'active',label:'Необычно много энергии'}]} onChange={v=>update('sleepContext',v||null)}/>:null}{numeric('anxiety',['Очень сильная','Сильная','Умеренная','Небольшая','Не замечал(а)'],0)}{numeric('energy',['Очень мало','Мало','Как обычно','Много','Необычно много'],1)}{numeric('functioning',['Очень трудно','С некоторыми трудностями','Без особых трудностей'],1)}<Select label="Небольшое действие" value={value.habit===null?'':value.habit?'yes':'no'} data={[{value:'',label:'Не выбрано'},{value:'yes',label:'Получилось'},{value:'no',label:'Не получилось'}]} onChange={v=>update('habit',v? v==='yes':null)}/><Textarea label="Заметка" value={value.note} onChange={e=>update('note',e.currentTarget.value)} minRows={4} maxLength={2000}/>{error?<ErrorBox message={error}/>:null}<Group><Button type="submit" loading={busy}>Сохранить исправления</Button><Button variant="subtle" disabled={busy} onClick={()=>goBack()}>Отмена</Button></Group></form></div>;
+ return <div className="edit-entry">
+  <button className="back-link" onClick={()=>navigate('/history')}>История</button>
+  <PageHead title="Исправить запись" description={formatDate(entry.date,true)}/>
+  <form className="care-form" onSubmit={e=>{e.preventDefault();void save();}}>
+   <fieldset>
+    <legend>Самочувствие</legend>
+    <div className="checkin-moods" role="group" aria-label="Самочувствие">
+     {moods.map((label,i)=><button type="button" key={label} className={value.mood===i+1?'checkin-mood selected':'checkin-mood'} aria-label={label} aria-pressed={value.mood===i+1} onClick={()=>update('mood',i+1)}>
+      <svg width="36" height="36" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="19" stroke="currentColor" strokeWidth="1.5"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/><circle cx="31" cy="20" r="1.4" fill="currentColor"/><path d={i<2?'M16 33Q24 25 32 33':i===2?'M17 30H31':'M16 28Q24 37 32 28'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+      <span>{label}</span>
+     </button>)}
+    </div>
+   </fieldset>
+   <SleepInput value={value.sleep} onChange={v=>update('sleep',v)} label="Часов сна"/>
+   {value.sleep!==null&&value.sleep<6?<fieldset>
+    <legend>После короткого сна</legend>
+    <div className="checkin-chips" role="group" aria-label="После короткого сна">
+     {([['tired','Усталость'],['usual','Как обычно'],['active','Много энергии']] as const).map(([v,l])=>
+      <button type="button" key={v} className={value.sleepContext===v?'checkin-chip selected':'checkin-chip'} aria-pressed={value.sleepContext===v} onClick={()=>update('sleepContext',value.sleepContext===v?null:v)}>{l}</button>)}
+    </div>
+   </fieldset>:null}
+   <fieldset>
+    <legend>Тревога</legend>
+    <ScaleRow label="Тревога" options={['Очень сильная','Сильная','Умеренная','Небольшая','Не замечал(а)'].map((l,i)=>({value:i,label:l}))} value={value.anxiety} onChange={v=>update('anxiety',v)} ends={['хуже','лучше']}/>
+   </fieldset>
+   <fieldset>
+    <legend>Энергия</legend>
+    <ScaleRow label="Энергия" options={['Очень мало','Мало','Как обычно','Много','Необычно много'].map((l,i)=>({value:i+1,label:l}))} value={value.energy} onChange={v=>update('energy',v)} ends={['хуже','лучше']}/>
+   </fieldset>
+   <fieldset>
+    <legend>Обычные дела</legend>
+    <ScaleRow label="Обычные дела" options={[{value:1,label:'Очень трудно'},{value:2,label:'С трудностями'},{value:3,label:'Без трудностей'}]} value={value.functioning} onChange={v=>update('functioning',v)} ends={['хуже','лучше']}/>
+   </fieldset>
+   <fieldset>
+    <legend>Небольшое действие</legend>
+    <div className="checkin-chips" role="group" aria-label="Небольшое действие">
+     <button type="button" className={value.habit===true?'checkin-chip selected':'checkin-chip'} aria-pressed={value.habit===true} onClick={()=>update('habit',value.habit===true?null:true)}>Получилось</button>
+     <button type="button" className={value.habit===false?'checkin-chip selected':'checkin-chip'} aria-pressed={value.habit===false} onClick={()=>update('habit',value.habit===false?null:false)}>Не получилось</button>
+    </div>
+   </fieldset>
+   <Textarea label="Заметка" value={value.note} onChange={e=>update('note',e.currentTarget.value)} minRows={4} maxLength={2000}/>
+   {error?<ErrorBox message={error}/>:null}
+   <Group><Button type="submit" loading={busy}>Сохранить исправления</Button><Button variant="subtle" disabled={busy} onClick={()=>goBack()}>Отмена</Button></Group>
+  </form>
+ </div>;
 }

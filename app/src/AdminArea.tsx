@@ -62,8 +62,9 @@ function AdminPatients(){
 type Event={action:string;action_label?:string;subject_id:string|null;subject_name?:string|null;created_at:number;actor_name:string|null;actor_role:string|null};
 
 function AdminAudit(){
- const [events,setEvents]=useState<Event[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
- useEffect(()=>{void (async()=>{try{const r=await api<{events:Event[]}>('/admin/audit');setEvents(r.events);}catch(e){setError(errorText(e));}finally{setLoading(false);}})();},[]);
+ const [events,setEvents]=useState<Event[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[hasMore,setHasMore]=useState(true),[error,setError]=useState('');
+ const load=useCallback(async(offset:number)=>{setBusy(true);setError('');try{const r=await api<{events:Event[];limit:number}>(`/admin/audit?limit=200&offset=${offset}`);setEvents(prev=>offset?[...prev,...r.events]:r.events);setHasMore(r.events.length>=200);}catch(e){setError(errorText(e));}finally{setLoading(false);setBusy(false);}},[]);
+ useEffect(()=>{void load(0);},[load]);
  return <><PageHead title="Журнал действий" description="Кто и что сделал в портале. Содержимое записей здесь не показывается"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error}/>:null}
@@ -72,6 +73,7 @@ function AdminAudit(){
    <p><strong>{e.action_label??e.action}</strong>{e.subject_name?<span className="muted"> · {e.subject_name}</span>:null}</p>
    <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??'неизвестно'}{e.actor_role?` (${e.actor_role})`:''}</p>
   </article>)}</div>
+  {hasMore&&!loading&&!error?<Button mt="md" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
  </>;
 }
 

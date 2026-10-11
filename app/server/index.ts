@@ -138,7 +138,7 @@ app.post('/api/patient/accept', async c => {
   const acceptedAt=Date.now();
   const source='SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE i.token=? AND i.used=0 AND i.expires>? AND u.specialist_verified_at IS NOT NULL';
   const insert=db.prepare(`INSERT INTO links(patient_id,doctor_id,accepted_at,revoked_at) SELECT ?,doctor_id,?,NULL FROM (${source}) WHERE 1 ON CONFLICT(patient_id) DO UPDATE SET doctor_id=excluded.doctor_id,accepted_at=excluded.accepted_at,revoked_at=NULL WHERE links.revoked_at IS NOT NULL`);
-  const statements=[insert.bind(id,acceptedAt,token,Date.now()),db.prepare('DELETE FROM plans WHERE patient_id=? AND changes()=1').bind(id),db.prepare('DELETE FROM drafts WHERE patient_id=? AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(id,id,invite.doctor_id,acceptedAt),db.prepare('UPDATE invites SET used=1 WHERE token=? AND used=0 AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(token,id,invite.doctor_id,acceptedAt)];
+  const statements=[insert.bind(id,acceptedAt,token,Date.now()),db.prepare('DELETE FROM plans WHERE patient_id=? AND changes()=1').bind(id),db.prepare('DELETE FROM drafts WHERE patient_id=? AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(id,id,invite.doctor_id,acceptedAt),db.prepare('UPDATE invites SET used=1,raw=NULL WHERE token=? AND used=0 AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(token,id,invite.doctor_id,acceptedAt)];
   const result=await db.batch(statements);
   if(!result[0].meta.changes)return c.json({error:'Приглашение уже использовано. Попросите врача создать новое.'},409);
   await logAction(db,id,'grant_access',invite.doctor_id); return c.json({ ok:true });
@@ -148,19 +148,19 @@ app.use('/api/doctor/*', async(c,next) => { if(c.get('user').role!=='doctor') re
 app.get('/api/doctor/patients', async c => c.json({ patients:await many(database(c.env),'SELECT u.id,u.name,(SELECT date FROM checkins WHERE patient_id=u.id ORDER BY date DESC LIMIT 1) AS last_date,(SELECT mood FROM checkins WHERE patient_id=u.id ORDER BY date DESC LIMIT 1) AS last_mood,(SELECT count(*) FROM checkins WHERE patient_id=u.id) AS count,(SELECT count(*) FROM reports WHERE patient_id=u.id AND doctor_id=l.doctor_id AND reviewed_at IS NULL) AS pending_reports,(SELECT count(*) FROM assessments WHERE patient_id=u.id AND doctor_id=l.doctor_id AND completed_at IS NOT NULL AND reviewed_at IS NULL) AS pending_assessments,(SELECT count(*) FROM assessments WHERE patient_id=u.id AND doctor_id=l.doctor_id AND kind=\'phq9\' AND completed_at IS NOT NULL AND reviewed_at IS NULL AND json_extract(answers,\'$[8]\')>0) AS pending_safety,(SELECT count(*) FROM practices WHERE patient_id=u.id AND (reviewed_at IS NULL OR reviewer_id IS NULL OR reviewer_id!=l.doctor_id)) AS pending_practices,(SELECT count(*) FROM goal_logs WHERE patient_id=u.id AND (reviewed_at IS NULL OR reviewer_id IS NULL OR reviewer_id!=l.doctor_id)) AS pending_goals ,(SELECT count(*) FROM sos_events WHERE patient_id=u.id AND acknowledged_at IS NULL) AS open_sos FROM links l JOIN users u ON u.id=l.patient_id WHERE l.doctor_id=? AND l.revoked_at IS NULL ORDER BY open_sos DESC,pending_safety DESC,(pending_reports+pending_assessments+pending_practices+pending_goals) DESC,u.name',c.get('user').id) }));
 app.get('/api/doctor/invites', async c => {
   const db=database(c.env),user=c.get('user');
-  const rows=await many<{rowid:number;expires:number}>(db,'SELECT rowid AS rowid,expires FROM invites WHERE doctor_id=? AND used=0 AND expires>? ORDER BY expires DESC LIMIT 50',user.id,Date.now());
-  return c.json({invites:rows.map(r=>({id:r.rowid,expires:r.expires}))});
+  const rows=await many<{rowid:number;expires:number;raw:string|null}>(db,'SELECT rowid AS rowid,expires,raw FROM invites WHERE doctor_id=? AND used=0 AND expires>? ORDER BY expires DESC LIMIT 50',user.id,Date.now());
+  return c.json({invites:rows.map(r=>({id:r.rowid,expires:r.expires,token:r.raw??null}))});
 });
 app.post('/api/doctor/invites', async c => {
   if(!c.get('user').specialist_verified_at)return c.json({error:'Подтвердите профиль специалиста у администратора, чтобы приглашать пациентов.'},403);
   const db=database(c.env),token=randomToken(),expires=Date.now()+7*86400000;
-  const inserted=await run(db,'INSERT INTO invites (token,doctor_id,expires,used) VALUES (?,?,?,0)',await digest(token),c.get('user').id,expires);
+  const inserted=await run(db,'INSERT INTO invites (token,doctor_id,expires,used,raw) VALUES (?,?,?,0,?)',await digest(token),c.get('user').id,expires,token);
   return c.json({ id:inserted.meta.last_row_id, token, expires },201);
 });
 app.delete('/api/doctor/invites/:id', async c => {
   const db=database(c.env),id=Number(c.req.param('id'));
   if(!Number.isInteger(id)||id<=0)return c.json({error:'Приглашение не найдено.'},404);
-  const result=await run(db,'UPDATE invites SET used=1 WHERE rowid=? AND doctor_id=? AND used=0',id,c.get('user').id);
+  const result=await run(db,'UPDATE invites SET used=1,raw=NULL WHERE rowid=? AND doctor_id=? AND used=0',id,c.get('user').id);
   if(!result.meta.changes)return c.json({error:'Приглашение уже использовано или отозвано.'},404);
   await logAction(db,c.get('user').id,'revoke_invite',String(id));
   return c.json({ok:true});
