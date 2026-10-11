@@ -14,7 +14,7 @@ export function AdminVerifications(){
  return <><PageHead title="Заявки врачей" description="Проверка квалификации перед подключением к порталу"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
-  {!loading&&!items.length?<p className="muted">Заявок пока нет</p>:null}
+  {!loading&&!error&&!items.length?<p className="muted">Заявок пока нет</p>:null}
   <div className="admin-list">{items.map(r=><article className={`care-record admin-card${r.status==='pending'||r.status==='needs_info'?'':' resolved'}`} key={r.id}>
    <div className="admin-card-head"><h3>{r.name}</h3><span className={`pill status-${r.status}`}>{statusText[r.status]}</span></div>
    <p className="muted small">{r.email} · подана {formatDate(new Date(r.created_at).toISOString().slice(0,10))}</p>

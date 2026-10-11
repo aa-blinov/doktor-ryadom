@@ -27,7 +27,7 @@ export function DoctorWorkspace({user,route}:{user:User;route:string}){
  const refreshList=useCallback(async()=>{if(showingList)await reload();},[reload,showingList]);
  useEffect(()=>{void refreshList();},[refreshList]);
  useRefreshOnReturn(refreshList);
- async function createInvite(){if(invite){setInviting(true);return;}setBusy(true);setError('');try{const result=await api<{token:string;expires:number}>('/doctor/invites',{});setInvite(result);setInviting(true);setCopied(false);}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ async function createInvite(){if(invite&&invite.token){setInviting(true);return;}setBusy(true);setError('');try{const list=await api<{invites:{id:number;expires:number;token:string|null}[]}>('/doctor/invites');const reusable=list.invites.find(i=>i.token);if(reusable){setInvite({token:reusable.token!,expires:reusable.expires});setInviting(true);setCopied(false);return;}const result=await api<{token:string;expires:number}>('/doctor/invites',{});setInvite(result);setInviting(true);setCopied(false);}catch(e){setError(errorText(e));}finally{setBusy(false);}}
  const link=invite?`${window.location.origin}/?invite=${invite.token}`:'';
  async function copy(){try{await navigator.clipboard.writeText(link);setCopied(true);}catch{setError('Не удалось скопировать. Выделите ссылку и скопируйте вручную.');}}
  if(route.startsWith('/admin')){if(typeof window!=='undefined')window.location.hash='/patients';return null;}
@@ -42,7 +42,7 @@ function PatientDetail({id,doctorId,canRx}:{id:string;doctorId:string;canRx:bool
  const [data,setData]=useState<(PatientData&{patient:{id:string;name:string;profile?:PatientProfile}})|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[tab,setTab]=useState<string|null>(()=>{try{const saved=sessionStorage.getItem('ryadom-doctor-tab');return saved&&['overview','goals','history','plan'].includes(saved)?saved:'overview';}catch{return 'overview';}});
  useSectionScroll(`${doctorId}:/patient/${id}:${tab??'overview'}`);
  const [visited,setVisited]=useState<Set<string>>(()=>new Set(['overview',tab??'overview']));
- function openTab(value:string|null){if(!value)return;const next=value==='assessments'||value==='practices'?(value==='practices'?'history':'plan'):value;try{sessionStorage.setItem('ryadom-doctor-tab',next);}catch{/* Optional navigation memory. */}setTab(next);setVisited(current=>current.has(next)?current:new Set([...current,next]));requestAnimationFrame(()=>{window.scrollTo({top:0,behavior:'instant'});});}
+ function openTab(value:string|null){if(!value)return;const next=value==='assessments'||value==='practices'?'history':value;try{sessionStorage.setItem('ryadom-doctor-tab',next);}catch{/* Optional navigation memory. */}setTab(next);setVisited(current=>current.has(next)?current:new Set([...current,next]));requestAnimationFrame(()=>{window.scrollTo({top:0,behavior:'instant'});});}
  const reload=useCallback(async()=>{setError('');try{const result=await api<PatientData&{patient:{id:string;name:string;profile?:PatientProfile}}>(`/doctor/patients/${id}/data`);setData(result);setTab(current=>current??'overview');}catch(e){setData(null);setError(errorText(e));}finally{setLoading(false);}},[id]);
  useEffect(()=>{setLoading(true);reload();},[reload]);
  useRefreshOnReturn(reload);

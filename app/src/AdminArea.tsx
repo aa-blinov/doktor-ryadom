@@ -30,7 +30,7 @@ function AdminDoctors(){
   <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="md"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
-  {!loading&&!doctors.length?<p className="muted">Врачей пока нет</p>:null}
+  {!loading&&!error&&!doctors.length?<p className="muted">Врачей пока нет</p>:null}
   <div className="admin-list">{doctors.map(d=><article className="care-record admin-card" key={d.id}>
    <h3>{d.name}{d.blocked_at?' · заблокирован':''}</h3>
    <p className="muted small">{d.email} · создан {formatDate(new Date(d.created_at).toISOString().slice(0,10))}</p>
@@ -51,7 +51,7 @@ function AdminPatients(){
  return <><PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
-  {!loading&&!patients.length?<p className="muted">Пациентов пока нет</p>:null}
+  {!loading&&!error&&!patients.length?<p className="muted">Пациентов пока нет</p>:null}
   <div className="admin-list">{patients.map((p,i)=><article className="care-record admin-card" key={p.id}>
    <h3>Пациент {patients.length-i}{p.blocked_at?' · заблокирован':''}</h3>
    <p className="muted small">Аккаунт создан {formatDate(new Date(p.created_at).toISOString().slice(0,10))}</p>
@@ -74,7 +74,7 @@ function AdminAudit(){
    <p><strong>{e.action_label??e.action}</strong>{e.subject_name?<span className="muted"> · {e.subject_name}</span>:null}</p>
    <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??'неизвестно'}{e.actor_role?` (${e.actor_role})`:''}</p>
   </article>)}</div>
-  {hasMore&&!loading&&!error?<Button mt="md" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
+  {hasMore&&!loading&&!error&&!actionFilter?<Button mt="md" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
  </>;
 }
 
@@ -87,7 +87,7 @@ function AdminReviews(){
  return <><PageHead title="Отзывы о врачах" description="Отзывы публикуются сразу. Скрытый отзыв пропадает из каталога и из рейтинга"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
-  {!loading&&!rows.length?<p className="muted">Отзывов пока нет</p>:null}
+  {!loading&&!error&&!rows.length?<p className="muted">Отзывов пока нет</p>:null}
   <div className="admin-list">{rows.map(r=><article className={`care-record admin-card${r.hidden?' resolved':''}`} key={r.id}>
    <div className="admin-card-head"><h3>{r.doctor}</h3><span className={r.hidden?'pill status-rejected':'pill status-approved'}>{r.hidden?'Скрыт':'Опубликован'}</span></div>
    <p className="muted small">{r.author} · {formatDate(new Date(r.createdAt).toISOString().slice(0,10))}</p>

@@ -8,7 +8,7 @@ import {moods,type Entry} from './shared';
 function goBack(){if(window.history.length>1)window.history.back();else navigate('/history');}
 
 export function EditEntry({entry,onSaved}:{entry:Entry;onSaved:()=>Promise<void>}){
- const [value,setValue]=useState(entry),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [value,setValue]=useState(entry),[busy,setBusy]=useState(false),[error,setError]=useState(''),[sleepOther,setSleepOther]=useState(entry.sleep!==null&&![4,5,6,7,8,9].includes(entry.sleep));
  const update=(key:keyof Entry,v:unknown)=>setValue(e=>({...e,[key]:v,...(key==='sleep'&&(v===null||Number(v)>=6)?{sleepContext:null}:{})}));
  async function save(){setBusy(true);setError('');try{await api(`/patient/checkins/${entry.id}`,{...value,expectedVersion:entry.version??1},'PUT');await onSaved();goBack();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
  return <div className="edit-entry">
@@ -24,7 +24,14 @@ export function EditEntry({entry,onSaved}:{entry:Entry;onSaved:()=>Promise<void>
      </button>)}
     </div>
    </fieldset>
-   <SleepInput value={value.sleep} onChange={v=>update('sleep',v)} label="Часов сна"/>
+   <fieldset>
+    <legend>Сон</legend>
+    <div className="checkin-chips" role="group" aria-label="Сон, часов">
+     {[4,5,6,7,8,9].map(h=><button type="button" key={h} className={value.sleep===h&&!sleepOther?'checkin-chip selected':'checkin-chip'} aria-pressed={value.sleep===h&&!sleepOther} onClick={()=>{setSleepOther(false);update('sleep',value.sleep===h?null:h);}}>{h} ч</button>)}
+     <button type="button" className={sleepOther?'checkin-chip selected':'checkin-chip'} aria-pressed={sleepOther} onClick={()=>setSleepOther(v=>!v)}>Другое</button>
+    </div>
+    {sleepOther?<SleepInput value={value.sleep} onChange={v=>update('sleep',v)} showTitle={false}/>:null}
+   </fieldset>
    {value.sleep!==null&&value.sleep<6?<fieldset>
     <legend>После короткого сна</legend>
     <div className="checkin-chips" role="group" aria-label="После короткого сна">

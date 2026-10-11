@@ -9,8 +9,9 @@ export async function api<T>(path: string, body?: unknown, method?: string): Pro
   const isWrite = verb !== 'GET' && verb !== 'HEAD';
   const response = await fetch(`/api${path}`, { method: verb, credentials: 'same-origin', headers: isWrite ? { 'Content-Type': 'application/json' } : undefined, body: isWrite ? JSON.stringify(body ?? {}) : undefined, cache: 'no-store', signal: controller.signal });
   const result = await response.json().catch(error => { if (controller.signal.aborted) throw error; return { error: 'Сервер вернул неожиданный ответ. Попробуйте ещё раз.' }; });
-  if (!response.ok) { if (response.status===401 && !path.startsWith('/auth') && path!=='/me') window.dispatchEvent(new Event('session-expired')); const message=(result as {error?:string}).error || 'Не удалось выполнить запрос.';
-    throw new ApiError(response.status===415?'Не удалось отправить данные. Обновите страницу и попробуйте снова.':message,response.status); }
+  if (!response.ok) { if (response.status===401 && !path.startsWith('/auth') && path!=='/me') window.dispatchEvent(new Event('session-expired')); const raw=(result as {error?:string}).error || '';
+    const message=response.status===415?'Не удалось отправить данные. Обновите страницу и попробуйте снова.':response.status>=500||!raw||raw==='Internal'?'Сервер временно недоступен. Попробуйте ещё раз.':raw;
+    throw new ApiError(message,response.status); }
   return result as T;
   } catch (error) {
     if (controller.signal.aborted) throw new ApiError('Сервер не ответил вовремя. Обновите страницу, чтобы проверить результат, и попробуйте ещё раз.', 408);
