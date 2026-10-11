@@ -6,6 +6,7 @@ import nodemailer from 'nodemailer';
 import {many,one,run} from './db';
 import {settingsSchema,defaultPlan,defaultSettings,type User,type Settings} from '../src/shared';
 import type {Env} from './env';
+import {allowedPushEndpoint} from './notifications';
 export function createServices(path:string,origin:string){
  const directory=dirname(path),keyPath=join(directory,'vapid.json');
  mkdirSync(directory,{recursive:true});
@@ -53,12 +54,12 @@ export async function deliverNotifications(db:D1Database,services:ReturnType<typ
   const claimed=await run(db,'INSERT OR IGNORE INTO deliveries VALUES (?,?,?,?)',key,user.id,kind,now);if(!claimed.meta.changes)continue;
   let delivered=false;
   if(settings.reminderPush){const subscriptions=await many<{endpoint:string;data:string}>(db,'SELECT endpoint,data FROM push_subscriptions WHERE user_id=?',user.id);
-   for(const sub of subscriptions){try{await services.push(JSON.parse(sub.data),body,user.role==='doctor'?'/#/patients':'/#/today');delivered=true;}catch(e){const status=(e as {statusCode?:number}).statusCode;if(status===404||status===410)await run(db,'DELETE FROM push_subscriptions WHERE endpoint=?',sub.endpoint);}}
+   for(const sub of subscriptions){if(!allowedPushEndpoint(sub.endpoint))continue;try{await services.push(JSON.parse(sub.data),body,user.role==='doctor'?'/#/patients':'/#/today');delivered=true;}catch(e){const status=(e as {statusCode?:number}).statusCode;if(status===404||status===410)await run(db,'DELETE FROM push_subscriptions WHERE endpoint=?',sub.endpoint);}}
   }
   if(settings.reminderEmail&&user.email_verified_at&&services.mail){try{await services.mail.send({to:user.email,subject:'Рядом: напоминание',text:`${body}\n${process.env.PUBLIC_ORIGIN||'https://doktor-ryadom.duckdns.org'}/\n\nИзменить расписание или отключить напоминания можно в настройках.`});delivered=true;}catch{console.error('Reminder email failed');}}
   if(!delivered)await run(db,'DELETE FROM deliveries WHERE key=?',key);
  }
- await run(db,'DELETE FROM account_tokens WHERE expires<?',now);await run(db,'DELETE FROM sessions WHERE expires<?',now);await run(db,'DELETE FROM deliveries WHERE sent_at<?',now-35*86400000);
+ await run(db,'DELETE FROM account_tokens WHERE expires<?',now);await run(db,'DELETE FROM sessions WHERE expires<?',now);await run(db,'DELETE FROM deliveries WHERE sent_at<?',now-35*86400000);await run(db,'DELETE FROM auth_attempts WHERE window_start<?',now-86400000);
 }
 export async function dailyBackup(path:string,now=Date.now()){
  const directory=join(dirname(path),'backups');mkdirSync(directory,{recursive:true});

@@ -19,7 +19,7 @@ it('background reminders deduplicate and remove expired push endpoints without e
  try{
  await db.binding.prepare('INSERT INTO users (id,email,name,role,password,created_at) VALUES (?,?,?,?,?,?)').bind('synthetic-user','synthetic@example.com','Synthetic','patient','unused',now).run();
  await db.binding.prepare('INSERT INTO settings VALUES (?,?)').bind('synthetic-user',JSON.stringify({...defaultSettings,timezone:'Europe/Moscow',reminderPush:true})).run();
- await db.binding.prepare('INSERT INTO push_subscriptions VALUES (?,?,?,?)').bind('synthetic-endpoint','synthetic-user',JSON.stringify({endpoint:'synthetic-endpoint'}),now).run();
+ await db.binding.prepare('INSERT INTO push_subscriptions VALUES (?,?,?,?)').bind('https://fcm.googleapis.com/test-synthetic','synthetic-user',JSON.stringify({endpoint:'https://fcm.googleapis.com/test-synthetic'}),now).run();
  const services={push:async(_:unknown,body:string)=>{sent.push(body);},mail:undefined,publicKey:'test'} as unknown as ReturnType<typeof createServices>;
  await deliverNotifications(db.binding,services,now);await deliverNotifications(db.binding,services,now);expect(sent).toEqual(['Можно добавить запись о сегодняшнем дне.']);
  await db.binding.prepare('DELETE FROM deliveries').run();services.push=async()=>{throw Object.assign(new Error('expired'),{statusCode:410});};
@@ -36,7 +36,7 @@ it('clinician digest includes goal feedback, deduplicates and stops after review
   for(const [id,role] of [['doctor','doctor'],['patient','patient']])await db.binding.prepare('INSERT INTO users(id,email,name,role,password,created_at) VALUES(?,?,?,?,?,?)').bind(id,id+'@example.com',id,role,'unused',now).run();
   await db.binding.prepare('INSERT INTO links VALUES(?,?,?,NULL)').bind('patient','doctor',now).run();
   await db.binding.prepare('INSERT INTO settings VALUES(?,?)').bind('doctor',JSON.stringify({...defaultSettings,timezone:'Europe/Moscow',reminderPush:true,reportNotifications:true})).run();
-  await db.binding.prepare('INSERT INTO push_subscriptions VALUES(?,?,?,?)').bind('endpoint','doctor',JSON.stringify({endpoint:'endpoint'}),now).run();
+  await db.binding.prepare('INSERT INTO push_subscriptions VALUES(?,?,?,?)').bind('https://fcm.googleapis.com/test-doctor','doctor',JSON.stringify({endpoint:'https://fcm.googleapis.com/test-doctor'}),now).run();
   await db.binding.prepare('INSERT INTO goals VALUES(?,?,?,?,?,NULL)').bind('goal','patient','Вернуться к прогулкам','',now).run();
   await db.binding.prepare('INSERT INTO goal_logs(id,patient_id,goal_id,status,note,created_at) VALUES(?,?,?,?,?,?)').bind('log','patient','goal','step','Не должно попасть в уведомление',now).run();
   const services={push:async(_:unknown,body:string)=>{sent.push(body);},mail:undefined,publicKey:'test'} as unknown as ReturnType<typeof createServices>;

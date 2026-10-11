@@ -14,7 +14,7 @@ export function notificationRoutes(app:Hono<{Bindings:Env;Variables:{user:User}}
   if(!await one(db,'SELECT endpoint FROM push_subscriptions WHERE endpoint=? AND user_id=?',parsed.data.endpoint,id)){
    const count=await one<{count:number}>(db,'SELECT count(*) AS count FROM push_subscriptions WHERE user_id=?',id);if((count?.count??0)>=10)return c.json({error:'Подключено слишком много устройств. Отключите уведомления на старых устройствах.'},400);
   }
-  // A browser shared between accounts belongs to the most recently consenting account.
+  // Shared browser: the account that just enabled push owns this endpoint.
   await run(db,'INSERT INTO push_subscriptions VALUES (?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id,data=excluded.data,created_at=excluded.created_at',parsed.data.endpoint,id,JSON.stringify(parsed.data),Date.now());return c.json({ok:true});
  });
  app.post('/api/notifications/test',async c=>{

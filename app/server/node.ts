@@ -20,15 +20,16 @@ const assets={fetch:async(request:Request)=>{
  let path=resolve(client,'.'+pathname);
  if(path!==client&&!path.startsWith(client+sep))return new Response('Not found',{status:404});
  try{if(!(await stat(path)).isFile())path=resolve(client,'index.html');}catch{if(extname(pathname))return new Response('Not found',{status:404});path=resolve(client,'index.html');}
- const body=await readFile(path);return new Response(body,{headers:{'Content-Type':types[extname(path)]||'application/octet-stream','Cache-Control':pathname.startsWith('/assets/')?'public, max-age=31536000, immutable':'no-cache'}});
+  const body=await readFile(path);return new Response(body,{headers:{'Content-Type':types[extname(path)]||'application/octet-stream','Cache-Control':pathname.startsWith('/assets/')?'public, max-age=31536000, immutable':'no-cache','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});
 }} as unknown as Fetcher;
 const server=createServer(async(incoming,outgoing)=>{
  try{
   const chunks:Buffer[]=[];let length=0;
   for await(const chunk of incoming){const bytes=Buffer.from(chunk);length+=bytes.length;if(length>(incoming.method==='POST'&&/^\/api\/patient\/assessments\/[^/?]+(?:\?.*)?$/.test(incoming.url??'')?65536:incoming.method==='POST'&&incoming.url==='/api/profile/documents'?7340032:incoming.method==='PUT'&&incoming.url==='/api/profile/photo'?200000:16000)){outgoing.writeHead(413,{'Content-Type':'application/json'});outgoing.end(JSON.stringify({error:'Слишком большой запрос'}));return;}chunks.push(bytes);}
   const headers=new Headers();for(const [name,value] of Object.entries(incoming.headers)){if(value!==undefined)headers.set(name,Array.isArray(value)?value.join(','):value);}
-  // The service has no host port. Only the shared Caddy network reaches it.
-  headers.set('CF-Connecting-IP',headers.get('X-Real-IP')||incoming.socket.remoteAddress||'local');
+  // The service has no host port. Caddy sets X-Real-IP; never trust a free-form value.
+  const clientIp=(headers.get('X-Real-IP')||incoming.socket.remoteAddress||'local').trim();
+  headers.set('CF-Connecting-IP',/^[0-9a-fA-F:.]+$/.test(clientIp)?clientIp:'local');
   const method=incoming.method||'GET';const pathname=new URL(incoming.url||'/',origin).pathname;
   const request=new Request(origin+pathname+new URL(incoming.url||'/',origin).search,{method,headers,body:['GET','HEAD'].includes(method)?undefined:Buffer.concat(chunks)});
   const response=await app.fetch(request,{DB:database.binding,ASSETS:assets,MAIL:services.mail,PUSH_PUBLIC_KEY:services.publicKey,PUSH_SEND:services.push});

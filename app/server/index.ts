@@ -19,7 +19,8 @@ const app = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 const sessionName = 'ryadom_session';
 const authSchema = z.object({ email: z.string().trim().email().max(200).transform(v => v.toLowerCase()), password: z.string().min(12, 'Пароль должен содержать минимум 12 символов').max(128) });
 const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor']), consent: z.literal(true) });
-app.use('*', async (c,next) => { await next(); c.header('X-Content-Type-Options','nosniff'); c.header('Referrer-Policy','same-origin'); c.header('X-Frame-Options','DENY'); });
+const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+app.use('*', async (c,next) => { await next(); c.header('X-Content-Type-Options','nosniff'); c.header('Referrer-Policy','same-origin'); c.header('X-Frame-Options','DENY'); c.header('Content-Security-Policy',CSP); });
 app.use('/api/*', async(c,next)=>bodyLimit({maxSize:c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000,onError:c=>c.json({error:'Слишком большой запрос'},413)})(c,next));
 app.use('/api/*', async (c, next) => {
   c.header('Cache-Control', 'no-store'); c.header('X-Content-Type-Options', 'nosniff'); c.header('Referrer-Policy', 'same-origin');
@@ -35,6 +36,7 @@ app.onError((err, c) => { console.error('API failure', err.name); return c.json(
 app.get('/api/health', async c => {await one(database(c.env),'SELECT 1 AS ok');return c.json({ok:true});});
 app.get('/api/invites/:token', async c => {
   const raw=c.req.param('token').toUpperCase();const isCode=/^[A-F0-9]{12}$/.test(raw);
+  if (!await limit(database(c.env), await digest('invite:'+(c.req.header('CF-Connecting-IP') || 'local')))) return c.json({ error: 'Слишком много попыток. Попробуйте позже.' }, 429);
   const row = isCode?await one<{name:string;id:string}>(database(c.env),'SELECT u.name,u.id FROM doctor_codes d JOIN users u ON u.id=d.user_id WHERE d.code=? AND u.specialist_verified_at IS NOT NULL',raw):await one<{ name: string;id:string }>(database(c.env), 'SELECT u.name,u.id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?', await digest(c.req.param('token')), Date.now());
   if(isCode&&!row&&await one(database(c.env),'SELECT user_id FROM doctor_codes WHERE code=?',raw))return c.json({error:'Профиль врача ещё не подтверждён. Подключение будет доступно после проверки специалиста'},403);
   return row ? c.json({doctorName:row.name,doctorProfile:{...await doctorProfile(database(c.env),row.id),photoUrl:null,documents:[]}}) : c.json({ error: isCode?'Код врача не найден. Проверьте код у врача':'Приглашение уже использовано или срок истёк. Попросите врача создать новое.' }, 404);
@@ -53,7 +55,7 @@ app.post('/api/auth/register', async c => {
   const db = database(c.env); const data = registerSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error: data.error.issues[0].message }, 400);
   if (!await limit(db, await digest('register:'+(c.req.header('CF-Connecting-IP') || 'local')))) return c.json({ error: 'Слишком много попыток. Попробуйте через 10 минут.' }, 429);
   const { email, password, name, role } = data.data;
-  if (await one(db, 'SELECT id FROM users WHERE email=?', email)) return c.json({ error: 'Не удалось создать аккаунт с этим адресом. Если он уже зарегистрирован, войдите.' }, 409);
+  if (await one(db, 'SELECT id FROM users WHERE email=?', email)) return c.json({ error: 'Не удалось создать аккаунт. Проверьте данные или войдите, если аккаунт уже есть.' }, 409);
   const user = { id: crypto.randomUUID(), email, name, role };
   await db.batch([db.prepare('INSERT INTO users (id,email,name,role,password,created_at) VALUES (?,?,?,?,?,?)').bind(user.id,email,name,role,await hashPassword(password),Date.now()), db.prepare('INSERT INTO settings (user_id,data) VALUES (?,?)').bind(user.id,JSON.stringify(defaultSettings))]);
   await logAction(db,user.id,'registration_consent',user.id); await newSession(c,user); return c.json({ user }, 201);
@@ -63,7 +65,8 @@ app.post('/api/auth/login', async c => {
   const key = await digest(`login:${data.data.email}:${c.req.header('CF-Connecting-IP') || 'local'}`);
   if (!await limit(db,key) || !await limit(db,await digest(`login-ip:${c.req.header('CF-Connecting-IP') || 'local'}`))) return c.json({ error: 'Слишком много попыток. Попробуйте через 10 минут.' }, 429);
   const row = await one<User & { password: string; blocked_at?: number | null }>(db, 'SELECT id,email,name,role,password,email_verified_at,specialist_verified_at,specialty_kind,blocked_at FROM users WHERE email=?', data.data.email);
-  if (!row || !await verifyPassword(data.data.password,row.password)) return c.json({ error: 'Неверный email или пароль.' }, 401);
+  const ok=row?await verifyPassword(data.data.password,row.password):await verifyPassword(data.data.password,'scrypt:16384:8:5:'+('0'.repeat(64))+':'+'0'.repeat(64));
+  if (!row || !ok) return c.json({ error: 'Неверный email или пароль.' }, 401);
   if (row.blocked_at) return c.json({ error: 'Аккаунт заблокирован. Обратитесь к администратору.' }, 403);
   const { password: _, ...user } = row; await newSession(c,user); return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(db,user.id)).photoUrl}:user});
 });
