@@ -53,11 +53,11 @@ export function appointmentOverview(data:PatientData,end:string,period?:Overview
  const signalList=signals(data.entries);
  const attention:OverviewAttention[]=[];
  if(pendingAssessments.some(phq9NeedsReview)){
-  attention.push({kind:'safety',text:'PHQ-9: нужно отдельно просмотреть ответ на пункт 9',tab:'plan',actionLabel:'Открыть результат'});
+  attention.push({kind:'safety',text:'PHQ-9: нужно отдельно просмотреть ответ на пункт 9',tab:'assessments',actionLabel:'Открыть результат'});
  }
  for(const text of signalList)attention.push({kind:'signal',text});
  const pendingItems:[string,number,string,string][]=[
-  ['Опросники к просмотру',pendingAssessments.filter(a=>!phq9NeedsReview(a)).length,'plan','К опросникам'],
+  ['Опросники к просмотру',pendingAssessments.filter(a=>!phq9NeedsReview(a)).length,'assessments','К опросникам'],
   ['Отзывы о практиках к просмотру',pendingPractices.length,'history','К отзывам'],
   ['Отметки по целям к просмотру',pendingGoals.length,'goals','К целям']
  ];

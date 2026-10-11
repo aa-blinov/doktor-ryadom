@@ -47,7 +47,7 @@ function AdminPatients(){
  const [patients,setPatients]=useState<Patient[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState('');
  const load=useCallback(async()=>{setError('');try{const r=await api<{patients:Patient[]}>('/admin/patients');setPatients(r.patients);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
  useEffect(()=>{void load();},[load]);
- async function toggle(p:Patient){setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
+ async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm('Заблокировать пациента? Вход закроется, сеансы завершатся.'))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}

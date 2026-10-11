@@ -51,6 +51,7 @@ export function verificationRoutes(app:App){
   if(!req)return c.json({error:'Заявка не найдена.'},404);
   if(req.doctor_id===admin)return c.json({error:'Свою заявку решает другой администратор.'},403);
   if(req.status!=='pending'&&req.status!=='needs_info')return c.json({error:'Заявка уже решена.'},409);
+  if(decision==='approve'&&!req.kind)return c.json({error:'Укажите тип специалиста (психолог, психотерапевт или психиатр) до подтверждения.'},400);
   const status=decision==='approve'?'approved':decision==='needs_info'?'needs_info':'rejected';
   const noteOut=decision==='approve'&&!cleanNote?req.admin_note??'':cleanNote;
   await run(db,'UPDATE specialist_requests SET status=?,admin_note=?,reviewer_id=?,updated_at=? WHERE id=?',status,noteOut,admin,now,c.req.param('id'));
