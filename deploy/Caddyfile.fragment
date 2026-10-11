@@ -1,0 +1,9 @@
+# Add this block to /home/ubuntu/infra/caddy/Caddyfile.
+# Reuses existing DuckDNS TLS and shared edge network.
+doktor-ryadom.duckdns.org {
+    import duckdns_tls
+    encode zstd gzip
+    reverse_proxy 172.40.0.30:3000 {
+        import proxy_headers
+    }
+}

@@ -1,0 +1,10 @@
+.git
+**/.git
+**/node_modules
+**/dist
+**/.wrangler
+**/.sites-runtime
+**/.env*
+.impeccable/review
+artifacts
+docs/screens

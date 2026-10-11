@@ -1,0 +1,53 @@
+{
+  "name": "ryadom-care",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "dev:server": "wrangler dev --port 8787",
+    "build": "tsc --noEmit && vite build && node scripts/build-worker.mjs",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply ryadom-local --local",
+    "build:docker": "npm run build && node scripts/build-node.mjs",
+    "start:docker": "node dist/node/server.mjs"
+  },
+  "dependencies": {
+    "@fontsource/golos-text": "^5.3.0",
+    "@fontsource/manrope": "^5.2.0",
+    "@mantine/core": "^8.3.0",
+    "@mantine/hooks": "^8.3.0",
+    "@noble/hashes": "^2.0.0",
+    "@tabler/icons-react": "^3.35.0",
+    "drizzle-orm": "^0.45.3",
+    "hono": "^4.9.0",
+    "nodemailer": "^10.0.16",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "web-push": "^3.6.7",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.0.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/web-push": "^3.6.4",
+    "@vitejs/plugin-react": "^5.0.0",
+    "drizzle-kit": "^0.31.0",
+    "esbuild": "^0.25.12",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "vite-plugin-pwa": "^1.0.0",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.40.0"
+  },
+  "overrides": {
+    "sharp": "^0.35.5",
+    "esbuild": "^0.25.12"
+  }
+}

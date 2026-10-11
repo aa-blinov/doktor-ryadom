@@ -1,0 +1,1 @@
+ALTER TABLE `assessments` ADD `safety_plan` text;

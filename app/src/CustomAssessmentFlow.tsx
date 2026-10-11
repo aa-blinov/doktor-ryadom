@@ -1,0 +1,16 @@
+import {useState} from 'react';
+import {Button,Group,Textarea} from '@mantine/core';
+import {api,errorText} from './api';
+import {navigate} from './App';
+import {Empty,ErrorBox} from './ui';
+import type {Assessment} from './shared';
+import type {SurveyAnswer} from './surveys';
+import {AssessmentMethodology} from './AssessmentMethodology';
+export function CustomAssessmentFlow({assessment,onSaved}:{assessment:Assessment;onSaved:()=>Promise<void>}){
+ const content=assessment.definition!;const [answers,setAnswers]=useState<SurveyAnswer[]>(content.questions.map(()=>null)),[index,setIndex]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState('');const question=content.questions[index],value=answers[index],answered=value!==null&&(question.type!=='text'||String(value).trim()!=='');
+ function answer(v:SurveyAnswer){setAnswers(items=>items.map((old,i)=>i===index?v:old));}
+ async function save(){setBusy(true);setError('');try{await api(`/patient/assessments/${assessment.id}`,{answers:answers.map(v=>typeof v==='string'?v.trim()||null:v)});await onSaved();navigate('/plan');}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ if(assessment.completed_at)return <Empty title="Ответы уже сохранены" description="Результат доступен в плане врача" icon={null} action="К плану врача" onAction={()=>navigate('/plan')}/>;
+ const options=question.type==='choice'?question.choices.map((label,i)=>({label,value:i})):question.type==='scale'?Array.from({length:question.max-question.min+1},(_,i)=>({label:String(question.min+i),value:question.min+i})):[];
+ return <div className="flow-wrap"><button className="back-link" onClick={()=>{if(!answers.some(v=>v!==null)||window.confirm('Выйти? Ответы ещё не сохранены'))navigate('/plan');}}>К плану врача</button><div className="flow-meta"><span>{content.title}</span><span>{index+1} из {content.questions.length}</span></div><section className="question-panel"><p className="muted">{content.prompt}</p><h1>{question.label}</h1>{!question.required?<p className="muted small">Можно пропустить</p>:null}{question.type==='text'?<Textarea label="Ваш ответ" value={typeof value==='string'?value:''} onChange={e=>answer(e.currentTarget.value)} minRows={4} maxLength={1000} disabled={busy}/>:<><div role="group" aria-label={question.label} className={question.type==='scale'?'survey-scale':'answer-list'}>{options.map(o=><button type="button" key={o.value} className={`answer ${value===o.value?'selected':''}`} aria-pressed={value===o.value} onClick={()=>answer(o.value)} disabled={busy}>{o.label}</button>)}</div>{question.type==='scale'?<div className="survey-scale-labels"><span>{question.min} — {question.lowLabel}</span><span>{question.max} — {question.highLabel}</span></div>:null}</>}{error?<ErrorBox message={error}/>:null}<Group justify="space-between" mt="lg"><Button variant="subtle" disabled={!index||busy} onClick={()=>setIndex(i=>i-1)}>Назад</Button><Button disabled={question.required&&!answered} loading={busy} onClick={()=>index===content.questions.length-1?void save():setIndex(i=>i+1)}>{index===content.questions.length-1?'Сохранить ответы':!question.required&&!answered?'Пропустить':'Дальше'}</Button></Group></section><AssessmentMethodology assessment={assessment}/></div>;
+}

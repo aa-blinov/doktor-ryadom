@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+artifacts/
+.playwright-cli/
+.playwright-mcp/
+.impeccable/
+.mimocode/
+*.ogg
+*.zip
+qa-*.png

@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8787';
+const suffix=Date.now();const pass='test-password-very-long';
+async function request(path,body,cookie,method){const r=await fetch(base+'/api'+path,{method:method||(body===undefined?'GET':'POST'),headers:{Origin:base,...(body===undefined?{}:{'Content-Type':'application/json'}),...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
+async function signup(role,name){const r=await request('/auth/register',{email:`${role}-${name}-${suffix}@example.com`,password:pass,role,name,consent:true});assert.equal(r.status,201,JSON.stringify(r.data));return r;}
+const doctor=await signup('doctor','Test Doctor'),patient=await signup('patient','Test Patient'),stranger=await signup('doctor','Other Doctor');
+const id=patient.data.user.id;
+assert.equal((await request('/doctor/patients',undefined,patient.cookie)).status,403);
+assert.equal((await request(`/doctor/patients/${id}/data`,undefined,doctor.cookie)).status,403);
+assert.equal((await request('/patient/data')).status,401);
+const invite=await request('/doctor/invites',{},doctor.cookie);assert.equal(invite.status,201);
+assert.equal((await request('/patient/accept',{token:invite.data.token,consent:false},patient.cookie)).status,400);
+assert.equal((await request('/patient/accept',{token:invite.data.token,consent:true},patient.cookie)).status,200);
+assert.equal((await request('/invites/'+invite.data.token)).status,404);
+const d=new Date();const date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const entry={date,mood:3,sleep:5,anxiety:0,energy:null,functioning:2,sleepContext:'tired',note:'Synthetic test record',habit:null};
+assert.equal((await request('/patient/checkins',entry,patient.cookie)).status,201);
+assert.equal((await request('/patient/checkins',entry,patient.cookie)).status,409);
+const detail=await request(`/doctor/patients/${id}/data`,undefined,doctor.cookie);assert.equal(detail.status,200);assert.equal(detail.data.entries[0].anxiety,0);assert.equal(detail.data.entries[0].sleepContext,'tired');
+assert.equal((await request(`/doctor/patients/${id}/data`,undefined,stranger.cookie)).status,403);
+const plan={...detail.data.plan,habit:'Synthetic test habit',reviewNote:'Просмотр перед приёмом. Срочные вопросы — по согласованному каналу.'};
+assert.equal((await request(`/doctor/patients/${id}/plan`,plan,doctor.cookie,'PUT')).status,200);
+assert.equal((await request('/patient/data',undefined,patient.cookie)).data.plan.habit,'Synthetic test habit');
+assert.equal((await request('/patient/practices',{practiceId:'ground',feedback:'unpleasant'},patient.cookie)).status,201);
+assert.deepEqual((await request('/patient/data',undefined,patient.cookie)).data.settings.blockedPractices,['ground']);
+const csrf=await fetch(base+'/api/patient/revoke',{method:'POST',headers:{Origin:'https://untrusted.example','Content-Type':'application/json',Cookie:patient.cookie},body:'{}'});assert.equal(csrf.status,403);
+assert.equal((await request('/patient/revoke',{},patient.cookie)).status,200);
+assert.equal((await request(`/doctor/patients/${id}/data`,undefined,doctor.cookie)).status,403);
+assert.equal((await request(`/doctor/patients/${id}/plan`,plan,doctor.cookie,'PUT')).status,403);
+assert.equal((await request('/patient/data',undefined,patient.cookie)).data.entries.length,1);
+assert.equal((await request('/auth/logout',{},patient.cookie)).status,200);
+assert.equal((await request('/me',undefined,patient.cookie)).status,401);
+console.log('PASS: registration, consent, invitations, role and ownership checks, saved records, plan, practice feedback, CSRF, revocation, logout.');

@@ -1,0 +1,17 @@
+import '@fontsource/golos-text/cyrillic-400.css';
+import '@fontsource/golos-text/cyrillic-500.css';
+import '@fontsource/golos-text/cyrillic-600.css';
+import '@fontsource/golos-text/cyrillic-700.css';
+import '@fontsource/golos-text/latin-400.css';
+import '@fontsource/golos-text/latin-500.css';
+import '@fontsource/golos-text/latin-600.css';
+import '@fontsource/golos-text/latin-700.css';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MantineProvider, createTheme } from '@mantine/core';
+import '@mantine/core/styles.css';
+import {PwaUpdates} from './Pwa';
+import { App } from './App';
+import './styles.css';
+const theme=createTheme({ primaryColor:'forest', primaryShade:7, black:'#23382f', colors:{dark:['#e1eae4','#c0d0c5','#a0b8a9','#779783','#536d5c','#344b3d','#25382d','#1b2921','#141e19','#101912'], forest:['#f1f6f0','#e5eee3','#c8d9c6','#aac2a8','#89aa89','#6b926e','#508057','#326950','#28583f','#1d432e'] }, fontFamily:'Golos Text, sans-serif', headings:{ fontFamily:'Golos Text, sans-serif',fontWeight:'700' },defaultRadius:'md',components:{Button:{defaultProps:{size:'md'}},TextInput:{defaultProps:{size:'md'}},PasswordInput:{defaultProps:{size:'md'}},Textarea:{defaultProps:{size:'md'}},Select:{defaultProps:{size:'md'}}} });
+createRoot(document.getElementById('root')!).render(<React.StrictMode><MantineProvider theme={theme}><PwaUpdates/><App/></MantineProvider></React.StrictMode>);

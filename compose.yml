@@ -1,0 +1,84 @@
+name: doktor-ryadom
+services:
+  app:
+    build: .
+    container_name: doktor-ryadom
+    restart: unless-stopped
+    init: true
+    environment:
+      PUBLIC_ORIGIN: https://doktor-ryadom.duckdns.org
+      DATABASE_PATH: /data/ryadom.sqlite
+      PORT: "3000"
+      SMTP_HOST: ${RYADOM_SMTP_HOST:-}
+      SMTP_PORT: ${RYADOM_SMTP_PORT:-465}
+      SMTP_SECURE: ${RYADOM_SMTP_SECURE:-true}
+      SMTP_USER: ${RYADOM_SMTP_USER:-}
+      SMTP_PASSWORD: ${RYADOM_SMTP_PASSWORD:-}
+      RESEND_API_KEY: ${RYADOM_RESEND_API_KEY:-}
+      MAIL_FROM: ${RYADOM_MAIL_FROM:-}
+      VAPID_SUBJECT: ${RYADOM_VAPID_SUBJECT:-https://doktor-ryadom.duckdns.org}
+    volumes:
+      - ryadom_data:/data
+    networks:
+      edge:
+        ipv4_address: ${RYADOM_EDGE_IP:-172.40.0.30}
+    expose:
+      - "3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  backup:
+    image: doktor-ryadom-app
+    restart: unless-stopped
+    init: true
+    command: ["node", "scripts/backup.mjs"]
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      DATABASE_PATH: /data/ryadom.sqlite
+      BACKUP_DIRECTORY: /backups
+    volumes:
+      - ryadom_data:/data:ro
+      - ryadom_backups:/backups
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "const fs=require('node:fs');const names=fs.readdirSync('/backups').filter(n=>n.endsWith('.sqlite')).sort();process.exit(names.length&&Date.now()-fs.statSync('/backups/'+names.at(-1)).mtimeMs<26*3600000?0:1)"]
+      interval: 5m
+      timeout: 10s
+      start_period: 30s
+      retries: 2
+    logging:
+      driver: json-file
+      options:
+        max-size: "2m"
+        max-file: "2"
+volumes:
+  ryadom_data:
+  ryadom_backups:
+networks:
+  edge:
+    external: true
+    name: edge
