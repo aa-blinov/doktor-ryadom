@@ -86,31 +86,18 @@ export function DoctorPage({id,onChanged}:{id:string;onChanged:()=>Promise<void>
    </div>
   </header>
   {error?<ErrorBox message={error}/>:null}
-  <ConnectPanel doctorId={id} name={d.name} kind={d.kind} connection={data.connection} onChanged={async()=>{await load();await onChanged();}}/>
+  <ConnectPanel name={d.name} connection={data.connection}/>
   {d.about?<section className="doctor-section"><h2>О враче</h2><p className="profile-prose">{d.about}</p></section>:null}
   {sections.map(s=><section className="doctor-section" key={s.title}><h2>{s.title}</h2><p className="profile-prose">{s.text}</p></section>)}
   <Reviews doctorId={id} reviews={data.reviews} mine={data.mine} onChanged={load}/>
  </section>;
 }
 
-function ConnectPanel({doctorId,name,kind,connection,onChanged}:{doctorId:string;name:string;kind:SpecialtyKind|null;connection:Detail['connection'];onChanged:()=>Promise<void>}){
- const [open,setOpen]=useState(false),[message,setMessage]=useState(''),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
- async function send(){setBusy(true);setError('');try{await api(`/directory/${doctorId}/request`,{message,consent:true});setOpen(false);await onChanged();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
- async function cancel(){setBusy(true);setError('');try{await api(`/directory/${doctorId}/request`,undefined,'DELETE');await onChanged();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+function ConnectPanel({name,connection}:{name:string;connection:Detail['connection']}){
  return <section className="connect-panel" aria-label="Подключение">
   {connection.linkedToThis?<><p><strong>Это ваш врач</strong></p><Button variant="default" onClick={()=>navigate('/doctor')}>Открыть мой кабинет с врачом</Button></>
   :connection.linkedToOther?<p className="muted">У вас уже подключён другой врач. Чтобы выбрать нового, сначала отзовите доступ в настройках.</p>
-  :connection.pendingRequestId?<><p><strong>Запрос отправлен</strong></p><p className="muted small">Врач увидит ваши отметки только после того, как примет запрос.</p><Button variant="default" onClick={cancel} loading={busy}>Отменить запрос</Button></>
-  :open?<form className="care-form" onSubmit={e=>{e.preventDefault();if(consent)void send();}}>
-    <h2>Запрос врачу</h2>
-    <Textarea label="Сообщение врачу" description="Необязательно: с чем хотите обратиться" value={message} onChange={e=>setMessage(e.currentTarget.value)} maxLength={300} minRows={3}/>
-    <Checkbox checked={consent} onChange={e=>setConsent(e.currentTarget.checked)} label={`Я согласен(на), что ${name} увидит мои отметки и записи после принятия запроса`}/>
-    {kind!=='psychiatrist'?<p className="muted small">{name} не назначает препараты: это делает только психиатр.</p>:null}
-    {error?<ErrorBox message={error}/>:null}
-    <div className="connect-actions"><Button type="submit" loading={busy} disabled={!consent}>Отправить запрос</Button><Button variant="default" onClick={()=>setOpen(false)}>Отмена</Button></div>
-   </form>
-  :<Button size="lg" onClick={()=>setOpen(true)}>Выбрать этого врача</Button>}
-  {error&&!open?<ErrorBox message={error}/>:null}
+  :<><p><strong>Подключение по приглашению</strong></p><p className="muted small">{name} отправит вам одноразовую ссылку. Только после неё появится доступ к обмену записями.</p></>}
  </section>;
 }
 

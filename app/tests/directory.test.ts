@@ -16,7 +16,7 @@ afterAll(()=>db.close());
 it('only a verified psychiatrist may prescribe medication',async()=>{
  const psychiatrist=await register('doctor','dir-psy'),psychologist=await register('doctor','dir-psych'),patient=await register('patient','dir-med-p');
  await verify(psychiatrist.id,'psychiatrist');await verify(psychologist.id,'psychologist');
- for(const doc of [psychiatrist,psychologist]){const code=(await request('/doctor/code',undefined,doc.cookie)).data.code;const pat=doc===psychiatrist?patient:await register('patient','dir-med-p2');expect((await request('/patient/accept',{token:code,consent:true},pat.cookie)).status).toBe(200);
+ for(const doc of [psychiatrist,psychologist]){const inv=await request('/doctor/invites',{},doc.cookie);const pat=doc===psychiatrist?patient:await register('patient','dir-med-p2');expect((await request('/patient/accept',{token:inv.data.token,consent:true},pat.cookie)).status).toBe(200);
   const res=await request(`/doctor/patients/${pat.id}/medications`,{name:'Препарат',instructions:'1 раз в день',startDate:'2026-10-01'},doc.cookie);
   expect(res.status).toBe(doc===psychiatrist?201:403);}
 },40000);
@@ -47,28 +47,19 @@ it('catalogue lists verified doctors with filters, rating and patient-only acces
  expect((await request(`/directory/${a.id}/review`,undefined,patient.cookie,'DELETE')).status).toBe(200);
 },40000);
 
-it('patient requests a doctor, doctor accepts, access starts only after acceptance',async()=>{
+it('patient connects only via one-time invite, which cannot be reused',async()=>{
  const d=await register('doctor','dir-b'),p=await register('patient','dir-p'),p2=await register('patient','dir-p2');
- expect((await request(`/directory/${d.id}/request`,{message:'Нужна помощь',consent:false},p.cookie)).status).toBe(400);
+ await db.binding.prepare('UPDATE users SET email_verified_at=? WHERE id=?').bind(Date.now(),d.id).run();
+ expect((await request(`/directory/${d.id}/request`,{message:'Нужна помощь',consent:true},p.cookie)).status).toBe(404);
  mail.length=0;
- expect((await request(`/directory/${d.id}/request`,{message:'Нужна помощь',consent:true},p.cookie)).status).toBe(201);
- expect(mail).toHaveLength(1);
- expect(mail[0].to).toBe('dir-b@example.com');
- expect(mail[0].subject).toBe('Рядом: запрос на подключение');
- expect(mail[0].text).toContain('Тест dir-p');
- expect((await request(`/directory/${d.id}/request`,{message:'Ещё раз',consent:true},p.cookie)).data.duplicate).toBe(true);
- expect(mail).toHaveLength(1);
- expect((await request(`/doctor/patients/${p.id}/data`,undefined,d.cookie)).status).toBe(403);
- const queue=await request('/doctor/requests',undefined,d.cookie);expect(queue.data.requests).toHaveLength(1);expect(queue.data.requests[0].message).toBe('Нужна помощь');
- expect((await request(`/directory/${d.id}/request`,{message:'',consent:true},p2.cookie)).status).toBe(201);
- const id=queue.data.requests[0].id;
- expect((await request(`/doctor/requests/${id}/decision`,{decision:'accept'},p.cookie)).status).toBe(403);
- expect((await request(`/doctor/requests/${id}/decision`,{decision:'accept'},d.cookie)).status).toBe(200);
- expect((await request(`/doctor/patients/${p.id}/data`,undefined,d.cookie)).status).toBe(200);
- expect((await request(`/directory/${d.id}/request`,{message:'',consent:true},p.cookie)).status).toBe(409);
- const left=(await request('/doctor/requests',undefined,d.cookie)).data.requests;expect(left).toHaveLength(1);
- expect((await request(`/doctor/requests/${left[0].id}/decision`,{decision:'decline'},d.cookie)).status).toBe(200);
- expect((await request(`/doctor/patients/${p2.id}/data`,undefined,d.cookie)).status).toBe(403);
+ const inv=await request('/doctor/invites',{},d.cookie);expect(inv.status).toBe(201);expect(inv.data.token).toMatch(/^[a-f0-9]{64}$/i);
+ expect((await request('/invites/'+inv.data.token,undefined,p.cookie)).status).toBe(200);
+ expect(mail).toHaveLength(0); // invite is link-based, no patient-initiated email
+ expect((await request('/patient/accept',{token:inv.data.token,consent:true},p.cookie)).status).toBe(200);
+ expect((await request('/patient/accept',{token:inv.data.token,consent:true},p.cookie)).status).toBe(404);
+ expect((await request('/patient/accept',{token:inv.data.token,consent:true},p2.cookie)).status).toBe(404);
+ expect((await request('/doctor/patients/'+p.id+'/data',undefined,d.cookie)).status).toBe(200);
+ expect((await request('/doctor/patients/'+p2.id+'/data',undefined,d.cookie)).status).toBe(403);
 },40000);
 
 it('admin sees specialty kind with diploma text and can correct it',async()=>{

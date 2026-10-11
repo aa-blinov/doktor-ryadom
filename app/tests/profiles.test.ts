@@ -43,14 +43,19 @@ it('doctor photos are validated, privately served, preserved on edits and erased
  expect((await request('/profile/photo',{photo:null},d.cookie,'PUT')).data.profile.photoUrl).toBeNull();expect((await request(`/profiles/${d.id}/photo`,undefined,d.cookie)).status).toBe(404);
  await request('/profile/photo',{photo},d.cookie,'PUT');expect((await request('/account',{password,confirm:'УДАЛИТЬ'},d.cookie,'DELETE')).status).toBe(200);expect(await db.binding.prepare('SELECT * FROM profiles WHERE user_id=?').bind(d.id).first()).toBeNull();
 },20000);
-it('persistent doctor code needs verification and explicit patient consent, works for several patients and is erased on deletion',async()=>{
+it('one-time invite needs verification and explicit patient consent and is erased on deletion',async()=>{
  const d=await register('doctor','code-d@example.com'),p=await register('patient','code-p@example.com'),q=await register('patient','code-q@example.com');
- expect((await request('/doctor/code')).status).toBe(401);expect((await request('/doctor/code',undefined,p.cookie)).status).toBe(403);
- const own=await request('/doctor/code',undefined,d.cookie);expect(own.status).toBe(200);const code=own.data.code;expect(code).toMatch(/^[A-F0-9]{12}$/);expect(own.data.active).toBe(false);expect((await request('/doctor/code',undefined,d.cookie)).data.code).toBe(code);
- expect((await request('/invites/'+code)).status).toBe(403);expect((await request('/patient/accept',{token:code,consent:true},p.cookie)).status).toBe(404);
- await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.id).run();expect((await request('/doctor/code',undefined,d.cookie)).data.active).toBe(true);expect((await request('/invites/'+code.toLowerCase())).status).toBe(200);
- expect((await request('/patient/accept',{token:code,consent:false},p.cookie)).status).toBe(400);expect((await request('/patient/accept',{token:code,consent:true},p.cookie)).status).toBe(200);expect((await request('/patient/accept',{token:code,consent:true},q.cookie)).status).toBe(200);expect((await request('/patient/accept',{token:code,consent:true},p.cookie)).status).toBe(409);
- expect((await request('/account',{password,confirm:'УДАЛИТЬ'},d.cookie,'DELETE')).status).toBe(200);expect((await request('/invites/'+code)).status).toBe(404);expect(await db.binding.prepare('SELECT code FROM doctor_codes WHERE user_id=?').bind(d.id).first()).toBeNull();
+ expect((await request('/doctor/invites')).status).toBe(401);expect((await request('/doctor/invites',undefined,p.cookie)).status).toBe(403);
+  expect((await request('/doctor/invites',{},p.cookie)).status).toBe(403);
+  expect((await request('/doctor/invites',{},d.cookie)).status).toBe(403);
+  await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.id).run();
+  const inv=await request('/doctor/invites',{},d.cookie);expect(inv.status).toBe(201);expect(inv.data.token).toMatch(/^[a-f0-9]{64}$/i);
+  expect((await request('/invites/'+inv.data.token)).status).toBe(200);
+  expect((await request('/patient/accept',{token:inv.data.token,consent:false},p.cookie)).status).toBe(400);
+  expect((await request('/patient/accept',{token:inv.data.token,consent:true},p.cookie)).status).toBe(200);
+  expect((await request('/patient/accept',{token:inv.data.token,consent:true},q.cookie)).status).toBe(404);
+  expect((await request('/invites/'+inv.data.token)).status).toBe(404);
+  expect((await request('/account',{password,confirm:'УДАЛИТЬ'},d.cookie,'DELETE')).status).toBe(200);
 },20000);
 it('qualification files are private by default, linked to an entry, explicitly shared and hidden with the section',async()=>{
  const d=await register('doctor','docfile-d@example.com'),p=await register('patient','docfile-p@example.com'),stranger=await register('doctor','docfile-x@example.com');const body={name:'Врач Тест',specialty:'Психиатр',clinic:'',experienceYears:10,about:'',education:'2006, Академия',courses:'2021, Курс',workHistory:'2018, Клиника'};
@@ -58,8 +63,8 @@ it('qualification files are private by default, linked to an entry, explicitly s
  expect((await request('/profile/documents',payload,p.cookie)).status).toBe(403);expect((await request('/profile/documents',{...payload,data:Buffer.from('<svg/>').toString('base64')},d.cookie)).status).toBe(400);expect((await request('/profile/documents',{...payload,entry:'Не сохранено'},d.cookie)).status).toBe(409);
  const uploaded=await request('/profile/documents',payload,d.cookie);expect(uploaded.status).toBe(201);const path='/profile/documents/'+uploaded.data.id;expect((await request(path)).status).toBe(401);expect((await request(path,undefined,stranger.cookie)).status).toBe(403);expect((await request(path,{shared:true},stranger.cookie,'PUT')).status).toBe(404);
  const own=await request(path,undefined,d.cookie);expect(own.status).toBe(200);expect(own.r.headers.get('Content-Disposition')).toContain('attachment');expect(own.r.headers.get('Cache-Control')).toContain('no-store');
- await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.id).run();const code=(await request('/doctor/code',undefined,d.cookie)).data.code;await request('/patient/accept',{token:code,consent:true},p.cookie);expect((await request(path,undefined,p.cookie)).status).toBe(403);expect((await request('/patient/data',undefined,p.cookie)).data.doctor.profile.documents).toEqual([]);
- expect((await request(path,{shared:true},d.cookie,'PUT')).status).toBe(200);expect((await request(path,undefined,p.cookie)).status).toBe(200);expect((await request('/patient/data',undefined,p.cookie)).data.doctor.profile.documents).toHaveLength(1);expect((await request('/invites/'+code)).data.doctorProfile.documents).toEqual([]);
+ await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.id).run();const inv=await request('/doctor/invites',{},d.cookie);await request('/patient/accept',{token:inv.data.token,consent:true},p.cookie);expect((await request(path,undefined,p.cookie)).status).toBe(403);expect((await request('/patient/data',undefined,p.cookie)).data.doctor.profile.documents).toEqual([]);
+ expect((await request(path,{shared:true},d.cookie,'PUT')).status).toBe(200);expect((await request(path,undefined,p.cookie)).status).toBe(200);expect((await request('/patient/data',undefined,p.cookie)).data.doctor.profile.documents).toHaveLength(1);expect((await request('/invites/'+inv.data.token)).status).toBe(404);
  await request('/profile',{...body,showEducation:false},d.cookie,'PUT');expect((await request('/patient/data',undefined,p.cookie)).data.doctor.profile.education).toBe('');expect((await request('/profile',undefined,d.cookie)).data.profile.education).toBe(body.education);expect((await request(path,undefined,p.cookie)).status).toBe(403);
  await request('/profile',{...body,education:'Другая запись',showEducation:true},d.cookie,'PUT');expect((await request(path,undefined,p.cookie)).status).toBe(403);
  expect((await request('/account/export',undefined,d.cookie)).data.data.profile_documents).toHaveLength(1);expect((await request(path,{},d.cookie,'DELETE')).status).toBe(200);expect((await request(path,undefined,d.cookie)).status).toBe(404);

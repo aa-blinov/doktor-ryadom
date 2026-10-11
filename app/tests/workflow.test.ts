@@ -63,7 +63,7 @@ it('does not assign practices automatically and prevents simultaneous replacemen
  const p=await register('patient','qa-patient@example.com'),d=await register('doctor','qa-doctor@example.com'),other=await register('doctor','qa-other@example.com');
  expect((await request('/patient/data',undefined,p.cookie)).data.plan.practices).toEqual([]);
  expect((await request('/patient/practices',{practiceId:'ground',feedback:'same'},p.cookie)).status).toBe(403);
- const code=(await request('/doctor/code',undefined,d.cookie)).data.code,second=(await request('/doctor/code',undefined,other.cookie)).data.code;
+ const code=(await request('/doctor/invites',{},d.cookie)).data.token,second=(await request('/doctor/invites',{},other.cookie)).data.token;
  const prepare=db.binding.prepare.bind(db.binding);let reads=0;let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
  db.binding.prepare=((sql:string)=>{const statement=prepare(sql);if(sql==='SELECT patient_id FROM links WHERE patient_id=? AND revoked_at IS NULL'){const bind=statement.bind.bind(statement);statement.bind=((...values:unknown[])=>{const bound=bind(...values);const first=bound.first.bind(bound);bound.first=(async()=>{const row=await first();if(++reads===2)release();await gate;return row;}) as typeof bound.first;return bound;}) as typeof statement.bind;}return statement;});
  let accepted:Awaited<ReturnType<typeof request>>[];try{accepted=await Promise.all([request('/patient/accept',{token:code,consent:true},p.cookie),request('/patient/accept',{token:second,consent:true},p.cookie)]);}finally{db.binding.prepare=prepare;}

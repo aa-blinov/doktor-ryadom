@@ -35,11 +35,11 @@ app.use('/api/*', async (c, next) => {
 app.onError((err, c) => { console.error('API failure', err.name); return c.json({ error: 'Не удалось выполнить запрос. Данные формы сохранены на экране; попробуйте ещё раз.' }, 503); });
 app.get('/api/health', async c => {await one(database(c.env),'SELECT 1 AS ok');return c.json({ok:true});});
 app.get('/api/invites/:token', async c => {
-  const raw=c.req.param('token').toUpperCase();const isCode=/^[A-F0-9]{12}$/.test(raw);
   if (!await limit(database(c.env), await digest('invite:'+(c.req.header('CF-Connecting-IP') || 'local')))) return c.json({ error: 'Слишком много попыток. Попробуйте позже.' }, 429);
-  const row = isCode?await one<{name:string;id:string}>(database(c.env),'SELECT u.name,u.id FROM doctor_codes d JOIN users u ON u.id=d.user_id WHERE d.code=? AND u.specialist_verified_at IS NOT NULL',raw):await one<{ name: string;id:string }>(database(c.env), 'SELECT u.name,u.id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?', await digest(c.req.param('token')), Date.now());
-  if(isCode&&!row&&await one(database(c.env),'SELECT user_id FROM doctor_codes WHERE code=?',raw))return c.json({error:'Профиль врача ещё не подтверждён. Подключение будет доступно после проверки специалиста'},403);
-  return row ? c.json({doctorName:row.name,doctorProfile:{...await doctorProfile(database(c.env),row.id),photoUrl:null,documents:[]}}) : c.json({ error: isCode?'Код врача не найден. Проверьте код у врача':'Приглашение уже использовано или срок истёк. Попросите врача создать новое.' }, 404);
+  const token=c.req.param('token');
+  if(!/^[a-f0-9]{64}$/i.test(token))return c.json({error:'Приглашение уже использовано или срок истёк. Попросите врача создать новое.'},404);
+  const row = await one<{ name: string;id:string }>(database(c.env), 'SELECT u.name,u.id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?', await digest(token), Date.now());
+  return row ? c.json({doctorName:row.name,doctorProfile:{...await doctorProfile(database(c.env),row.id),photoUrl:null,documents:[]}}) : c.json({ error:'Приглашение уже использовано или срок истёк. Попросите врача создать новое.' }, 404);
 });
 async function limit(db: D1Database, key: string) {
   const now = Date.now();
@@ -131,26 +131,40 @@ app.post('/api/patient/reports', async c => {
   return c.json({ok:true,id},201);
 });
 app.post('/api/patient/accept', async c => {
-  const data=z.object({ token:z.string().refine(t=>/^[a-f0-9]{64}$/i.test(t)||/^[a-f0-9]{12}$/i.test(t)),consent:z.literal(true) }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Подтвердите доступ врачу.' },400);
+  const data=z.object({ token:z.string().refine(t=>/^[a-f0-9]{64}$/i.test(t)),consent:z.literal(true) }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Подтвердите доступ врачу.' },400);
   const db=database(c.env),id=c.get('user').id,token=await digest(data.data.token);
-  const raw=data.data.token.toUpperCase(),isCode=/^[A-F0-9]{12}$/.test(raw);
-  const invite=isCode?await one<{doctor_id:string}>(db,'SELECT d.user_id AS doctor_id FROM doctor_codes d JOIN users u ON u.id=d.user_id WHERE d.code=? AND u.specialist_verified_at IS NOT NULL',raw):await one<{ doctor_id:string }>(db,'SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?',token,Date.now()); if(!invite) return c.json({ error:'Приглашение недействительно.' },404);
+  const invite=await one<{doctor_id:string}>(db,'SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?',token,Date.now()); if(!invite) return c.json({ error:'Приглашение недействительно или уже использовано.' },404);
   const link=await one(db,'SELECT patient_id FROM links WHERE patient_id=? AND revoked_at IS NULL',id); if(link) return c.json({ error:'У вас уже подключён врач. Сначала отзовите предыдущий доступ.' },409);
-  // Validate and create the link inside one transaction; a concurrent request cannot replace it.
   const acceptedAt=Date.now();
-  const source=isCode?'SELECT d.user_id AS doctor_id FROM doctor_codes d JOIN users u ON u.id=d.user_id WHERE d.code=? AND u.specialist_verified_at IS NOT NULL':'SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE i.token=? AND i.used=0 AND i.expires>? AND u.specialist_verified_at IS NOT NULL';
+  const source='SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE i.token=? AND i.used=0 AND i.expires>? AND u.specialist_verified_at IS NOT NULL';
   const insert=db.prepare(`INSERT INTO links(patient_id,doctor_id,accepted_at,revoked_at) SELECT ?,doctor_id,?,NULL FROM (${source}) WHERE 1 ON CONFLICT(patient_id) DO UPDATE SET doctor_id=excluded.doctor_id,accepted_at=excluded.accepted_at,revoked_at=NULL WHERE links.revoked_at IS NOT NULL`);
-  const statements=[isCode?insert.bind(id,acceptedAt,raw):insert.bind(id,acceptedAt,token,Date.now()),db.prepare('DELETE FROM plans WHERE patient_id=? AND changes()=1').bind(id),db.prepare('DELETE FROM drafts WHERE patient_id=? AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(id,id,invite.doctor_id,acceptedAt)];
-  if(!isCode)statements.push(db.prepare('UPDATE invites SET used=1 WHERE token=? AND used=0 AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(token,id,invite.doctor_id,acceptedAt));
+  const statements=[insert.bind(id,acceptedAt,token,Date.now()),db.prepare('DELETE FROM plans WHERE patient_id=? AND changes()=1').bind(id),db.prepare('DELETE FROM drafts WHERE patient_id=? AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(id,id,invite.doctor_id,acceptedAt),db.prepare('UPDATE invites SET used=1 WHERE token=? AND used=0 AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(token,id,invite.doctor_id,acceptedAt)];
   const result=await db.batch(statements);
-  if(!result[0].meta.changes)return c.json({error:'Врач уже подключён или приглашение использовано. Обновите страницу'},409);
+  if(!result[0].meta.changes)return c.json({error:'Приглашение уже использовано. Попросите врача создать новое.'},409);
   await logAction(db,id,'grant_access',invite.doctor_id); return c.json({ ok:true });
 });
 app.post('/api/patient/revoke', async c => { const db=database(c.env),id=c.get('user').id; await db.batch([db.prepare('UPDATE links SET revoked_at=? WHERE patient_id=? AND revoked_at IS NULL').bind(Date.now(),id),db.prepare('DELETE FROM plans WHERE patient_id=?').bind(id)]); await logAction(db,id,'revoke_access',id); return c.json({ ok:true }); });
 app.use('/api/doctor/*', async(c,next) => { if(c.get('user').role!=='doctor') return c.json({ error:'Этот раздел доступен врачу.' },403); await next(); });
-app.get('/api/doctor/code',async c=>{const user=c.get('user'),db=database(c.env);let row=await one<{code:string}>(db,'SELECT code FROM doctor_codes WHERE user_id=?',user.id);if(!row){await run(db,'INSERT INTO doctor_codes(user_id,code,created_at) VALUES(?,?,?) ON CONFLICT(user_id) DO NOTHING',user.id,randomToken().slice(0,12).toUpperCase(),Date.now());row=await one<{code:string}>(db,'SELECT code FROM doctor_codes WHERE user_id=?',user.id);}return c.json({code:row!.code,active:!!user.specialist_verified_at});});
 app.get('/api/doctor/patients', async c => c.json({ patients:await many(database(c.env),'SELECT u.id,u.name,(SELECT date FROM checkins WHERE patient_id=u.id ORDER BY date DESC LIMIT 1) AS last_date,(SELECT mood FROM checkins WHERE patient_id=u.id ORDER BY date DESC LIMIT 1) AS last_mood,(SELECT count(*) FROM checkins WHERE patient_id=u.id) AS count,(SELECT count(*) FROM reports WHERE patient_id=u.id AND doctor_id=l.doctor_id AND reviewed_at IS NULL) AS pending_reports,(SELECT count(*) FROM assessments WHERE patient_id=u.id AND doctor_id=l.doctor_id AND completed_at IS NOT NULL AND reviewed_at IS NULL) AS pending_assessments,(SELECT count(*) FROM assessments WHERE patient_id=u.id AND doctor_id=l.doctor_id AND kind=\'phq9\' AND completed_at IS NOT NULL AND reviewed_at IS NULL AND json_extract(answers,\'$[8]\')>0) AS pending_safety,(SELECT count(*) FROM practices WHERE patient_id=u.id AND (reviewed_at IS NULL OR reviewer_id IS NULL OR reviewer_id!=l.doctor_id)) AS pending_practices,(SELECT count(*) FROM goal_logs WHERE patient_id=u.id AND (reviewed_at IS NULL OR reviewer_id IS NULL OR reviewer_id!=l.doctor_id)) AS pending_goals ,(SELECT count(*) FROM sos_events WHERE patient_id=u.id AND acknowledged_at IS NULL) AS open_sos FROM links l JOIN users u ON u.id=l.patient_id WHERE l.doctor_id=? AND l.revoked_at IS NULL ORDER BY open_sos DESC,pending_safety DESC,(pending_reports+pending_assessments+pending_practices+pending_goals) DESC,u.name',c.get('user').id) }));
-app.post('/api/doctor/invites', async c => { if(!c.get('user').specialist_verified_at)return c.json({error:'Подтвердите профиль специалиста у администратора, чтобы приглашать пациентов.'},403); const token=randomToken(),expires=Date.now()+7*86400000; await run(database(c.env),'INSERT INTO invites (token,doctor_id,expires) VALUES (?,?,?)',await digest(token),c.get('user').id,expires); return c.json({ token,expires },201); });
+app.get('/api/doctor/invites', async c => {
+  const db=database(c.env),user=c.get('user');
+  const rows=await many<{rowid:number;expires:number}>(db,'SELECT rowid AS rowid,expires FROM invites WHERE doctor_id=? AND used=0 AND expires>? ORDER BY expires DESC LIMIT 50',user.id,Date.now());
+  return c.json({invites:rows.map(r=>({id:r.rowid,expires:r.expires}))});
+});
+app.post('/api/doctor/invites', async c => {
+  if(!c.get('user').specialist_verified_at)return c.json({error:'Подтвердите профиль специалиста у администратора, чтобы приглашать пациентов.'},403);
+  const db=database(c.env),token=randomToken(),expires=Date.now()+7*86400000;
+  const inserted=await run(db,'INSERT INTO invites (token,doctor_id,expires,used) VALUES (?,?,?,0)',await digest(token),c.get('user').id,expires);
+  return c.json({ id:inserted.meta.last_row_id, token, expires },201);
+});
+app.delete('/api/doctor/invites/:id', async c => {
+  const db=database(c.env),id=Number(c.req.param('id'));
+  if(!Number.isInteger(id)||id<=0)return c.json({error:'Приглашение не найдено.'},404);
+  const result=await run(db,'UPDATE invites SET used=1 WHERE rowid=? AND doctor_id=? AND used=0',id,c.get('user').id);
+  if(!result.meta.changes)return c.json({error:'Приглашение уже использовано или отозвано.'},404);
+  await logAction(db,c.get('user').id,'revoke_invite',String(id));
+  return c.json({ok:true});
+});
 app.use('/api/doctor/patients/:id/*', async(c,next) => { const link=await one(database(c.env),'SELECT patient_id FROM links WHERE patient_id=? AND doctor_id=? AND revoked_at IS NULL',c.req.param('id'),c.get('user').id); if(!link) return c.json({ error:'Доступ к пациенту отсутствует или отозван.' },403); await next(); });
 doctorCareRoutes(app);
 surveyRoutes(app);

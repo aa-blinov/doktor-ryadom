@@ -7,8 +7,6 @@ import {doctorProfile,storedProfile} from './profiles';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
 
 const reviewSchema=z.object({rating:z.number().int().min(1).max(5),body:z.string().trim().max(1000).default('')});
-const requestSchema=z.object({message:z.string().trim().max(300).default(''),consent:z.literal(true)});
-const decisionSchema=z.object({decision:z.enum(['accept','decline'])});
 
 const firstName=(name:string)=>name.trim().split(/\s+/)[0]||'Пациент';
 const VERIFIED="u.role='doctor' AND u.specialist_verified_at IS NOT NULL AND u.blocked_at IS NULL";
@@ -89,53 +87,4 @@ export function directoryRoutes(app:App){
   return c.json({ok:true});
  });
 
- // Patient asks a doctor to connect; the doctor decides.
- app.post('/api/directory/:id/request',async c=>{
-  const user=c.get('user'),db=database(c.env),id=c.req.param('id');
-  if(user.role!=='patient')return c.json({error:'Запрос отправляет пациент.'},403);
-  const parsed=requestSchema.safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Подтвердите, что врач увидит ваши отметки после принятия запроса.'},400);
-  if(!await one(db,`${SELECT_DOCTOR} AND u.id=?`,id))return c.json({error:'Врач не найден.'},404);
-  if(await one(db,'SELECT patient_id FROM links WHERE patient_id=? AND revoked_at IS NULL',user.id))return c.json({error:'У вас уже подключён врач. Сначала отзовите доступ в настройках.'},409);
-  const open=await one(db,"SELECT id FROM connection_requests WHERE patient_id=? AND doctor_id=? AND status='pending'",user.id,id);
-  if(open)return c.json({ok:true,duplicate:true});
-  await run(db,'INSERT INTO connection_requests (id,patient_id,doctor_id,message,status,created_at) VALUES (?,?,?,?,?,?)',crypto.randomUUID(),user.id,id,parsed.data.message,'pending',Date.now());
-  await logAction(db,user.id,'request_doctor',id);
-  const doctor=await one<{email:string}>(db,'SELECT email FROM users WHERE id=?',id);
-  const mail=c.env.MAIL;
-  if(mail&&doctor){
-   try{await mail.send({to:doctor.email,subject:'Рядом: запрос на подключение',text:`Пациент ${user.name} отправил запрос на подключение. Откройте кабинет, чтобы принять или отклонить запрос.\n${new URL(c.req.url).origin}/#/patients`});}catch{console.error('Connection request email failed');}
-  }
-  return c.json({ok:true},201);
- });
- app.delete('/api/directory/:id/request',async c=>{
-  const user=c.get('user'),db=database(c.env);
-  if(user.role!=='patient')return c.json({error:'Запрос отменяет пациент.'},403);
-  await run(db,"UPDATE connection_requests SET status='cancelled',decided_at=? WHERE patient_id=? AND doctor_id=? AND status='pending'",Date.now(),user.id,c.req.param('id'));
-  return c.json({ok:true});
- });
-
- app.get('/api/doctor/requests',async c=>{
-  const user=c.get('user'),db=database(c.env);
-  if(!user.specialist_verified_at)return c.json({requests:[]});
-  const rows=await many<{id:string;message:string;created_at:number;name:string}>(db,"SELECT r.id,r.message,r.created_at,u.name FROM connection_requests r JOIN users u ON u.id=r.patient_id WHERE r.doctor_id=? AND r.status='pending' AND u.blocked_at IS NULL ORDER BY r.created_at",user.id);
-  return c.json({requests:rows.map(r=>({id:r.id,message:r.message,createdAt:r.created_at,name:r.name}))});
- });
- app.post('/api/doctor/requests/:id/decision',async c=>{
-  const user=c.get('user'),db=database(c.env),id=c.req.param('id');
-  if(!user.specialist_verified_at)return c.json({error:'Подтвердите профиль, чтобы принимать пациентов.'},403);
-  const parsed=decisionSchema.safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Выберите решение.'},400);
-  const req=await one<{patient_id:string}>(db,"SELECT patient_id FROM connection_requests WHERE id=? AND doctor_id=? AND status='pending'",id,user.id);
-  if(!req)return c.json({error:'Запрос не найден или уже решён.'},404);
-  const now=Date.now();
-  if(parsed.data.decision==='decline'){await run(db,"UPDATE connection_requests SET status='declined',decided_at=? WHERE id=?",now,id);await logAction(db,user.id,'decline_connection',req.patient_id);return c.json({ok:true});}
-  if(await one(db,'SELECT patient_id FROM links WHERE patient_id=? AND revoked_at IS NULL',req.patient_id)){await run(db,"UPDATE connection_requests SET status='cancelled',decided_at=? WHERE id=?",now,id);return c.json({error:'У пациента уже подключён другой врач.'},409);}
-  const result=await db.batch([
-   db.prepare('INSERT INTO links(patient_id,doctor_id,accepted_at,revoked_at) VALUES (?,?,?,NULL) ON CONFLICT(patient_id) DO UPDATE SET doctor_id=excluded.doctor_id,accepted_at=excluded.accepted_at,revoked_at=NULL WHERE links.revoked_at IS NOT NULL').bind(req.patient_id,user.id,now),
-   db.prepare('DELETE FROM plans WHERE patient_id=? AND changes()=1').bind(req.patient_id),
-   db.prepare("UPDATE connection_requests SET status=CASE WHEN id=? THEN 'accepted' ELSE 'cancelled' END,decided_at=? WHERE patient_id=? AND status='pending'").bind(id,now,req.patient_id),
-  ]);
-  if(!result[0].meta.changes)return c.json({error:'Не удалось подключить пациента. Обновите страницу.'},409);
-  await logAction(db,user.id,'accept_connection',req.patient_id);
-  return c.json({ok:true});
- });
 }

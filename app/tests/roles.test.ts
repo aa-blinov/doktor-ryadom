@@ -86,8 +86,8 @@ it('patient, doctor and administrator complete their core flows without page err
   await d.getByRole('heading',{name:'Профиль',exact:true}).waitFor();
   await d.getByRole('heading',{name:'О себе'}).waitFor();
   await d.goto(origin+'/#/code');
-  await d.getByRole('heading',{name:'Код врача',exact:true}).waitFor();
-  await d.getByRole('heading',{name:'Ваш код врача'}).waitFor();
+  await d.getByRole('heading',{name:'Приглашения',exact:true}).waitFor();
+  await d.getByRole('heading',{name:'Одноразовые ссылки'}).waitFor();
   await d.goto(origin+'/#/settings');
   await d.getByRole('heading',{name:'Настройки',exact:true}).waitFor();
   await d.getByRole('heading',{name:'Аккаунт и безопасность'}).waitFor();
