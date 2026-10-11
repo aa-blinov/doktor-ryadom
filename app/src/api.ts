@@ -3,7 +3,8 @@ export async function api<T>(path: string, body?: unknown, method?: string): Pro
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
-  const response = await fetch(`/api${path}`, { method: method || (body === undefined ? 'GET' : 'POST'), credentials: 'same-origin', headers: body === undefined ? undefined : { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store', signal: controller.signal });
+  const url = path.startsWith('/') ? `/api${path}` : `/api/${path}`;
+  const response = await fetch(url, { method: method || (body === undefined ? 'GET' : 'POST'), credentials: 'same-origin', headers: body === undefined ? undefined : { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store', signal: controller.signal });
   const result = await response.json().catch(error => { if (controller.signal.aborted) throw error; return { error: 'Сервер вернул неожиданный ответ. Попробуйте ещё раз.' }; });
   if (!response.ok) { if (response.status===401 && !path.startsWith('/auth') && path!=='/me') window.dispatchEvent(new Event('session-expired')); throw new ApiError((result as {error?:string}).error || 'Не удалось выполнить запрос.',response.status); }
   return result as T;

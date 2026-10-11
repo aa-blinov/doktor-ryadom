@@ -19,8 +19,11 @@ const assets={fetch:async(request:Request)=>{
  let pathname:string;try{pathname=decodeURIComponent(new URL(request.url).pathname);}catch{return new Response('Invalid path',{status:400});}
  let path=resolve(client,'.'+pathname);
  if(path!==client&&!path.startsWith(client+sep))return new Response('Not found',{status:404});
- try{if(!(await stat(path)).isFile())path=resolve(client,'index.html');}catch{if(extname(pathname))return new Response('Not found',{status:404});path=resolve(client,'index.html');}
-  const body=await readFile(path);return new Response(body,{headers:{'Content-Type':types[extname(path)]||'application/octet-stream','Cache-Control':pathname.startsWith('/assets/')?'public, max-age=31536000, immutable':'no-cache','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});
+  // Avoid stat+read TOCTOU: read the file, SPA-fallback only for extensionless routes.
+  let body:Buffer;
+  try{body=await readFile(path);}
+  catch{if(extname(pathname))return new Response('Not found',{status:404});path=resolve(client,'index.html');body=await readFile(path);}
+  return new Response(new Uint8Array(body),{headers:{'Content-Type':types[extname(path)]||'application/octet-stream','Cache-Control':pathname.startsWith('/assets/')?'public, max-age=31536000, immutable':'no-cache','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});
 }} as unknown as Fetcher;
 const server=createServer(async(incoming,outgoing)=>{
  try{
