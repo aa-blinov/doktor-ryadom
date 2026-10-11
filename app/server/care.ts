@@ -57,7 +57,7 @@ export function patientCareRoutes(app:App){
   if(row.due_date>local)return c.json({error:'Опросник будет доступен в назначенный день.'},400);
   const answers=parsed.data.answers;const definition=row.definition?JSON.parse(row.definition) as SurveySnapshot:null;
   if(definition?!validSurveyAnswers(definition,answers):!standardAnswersValid(standardKind(row.kind as Assessment['kind']),answers))return c.json({error:'Проверьте ответы на вопросы'},400);
-  const saved=await run(db,'UPDATE assessments SET answers=?,score=?,completed_at=? WHERE id=? AND completed_at IS NULL',JSON.stringify(parsed.data.answers),definition?null:standardScore(standardKind(row.kind as Assessment['kind']),answers as number[]),Date.now(),row.id);
+  const saved=await run(db,'UPDATE assessments SET answers=?,score=?,completed_at=? WHERE id=? AND completed_at IS NULL',JSON.stringify(parsed.data.answers),definition?null:standardScore(standardKind(row.kind as Assessment['kind']),answers as number[]),Date.now(),row.id);if(saved.meta.changes)await logAction(db,id,'complete_assessment',row.id);
   return saved.meta.changes?c.json({ok:true},201):c.json({error:'Ответы уже сохранены.'},409);
  });
  app.post('/api/patient/medication-logs',async c=>{
@@ -87,13 +87,13 @@ export function doctorCareRoutes(app:App){
   const parsed=z.object({kind:z.enum(standardKinds),dueDate:date,safety:z.object({contact:z.string().trim().min(5).max(300),reviewNote:z.string().trim().min(5).max(500),confirmed:z.literal(true)}).optional()}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Выберите опросник и дату.'},400);
   if(parsed.data.kind==='phq9'&&!parsed.data.safety)return c.json({error:'Для PHQ-9 укажите согласованный способ связи и порядок реагирования'},400);
   const db=database(c.env),id=c.req.param('id');if(await one(db,'SELECT id FROM assessments WHERE patient_id=? AND doctor_id=? AND kind=? AND due_date=?',id,c.get('user').id,parsed.data.kind,parsed.data.dueDate))return c.json({error:'Этот опросник уже назначен на выбранную дату.'},409);
-  await run(db,'INSERT INTO assessments (id,patient_id,doctor_id,kind,due_date,safety_plan) VALUES (?,?,?,?,?,?)',crypto.randomUUID(),id,c.get('user').id,parsed.data.kind,parsed.data.dueDate,parsed.data.kind==='phq9'?JSON.stringify({contact:parsed.data.safety!.contact,reviewNote:parsed.data.safety!.reviewNote}):null);return c.json({ok:true},201);
+  await run(db,'INSERT INTO assessments (id,patient_id,doctor_id,kind,due_date,safety_plan) VALUES (?,?,?,?,?,?)',crypto.randomUUID(),id,c.get('user').id,parsed.data.kind,parsed.data.dueDate,parsed.data.kind==='phq9'?JSON.stringify({contact:parsed.data.safety!.contact,reviewNote:parsed.data.safety!.reviewNote}):null);await logAction(db,c.get('user').id,'assign_assessment',id);return c.json({ok:true},201);
  });
  app.delete('/api/doctor/patients/:id/assessments/:assessmentId',async c=>{
   const r=await run(database(c.env),'DELETE FROM assessments WHERE id=? AND patient_id=? AND doctor_id=? AND completed_at IS NULL',c.req.param('assessmentId'),c.req.param('id'),c.get('user').id);return r.meta.changes?c.json({ok:true}):c.json({error:'Завершённый опросник нельзя отменить.'},409);
  });
  app.post('/api/doctor/patients/:id/assessments/:assessmentId/review',async c=>{
-  const r=await run(database(c.env),'UPDATE assessments SET reviewed_at=COALESCE(reviewed_at,?) WHERE id=? AND patient_id=? AND doctor_id=? AND completed_at IS NOT NULL',Date.now(),c.req.param('assessmentId'),c.req.param('id'),c.get('user').id);return r.meta.changes?c.json({ok:true}):c.json({error:'Результат недоступен.'},404);
+  const db=database(c.env);const r=await run(db,'UPDATE assessments SET reviewed_at=COALESCE(reviewed_at,?) WHERE id=? AND patient_id=? AND doctor_id=? AND completed_at IS NOT NULL',Date.now(),c.req.param('assessmentId'),c.req.param('id'),c.get('user').id);if(r.meta.changes)await logAction(db,c.get('user').id,'review_assessment',c.req.param('assessmentId'));return r.meta.changes?c.json({ok:true}):c.json({error:'Результат недоступен.'},404);
  });
  app.post('/api/doctor/patients/:id/followups',async c=>{
   const parsed=followupSchema.safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Добавьте рекомендации и проверьте дату.'},400);

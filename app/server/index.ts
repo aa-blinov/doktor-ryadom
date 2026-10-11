@@ -68,7 +68,7 @@ app.post('/api/auth/login', async c => {
   const ok=row?await verifyPassword(data.data.password,row.password):await verifyPassword(data.data.password,'scrypt:16384:8:5:'+('0'.repeat(64))+':'+'0'.repeat(64));
   if (!row || !ok) return c.json({ error: 'Неверный email или пароль.' }, 401);
   if (row.blocked_at) return c.json({ error: 'Аккаунт заблокирован. Обратитесь к администратору.' }, 403);
-  const { password: _, ...user } = row; await newSession(c,user); return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(db,user.id)).photoUrl}:user});
+  const { password: _, ...user } = row; await newSession(c,user); await logAction(db,user.id,'login',user.id); return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(db,user.id)).photoUrl}:user});
 });
 publicAccountRoutes(app);
 app.use('/api/*', async (c,next) => {
@@ -97,12 +97,12 @@ app.post('/api/patient/checkins', async c => {
   if (Math.abs(Date.parse(data.data.date)-Date.now()) > 2*86400000) return c.json({ error:'Можно отметить только текущий день.' },400);
   const db=database(c.env),id=c.get('user').id,e=data.data;
   if(await one(db,'SELECT id FROM checkins WHERE patient_id=? AND date=?',id,e.date)) return c.json({ error:'Сегодняшняя отметка уже сохранена. Она доступна в истории.' },409);
-  await db.batch([db.prepare('INSERT INTO checkins (id,patient_id,date,mood,sleep,anxiety,energy,functioning,sleep_context,note,habit,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,e.date,e.mood,e.sleep,e.anxiety,e.energy,e.functioning,e.sleepContext,e.note,e.habit===null?null:Number(e.habit),Date.now()),db.prepare('DELETE FROM drafts WHERE patient_id=?').bind(id)]);
+  await db.batch([db.prepare('INSERT INTO checkins (id,patient_id,date,mood,sleep,anxiety,energy,functioning,sleep_context,note,habit,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,e.date,e.mood,e.sleep,e.anxiety,e.energy,e.functioning,e.sleepContext,e.note,e.habit===null?null:Number(e.habit),Date.now()),db.prepare('DELETE FROM drafts WHERE patient_id=?').bind(id)]);await logAction(db,id,'save_checkin',e.date);
   return c.json({ ok:true },201);
 });
 app.post('/api/patient/sos', async c => { const db=database(c.env),id=c.get('user').id;
   // A second tap within a minute is the same signal: one event, one notification to the doctor.
-  if(!await one(db,'SELECT id FROM sos_events WHERE patient_id=? AND created_at>?',id,Date.now()-60000))await run(db,'INSERT INTO sos_events (id,patient_id,created_at) VALUES (?,?,?)',crypto.randomUUID(),id,Date.now());
+  if(!await one(db,'SELECT id FROM sos_events WHERE patient_id=? AND created_at>?',id,Date.now()-60000)){await run(db,'INSERT INTO sos_events (id,patient_id,created_at) VALUES (?,?,?)',crypto.randomUUID(),id,Date.now());await logAction(db,id,'sos_alert',id);}
   return c.json({ ok:true }); });
 app.post('/api/patient/practices', async c => {
   const data=z.object({ practiceId:z.enum(practiceIds),feedback:z.enum(['comfortable','same','unpleasant']),note:z.string().trim().max(1000).default('') }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Проверьте оценку практики.' },400);
@@ -155,6 +155,7 @@ app.post('/api/doctor/invites', async c => {
   if(!c.get('user').specialist_verified_at)return c.json({error:'Подтвердите профиль специалиста у администратора, чтобы приглашать пациентов.'},403);
   const db=database(c.env),token=randomToken(),expires=Date.now()+7*86400000;
   const inserted=await run(db,'INSERT INTO invites (token,doctor_id,expires,used,raw) VALUES (?,?,?,0,?)',await digest(token),c.get('user').id,expires,token);
+  await logAction(db,c.get('user').id,'create_invite',String(inserted.meta.last_row_id));
   return c.json({ id:inserted.meta.last_row_id, token, expires },201);
 });
 app.delete('/api/doctor/invites/:id', async c => {

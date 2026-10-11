@@ -4,7 +4,7 @@ import {getCookie,deleteCookie} from 'hono/cookie';
 import type {Env} from './env';
 import type {User} from '../src/shared';
 import {digest,randomToken,hashPassword,verifyPassword} from './auth';
-import {database,one,many,run} from './db';
+import {database,one,many,run,logAction} from './db';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
 const email=z.string().trim().email().max(200).transform(v=>v.toLowerCase());
 const password=z.string().min(12).max(128);
@@ -67,7 +67,7 @@ export function accountRoutes(app:App){
   const data=z.object({currentPassword:z.string().max(128),password}).safeParse(await c.req.json());if(!data.success)return c.json({error:'Проверьте пароли. Новый пароль должен содержать минимум 12 символов.'},400);
   const db=database(c.env),id=c.get('user').id;if(!await limited(db,'password:'+id))return c.json({error:'Попробуйте снова через час.'},429);
   const row=await one<{password:string}>(db,'SELECT password FROM users WHERE id=?',id);if(!row||!await verifyPassword(data.data.currentPassword,row.password))return c.json({error:'Текущий пароль неверен.'},403);
-  const current=await digest(getCookie(c,'ryadom_session')||'');await db.batch([db.prepare('UPDATE users SET password=? WHERE id=?').bind(await hashPassword(data.data.password),id),db.prepare('DELETE FROM sessions WHERE user_id=? AND token<>?').bind(id,current),db.prepare('DELETE FROM account_tokens WHERE user_id=?').bind(id)]);return c.json({ok:true});
+  const current=await digest(getCookie(c,'ryadom_session')||'');await db.batch([db.prepare('UPDATE users SET password=? WHERE id=?').bind(await hashPassword(data.data.password),id),db.prepare('DELETE FROM sessions WHERE user_id=? AND token<>?').bind(id,current),db.prepare('DELETE FROM account_tokens WHERE user_id=?').bind(id)]);await logAction(db,id,'password_change',id);return c.json({ok:true});
  });
  app.post('/api/account/recovery-codes',async c=>{
   const parsed=z.object({password:z.string().max(128)}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Введите текущий пароль.'},400);
@@ -97,6 +97,6 @@ export function accountRoutes(app:App){
   statements.push(db.prepare('DELETE FROM plans WHERE patient_id IN(SELECT patient_id FROM links WHERE doctor_id=?)').bind(id));
   for(const table of ['links','invites'])statements.push(db.prepare(`DELETE FROM ${table} WHERE ${table==='links'?'patient_id=? OR doctor_id=?':'doctor_id=?'}`).bind(...(table==='links'?[id,id]:[id])));
   for(const table of ['sessions','account_tokens','push_subscriptions','deliveries','settings','profiles','doctor_codes','profile_documents'])statements.push(db.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id));
-  statements.push(isDoctor?db.prepare('UPDATE users SET name=?,email=?,password=?,email_verified_at=NULL,specialist_verified_at=NULL WHERE id=?').bind('Удалённый врач',id+'@deleted.invalid','disabled',id):db.prepare('DELETE FROM users WHERE id=?').bind(id));await db.batch(statements);deleteCookie(c,'ryadom_session',{path:'/'});return c.json({ok:true});
+  statements.push(isDoctor?db.prepare('UPDATE users SET name=?,email=?,password=?,email_verified_at=NULL,specialist_verified_at=NULL WHERE id=?').bind('Удалённый врач',id+'@deleted.invalid','disabled',id):db.prepare('DELETE FROM users WHERE id=?').bind(id));await db.batch(statements);await logAction(db,id,'delete_account',id);deleteCookie(c,'ryadom_session',{path:'/'});return c.json({ok:true});
  });
 }
