@@ -36,8 +36,7 @@ export function AssessmentReview({assessments,doctor=false,id,onSaved,currentDoc
  </section>;
 }
 export function AssessmentResults({assessments,doctor=false,id,onSaved,timezone="Asia/Almaty"}:{assessments:Assessment[];doctor?:boolean;id?:string;onSaved:()=>Promise<void>;timezone?:string;currentDoctorId?:string|null}){
- const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
- async function action(path:string,body?:unknown,method?:string){setBusy(true);setError('');try{await api(path,body,method);await onSaved();setMessage('Изменения сохранены');}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ const [error,setError]=useState(''),[message,setMessage]=useState('');
  const pending=assessments.filter(a=>!a.completed_at);
  if(!doctor&&!pending.length)return null;
  return <section className="care-section">

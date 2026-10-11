@@ -1,18 +1,17 @@
 import {useSectionScroll} from './useSectionScroll';
 import {Goals} from './Goals';
 import {PracticeExperienceList} from './PracticeLibrary';
-import {assessmentTitle} from './assessments';
 import { DoctorDirectory, DoctorPage } from './DoctorDirectory';
 import { PracticeVisual } from './PracticeVisual';
 import {ProfileSettings,DoctorProfileDetails} from './ProfileSettings';
 import { useRefreshOnReturn } from './useRefreshOnReturn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Switch, Textarea, TextInput } from '@mantine/core';
-import { IconArrowLeft, IconArrowRight, IconCheck, IconChevronRight, IconClock, IconFileText, IconLeaf, IconLink, IconMoon, IconPlayerPause, IconShieldCheck, IconSparkles } from '@tabler/icons-react';
+import { IconArrowLeft, IconArrowRight, IconCheck, IconChevronRight, IconClock, IconFileText, IconLeaf, IconLink, IconMoon, IconShieldCheck } from '@tabler/icons-react';
 import { api, errorText } from './api';
 import { Empty, ErrorBox, Face, formatDate, HistoryChart, PageHead, SleepInput} from './ui';
 import { navigate } from './App';
-import { moods, today, todayInTimezone, firstNameOf, type Entry, type EntryInput, type PatientData, type Settings, type DoctorProfile, type User } from './shared';
+import { moods, today, firstNameOf, type Entry, type EntryInput, type PatientData, type Settings, type DoctorProfile, type User } from './shared';
 import { practiceContent } from './practices';
 import { PracticeLibrary } from './PracticeLibrary';
 import {AccountSettings} from './AccountSettings';
@@ -47,8 +46,7 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
  if(route==='/saved')return <div className="success-panel"><div className="success-icon"><IconCheck size={34}/></div><h1>Отметка сохранена</h1><p>Она появилась в вашей истории. Все ответы можно включить в сводку к приёму.</p><div className="success-actions"><Button onClick={()=>navigate('/history')}>Посмотреть историю</Button><Button variant="subtle" onClick={()=>navigate('/summary')}>Подготовить сводку</Button><Button variant="subtle" onClick={()=>navigate('/today')}>На сегодня</Button></div><p className="muted small">Ваш лечащий врач: {data.doctor?.name}</p></div>;
  if(route==='/sos')return <section className="sos-screen"><PageHead title="Мне сейчас плохо" description="Сигнал уйдёт вашему врачу. Если опасно, звоните 112."/><SosButton userId={user.id} hasDoctor={!!data.doctor}/></section>;
  const marked=data.entries.find(e=>e.date===today());
- const firstName=firstNameOf(user.name);const frequency=data.plan.frequency==='daily'?'Каждый день':data.plan.frequency==='three'?'Пн, ср, пт':'Раз в неделю';
- const last=data.entries[0]; const daysSince=last?Math.floor((Date.parse(today())-Date.parse(last.date))/86400000):Infinity; const due=!last || (data.plan.frequency==='three'?[1,3,5].includes(new Date().getDay())&&daysSince>=1:daysSince>=(data.plan.frequency==='daily'?1:7));
+ const firstName=firstNameOf(user.name);
  const invitation=new URLSearchParams(window.location.search).get('invite');
  return <>{error?<ErrorBox message={error} retry={reload}/>:null}
   <div className="today-simple">
@@ -66,7 +64,6 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
   </div>
  </>;
 }
-const daysAgo=(date:string)=>Math.round((Date.parse(today())-Date.parse(date))/86400000);
 function SosButton({userId,hasDoctor}:{userId:string;hasDoctor:boolean}){
  const key='ryadom-sos-sent:'+userId;
  const readSent=():number|null=>{try{const t=Number(sessionStorage.getItem(key));return t&&Date.now()-t<30*60000?t:null;}catch{return null;}};
@@ -83,8 +80,6 @@ function SosButton({userId,hasDoctor}:{userId:string;hasDoctor:boolean}){
  if(state==='error')return <section className="sos-block" role="alert"><p className="sos-confirm">{offline?'Нет подключения к интернету. Сигнал не отправлен.':'Не получилось отправить сигнал.'}</p><div className="sos-confirm-actions"><Button className="sos-button" size="lg" onClick={send}>Попробовать ещё раз</Button><a className="sos-call" href="tel:112">Позвонить 112</a></div></section>;
  return <section className="sos-block"><Button className="sos-button sos-trigger" size="lg" fullWidth onClick={()=>setState('confirm')}>Мне сейчас плохо</Button><p className="small">Врач получит сигнал на почту и в уведомления. Если нужна помощь прямо сейчас, звоните <a href="tel:112">112</a>.</p></section>;
 }
-function IconCalendarMark(){return <div className="calendar-mark"><IconClock size={23}/></div>}
-function PracticeRow({practice}:{practice:typeof practiceContent[number]}){return <a className="practice-row" href={`#/practice/${practice.id}`}><div className="practice-info"><h3>{practice.title}</h3><p>{practice.subtitle}</p></div><span className="duration">{practice.time}</span><IconChevronRight className="practice-chevron" size={20}/></a>}
 type Step={key:keyof EntryInput;title:string;description:string;type:'mood'|'choices'|'sleep'|'note';choices?:{value:number|string|boolean;label:string}[]};
 function ScaleRow({label,options,value,onChange,ends}:{label:string;options:{value:number;label:string}[];value:number|null;onChange:(v:number)=>void;ends:[string,string]}){
  const shown=options;

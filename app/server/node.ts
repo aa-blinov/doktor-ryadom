@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import app from './index';
 import { openDatabase } from './sqlite';

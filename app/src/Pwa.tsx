@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Alert,Button,Group} from '@mantine/core';
+import {Button} from '@mantine/core';
 import {useRegisterSW} from 'virtual:pwa-register/react';
 type InstallPrompt=Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:'accepted'|'dismissed'}>};
 let installPrompt:InstallPrompt|null=null;

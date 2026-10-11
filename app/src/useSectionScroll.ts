@@ -21,7 +21,7 @@ export function useSectionScroll(key:string|null){
   const restore=()=>{
    if(!restoring||settled)return;
    const anchor=target.anchor?document.querySelector<HTMLElement>(`#main-content [data-scroll-anchor="${CSS.escape(target.anchor)}"]`):null;
-   const top=target.top;
+   const top=anchor?anchor.getBoundingClientRect().top+window.scrollY-(target.offset??0):target.top;
    window.scrollTo({top:Math.max(0,top),behavior:'instant'});
    lastApplied=window.scrollY;
    const tallEnough=document.documentElement.scrollHeight>=(target.top||0)+innerHeight*0.9;

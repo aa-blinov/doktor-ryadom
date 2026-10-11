@@ -11,7 +11,7 @@ it('patient, doctor and administrator complete their core flows without page err
  const browser=await chromium.launch({executablePath:existsSync('/opt/google/chrome/chrome')?'/opt/google/chrome/chrome':undefined,args:['--no-sandbox','--disable-dev-shm-usage']});
  const errors:string[]=[];
  async function request(path:string,body?:unknown,cookie?:string,method?:string){
-  const r=await app.request(origin+'/api'+path,{method:method??(body===undefined?'GET':'POST'),headers:{Origin:origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)},env);
+  const r=await app.request(origin+'/api'+path,{method:method??(typeof body==='undefined'?'GET':'POST'),headers:{Origin:origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:typeof body==='undefined'?undefined:JSON.stringify(body)},env);
   return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]};
  }
  async function session(tag:string,role:'patient'|'doctor',name:string){
