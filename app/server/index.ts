@@ -82,7 +82,7 @@ accountRoutes(app);
 notificationRoutes(app);
 profileRoutes(app);profileDocumentRoutes(app);
 app.get('/api/settings', async c => { const row = await one<{ data: string }>(database(c.env),'SELECT data FROM settings WHERE user_id=?',c.get('user').id); return c.json({ settings: settingsSchema.parse(row ? JSON.parse(row.data) : defaultSettings) }); });
-app.put('/api/settings', async c => { const data = settingsSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error:'Проверьте настройки.' },400); await run(database(c.env),'INSERT INTO settings (user_id,data) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data',c.get('user').id,JSON.stringify(data.data)); return c.json({ settings:data.data }); });
+app.put('/api/settings', async c => { const data = settingsSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error:'Проверьте настройки.' },400); const user=c.get('user'); const settings={...data.data,reminderEmail:data.data.reminderEmail&&!!user.email_verified_at}; await run(database(c.env),'INSERT INTO settings (user_id,data) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data',user.id,JSON.stringify(settings)); return c.json({ settings }); });
 app.use('/api/patient/*', async(c,next) => { if(c.get('user').role!=='patient') return c.json({ error:'Этот раздел доступен пациенту.' },403); await next(); });
 async function patientData(db: D1Database, id: string) {
   const [entries,practices,plan,settings,doctor,reports] = await Promise.all([
@@ -131,7 +131,7 @@ app.post('/api/patient/reports', async c => {
   return c.json({ok:true,id},201);
 });
 app.post('/api/patient/accept', async c => {
-  const data=z.object({ token:z.string().refine(t=>/^[a-f0-9]{64}$/i.test(t)),consent:z.literal(true) }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Подтвердите доступ врачу.' },400);
+  const data=z.object({ token:z.string().refine(t=>/^[a-f0-9]{64}$/i.test(t)),consent:z.literal(true) }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Ссылка-приглашение недействительна. Попросите врача создать новое.' },400);
   const db=database(c.env),id=c.get('user').id,token=await digest(data.data.token);
   const invite=await one<{doctor_id:string}>(db,'SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?',token,Date.now()); if(!invite) return c.json({ error:'Приглашение недействительно или уже использовано.' },404);
   const link=await one(db,'SELECT patient_id FROM links WHERE patient_id=? AND revoked_at IS NULL',id); if(link) return c.json({ error:'У вас уже подключён врач. Сначала отзовите предыдущий доступ.' },409);

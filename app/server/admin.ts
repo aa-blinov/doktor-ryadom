@@ -5,7 +5,7 @@ import {specialtyKinds,type User} from '../src/shared';
 import {one,many,run,logAction,database} from './db';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
 const blockSchema=z.object({blocked:z.boolean()});
-const kindSchema=z.object({kind:z.enum(specialtyKinds).nullable()});
+const kindSchema=z.object({kind:z.enum(specialtyKinds).nullable().or(z.literal('').transform(()=>null))});
 export function adminRoutes(app:App){
  app.use('/api/admin/*',async(c,next)=>{if(c.get('user').role!=='admin')return c.json({error:'Раздел доступен только администратору.'},403);await next();});
  // Doctors: name, email and verification state, for the doctor list.
@@ -32,8 +32,7 @@ export function adminRoutes(app:App){
   const row=await one<{role:string;specialist_verified_at:number|null}>(db,'SELECT role,specialist_verified_at FROM users WHERE id=?',target);
   if(!row)return c.json({error:'Врач не найден.'},404);
   if(row.role!=='doctor')return c.json({error:'Тип специалиста меняется только у врача.'},400);
-  if(!row.specialist_verified_at)return c.json({error:'Сначала подтвердите заявку врача.'},400);
-  const kind=parsed.data.kind,requestId=(await one<{id:string}>(db,"SELECT id FROM specialist_requests WHERE doctor_id=? AND status='approved' ORDER BY updated_at DESC LIMIT 1",target))?.id;
+  const kind=parsed.data.kind,requestId=(await one<{id:string}>(db,"SELECT id FROM specialist_requests WHERE doctor_id=? ORDER BY CASE status WHEN 'approved' THEN 0 WHEN 'needs_info' THEN 1 WHEN 'pending' THEN 2 ELSE 3 END, updated_at DESC LIMIT 1",target))?.id;
   await db.batch([
    db.prepare('UPDATE users SET specialty_kind=? WHERE id=?').bind(kind,target),
    ...(requestId?[db.prepare("UPDATE specialist_requests SET kind=? WHERE id=?").bind(kind,requestId)]:[]),
@@ -54,8 +53,11 @@ export function adminRoutes(app:App){
   await logAction(db,admin,parsed.data.blocked?'block_account':'unblock_account',target);
   return c.json({ok:true});
  });
+ const actionLabels:Record<string,string>={registration_consent:'Регистрация',submit_specialist_request:'Врач подал заявку',review_specialist_request:'Решение по заявке',set_specialty_kind:'Тип специалиста изменён',block_account:'Аккаунт заблокирован',unblock_account:'Аккаунт разблокирован',edit_checkin:'Отметка исправлена',review_report:'Сводка просмотрена',view_patient:'Открыта карточка пациента',show_review:'Отзыв опубликован',hide_review:'Отзыв скрыт',update_profile:'Профиль обновлён',update_profile_photo:'Фото профиля обновлено',upload_profile_document:'Документ загружен',share_profile_document:'Видимость документа изменена',grant_access:'Пациент подключился',revoke_access:'Доступ отозван',accept_connection:'Запрос на подключение принят',decline_connection:'Запрос на подключение отклонён',request_doctor:'Запрос врачу',send_report:'Сводка отправлена',revoke_invite:'Приглашение отозвано'};
  app.get('/api/admin/audit',async c=>{
-  const rows=await many(database(c.env),"SELECT a.action,a.subject_id,a.created_at,CASE WHEN u.role='patient' THEN NULL ELSE u.name END AS actor_name,CASE WHEN u.role='patient' THEN 'пациент' ELSE u.role END AS actor_role FROM audit a LEFT JOIN users u ON u.id=a.actor_id ORDER BY a.created_at DESC LIMIT 200");
-  return c.json({events:rows});
+  const limit=Math.min(Math.max(Number(c.req.query('limit')??200)||200,1),500);
+  const offset=Math.max(Number(c.req.query('offset')??0)||0,0);
+  const rows=await many<{action:string;subject_id:string|null;created_at:number;actor_name:string|null;actor_role:string|null;subject_name:string|null}>(database(c.env),"SELECT a.action,a.subject_id,a.created_at,CASE WHEN u.role='patient' THEN NULL ELSE u.name END AS actor_name,CASE WHEN u.role='patient' THEN 'пациент' ELSE u.role END AS actor_role,CASE WHEN s.role='patient' THEN 'пациент' WHEN s.id IS NULL THEN NULL ELSE s.name END AS subject_name FROM audit a LEFT JOIN users u ON u.id=a.actor_id LEFT JOIN users s ON s.id=a.subject_id ORDER BY a.created_at DESC LIMIT ? OFFSET ?",limit,offset);
+  return c.json({events:rows.map(r=>({...r,action_label:actionLabels[r.action]??r.action})),limit,offset});
  });
 }

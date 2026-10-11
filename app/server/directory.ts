@@ -75,7 +75,7 @@ export function directoryRoutes(app:App){
   const user=c.get('user'),db=database(c.env);
   if(user.role!=='admin')return c.json({error:'Раздел доступен только администратору.'},403);
   const rows=await many<{id:string;rating:number;body:string;created_at:number;hidden_at:number|null;patient:string;doctor:string}>(db,'SELECT v.id,v.rating,v.body,v.created_at,v.hidden_at,p.name AS patient,d.name AS doctor FROM doctor_reviews v JOIN users p ON p.id=v.patient_id JOIN users d ON d.id=v.doctor_id ORDER BY v.created_at DESC LIMIT 200');
-  return c.json({reviews:rows.map(r=>({id:r.id,rating:r.rating,body:r.body,createdAt:r.created_at,hidden:!!r.hidden_at,author:firstName(r.patient),doctor:r.doctor}))});
+  return c.json({reviews:rows.map((r,i)=>({id:r.id,rating:r.rating,body:r.body,createdAt:r.created_at,hidden:!!r.hidden_at,author:`Пациент ${rows.length-i}`,doctor:r.doctor}))});
  });
  app.post('/api/admin/reviews/:id/hide',async c=>{
   const user=c.get('user'),db=database(c.env);

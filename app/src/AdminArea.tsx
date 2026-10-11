@@ -24,7 +24,7 @@ function AdminDoctors(){
  const [doctors,setDoctors]=useState<Doctor[]>([]),[q,setQ]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState('');
  const load=useCallback(async()=>{setError('');try{const r=await api<{doctors:Doctor[]}>(`/admin/doctors${q.trim()?`?q=${encodeURIComponent(q.trim())}`:''}`);setDoctors(r.doctors);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[q]);
  useEffect(()=>{void load();},[load]);
- async function toggle(d:Doctor){setBusy(d.id);setError('');try{await api(`/admin/accounts/${d.id}/block`,{blocked:!d.blocked_at});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
+ async function toggle(d:Doctor){if(!d.blocked_at&&!window.confirm(`Заблокировать ${d.name}? Вход закроется, сеансы завершатся.`))return;setBusy(d.id);setError('');try{await api(`/admin/accounts/${d.id}/block`,{blocked:!d.blocked_at});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  async function setKind(d:Doctor,kind:SpecialtyKind|''){setBusy(d.id);setError('');try{await api(`/admin/doctors/${d.id}/kind`,{kind:kind||null});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход и завершает сессии"/>
   <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="md"/>
@@ -35,10 +35,10 @@ function AdminDoctors(){
    <h3>{d.name}{d.blocked_at?' · заблокирован':''}</h3>
    <p className="muted small">{d.email} · создан {formatDate(new Date(d.created_at).toISOString().slice(0,10))}</p>
    <p className="small">{d.specialist_verified_at?'Подтверждён':d.request_status?requestText[d.request_status]??'не подтверждён':'не подтверждён, заявки нет'}</p>
-   {d.specialist_verified_at?<>
+   <>
     <p className="small admin-specialty"><span className={`pill kind-${d.specialty_kind??'none'}`}>{d.specialty_kind?specialtyLabels[d.specialty_kind]:'Тип не указан'}</span>{d.profile_specialty||d.request_specialty?<span className="muted">{d.profile_specialty||d.request_specialty}</span>:null}</p>
     <NativeSelect label="Тип специалиста" description="Проверьте по специальности в дипломе" value={d.specialty_kind??''} onChange={e=>void setKind(d,e.currentTarget.value as SpecialtyKind|'')} data={[{value:'',label:'Не указан'},...specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]}))]}/>
-   </>:null}
+   </>
    <BlockButton blocked={!!d.blocked_at} busy={busy===d.id} onClick={()=>void toggle(d)}/>
   </article>)}</div>
  </>;
@@ -59,16 +59,17 @@ function AdminPatients(){
   </article>)}</div>
  </>;
 }
-type Event={action:string;subject_id:string|null;created_at:number;actor_name:string|null;actor_role:string|null};
-const actionText:Record<string,string>={submit_specialist_request:'Врач подал заявку',review_specialist_request:'Решение по заявке',block_account:'Аккаунт заблокирован',unblock_account:'Аккаунт разблокирован',edit_checkin:'Отметка исправлена',review_report:'Сводка просмотрена'};
+type Event={action:string;action_label?:string;subject_id:string|null;subject_name?:string|null;created_at:number;actor_name:string|null;actor_role:string|null};
+
 function AdminAudit(){
  const [events,setEvents]=useState<Event[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
  useEffect(()=>{void (async()=>{try{const r=await api<{events:Event[]}>('/admin/audit');setEvents(r.events);}catch(e){setError(errorText(e));}finally{setLoading(false);}})();},[]);
  return <><PageHead title="Журнал действий" description="Кто и что сделал в портале. Содержимое записей здесь не показывается"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error}/>:null}
-  <div className="admin-list">{events.map((e,i)=><article className="care-record" key={i}>
-   <p><strong>{actionText[e.action]??e.action}</strong></p>
+  {!loading&&!error&&!events.length?<p className="muted">Событий пока нет</p>:null}
+   <div className="admin-list">{events.map((e,i)=><article className="care-record" key={i}>
+   <p><strong>{e.action_label??e.action}</strong>{e.subject_name?<span className="muted"> · {e.subject_name}</span>:null}</p>
    <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??'неизвестно'}{e.actor_role?` (${e.actor_role})`:''}</p>
   </article>)}</div>
  </>;

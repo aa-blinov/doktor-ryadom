@@ -43,19 +43,23 @@ export function verificationRoutes(app:App){
   if(!isAdminUser(c.get('user')))return c.json({error:'Раздел доступен только администратору.'},403);
   const parsed=decisionSchema.safeParse(await c.req.json());
   if(!parsed.success)return c.json({error:'Выберите решение.'},400);
-  const {decision,note}=parsed.data,now=Date.now();
-  const req=await one<{doctor_id:string;status:string;kind:string|null}>(db,'SELECT doctor_id,status,kind FROM specialist_requests WHERE id=?',c.req.param('id'));
+  const {decision,note}=parsed.data;
+  const cleanNote=String(note??'').trim();
+  if((decision==='reject'||decision==='needs_info')&&!cleanNote)return c.json({error:'Напишите комментарий врачу, чтобы запросить уточнение или отклонить заявку.'},400);
+  const now=Date.now();
+  const req=await one<{doctor_id:string;status:string;kind:string|null;admin_note:string}>(db,'SELECT doctor_id,status,kind,admin_note FROM specialist_requests WHERE id=?',c.req.param('id'));
   if(!req)return c.json({error:'Заявка не найдена.'},404);
   if(req.doctor_id===admin)return c.json({error:'Свою заявку решает другой администратор.'},403);
   if(req.status!=='pending'&&req.status!=='needs_info')return c.json({error:'Заявка уже решена.'},409);
   const status=decision==='approve'?'approved':decision==='needs_info'?'needs_info':'rejected';
-  await run(db,'UPDATE specialist_requests SET status=?,admin_note=?,reviewer_id=?,updated_at=? WHERE id=?',status,note,admin,now,c.req.param('id'));
+  const noteOut=decision==='approve'&&!cleanNote?req.admin_note??'':cleanNote;
+  await run(db,'UPDATE specialist_requests SET status=?,admin_note=?,reviewer_id=?,updated_at=? WHERE id=?',status,noteOut,admin,now,c.req.param('id'));
   if(decision==='approve')await run(db,'UPDATE users SET specialist_verified_at=?,specialty_kind=? WHERE id=?',now,req.kind,req.doctor_id);
   await logAction(db,admin,'review_specialist_request',c.req.param('id'));
   const doctor=await one<{email:string;email_verified_at:number|null}>(db,'SELECT email,email_verified_at FROM users WHERE id=?',req.doctor_id);
   const mail=c.env.MAIL;
   if(mail&&doctor?.email_verified_at){
-   const text=decision==='approve'?'Заявка на подключение к Рядом подтверждена. Войдите в кабинет, чтобы приглашать пациентов.':decision==='needs_info'?`Администратор просит уточнить данные заявки${note?`: ${note}`:'.'} Войдите в кабинет и отправьте заявку снова.`:`Заявка на подключение к Рядом отклонена${note?`: ${note}`:'.'} Войдите в кабинет, чтобы посмотреть комментарий.`;
+   const text=decision==='approve'?'Заявка на подключение к Рядом подтверждена. Войдите в кабинет, чтобы приглашать пациентов.':decision==='needs_info'?`Администратор просит уточнить данные заявки${cleanNote?`: ${cleanNote}`:'.'} Войдите в кабинет и отправьте заявку снова.`:`Заявка на подключение к Рядом отклонена${cleanNote?`: ${cleanNote}`:'.'} Войдите в кабинет, чтобы посмотреть комментарий.`;
    try{await mail.send({to:doctor.email,subject:'Рядом: заявка рассмотрена',text});}catch{console.error('Verification email failed');}
   }
   return c.json({ok:true});
