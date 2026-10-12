@@ -3,8 +3,8 @@ import type { PracticeId } from './shared';
 const who = 'https://www.who.int/publications/i/item/9789240003927';
 const nhs = 'https://www.nhs.uk/mental-health/self-help/tips-and-support/mindfulness/';
 type Step = {title:string;text:string};
-export type Practice = {id:PracticeId;title:string;subtitle:string;time:string;minutes:number;category:string;basis:string;source:string;icon:typeof IconLeaf;description:string;methodology:string;steps:Step[]};
-const make=(id:PracticeId,title:string,subtitle:string,minutes:number,category:string,basis:string,source:string,steps:[string,string][]):Practice=>({id,title,subtitle,minutes,time:`${minutes} мин`,category,basis,source,description:descriptions[id],methodology:methodologies[id],icon:category==='Мысли и чувства'?IconSparkles:category==='Забота о себе'?IconClock:IconLeaf,steps:steps.map(([title,text])=>({title,text}))});
+export type Practice = {id:PracticeId;title:string;subtitle:string;time:string;minutes:number;category:string;basis:string;source:string;icon:typeof IconLeaf;short:string;description:string;methodology:string;steps:Step[]};
+const make=(id:PracticeId,title:string,subtitle:string,minutes:number,category:string,basis:string,source:string,steps:[string,string][]):Practice=>({id,title,subtitle,minutes,time:`${minutes} мин`,category,basis,source,short:shorts[id],description:descriptions[id],methodology:methodologies[id],icon:category==='Мысли и чувства'?IconSparkles:category==='Забота о себе'?IconClock:IconLeaf,steps:steps.map(([title,text])=>({title,text}))});
 const descriptions:Record<PracticeId,string>={
  ground:'Когда мысли уносят далеко от происходящего, попробуйте заметить опору и комнату вокруг. Вы почувствуете контакт с полом или стулом, рассмотрите несколько предметов и выберете, к чему вернуться.',
  notice:'Иногда трудно понять, что именно происходит внутри. Здесь вы подберёте простые слова для чувства или мысли. Искать точное название и разбирать причины не нужно.',
@@ -18,6 +18,21 @@ const descriptions:Record<PracticeId,string>={
  kind:'Подберите слова, которые вы могли бы сказать близкому человеку в трудный момент. Затем выберите небольшое действие для себя. Если такие слова раздражают, этот шаг можно пропустить.',
  values:'Выберите то, что сейчас важно для вас, и один маленький шаг в эту сторону. Например, написать близкому или уделить минуту интересному занятию. Шаг можно уменьшить или отложить.',
  space:'Сначала найдите опору, затем ненадолго заметьте умеренное чувство, не требуя от него исчезнуть. Если становится тяжелее, вернитесь к комнате или остановитесь. Терпеть вред или опасность не нужно.',
+};
+// One clause for the library card; the full text stays on the practice introduction screen.
+const shorts:Record<PracticeId,string>={
+ ground:'Опора, предметы вокруг и возвращение к своему делу.',
+ notice:'Подобрать простые слова для того, что происходит внутри.',
+ action:'Пауза внутри обычного занятия — с вниманием к деталям.',
+ senses:'Пять вещей, четыре касания, три звука, два запаха и один вкус.',
+ sounds:'Звуки рядом и вдали, без поиска тишины.',
+ observe:'Один обычный предмет: цвет, края, свет и тень.',
+ walk:'Несколько шагов с вниманием к движению и опоре.',
+ breath:'Мягкое дыхание в удобном положении, без счёта и усилия.',
+ unhook:'Добавить к знакомой мысли слова «Я замечаю мысль, что…».',
+ kind:'Слова поддержки и одно небольшое действие для себя.',
+ values:'Что сейчас важно и один маленький шаг в эту сторону.',
+ space:'Ненадолго заметить умеренное чувство, не требуя его исчезновения.',
 };
 const methodologies:Record<PracticeId,string>={
  ground:'Последовательно заметить телесную опору, предметы и звуки, затем вернуться к выбранному делу. Адаптация навыка заземления из руководства ВОЗ; результат оценивается только по личному опыту.',
