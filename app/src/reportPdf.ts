@@ -1,6 +1,6 @@
 /** Local, selectable-text PDF export. Font assets are bundled; no patient data leaves the browser. */
 export type PdfBlock = {text:string;kind?:'heading'|'note'|'body'};
-export type PdfReport = {name:string;start:string;end:string;blocks:PdfBlock[]};
+export type PdfReport = {name:string;start:string;end:string;blocks:PdfBlock[];headerTitle?:string;headerSubtitle?:string;fileName?:string};
 type FontMetrics={characters:Record<string,[number,number]>;bbox:number[];ascent:number;descent:number};
 const encoder=new TextEncoder();
 const bytes=(s:string)=>encoder.encode(s);
@@ -41,7 +41,7 @@ export function createReportPdf(report:PdfReport,font:Uint8Array,metrics:FontMet
  const newPage=()=>{
   commands=[];pageStreams.push(commands);y=750;
   commands.push('0.94 0.97 0.95 rg 0 786 595 56 re f');
-  draw('Рядом',48,805,18,'0.13 0.35 0.26');draw('Сводка к приёму',360,809,11);
+  draw('Рядом',48,805,18,'0.13 0.35 0.26');draw(report.headerSubtitle??'Сводка к приёму',360,809,11);
  };
  newPage();
  const paragraph=(text:string,size=11,kind:PdfBlock['kind']='body')=>{
@@ -60,7 +60,7 @@ export function createReportPdf(report:PdfReport,font:Uint8Array,metrics:FontMet
  for(const block of report.blocks)paragraph(block.text,block.kind==='heading'?14:block.kind==='note'?10:11,block.kind);
  const pageIds:number[]=[];
  pageStreams.forEach((page,index)=>{
-  commands=page;draw(`Рядом, ${date(report.start)} — ${date(report.end)}`,48,30,8,'0.30 0.36 0.33');draw(`${index+1} / ${pageStreams.length}`,510,30,9,'0.30 0.36 0.33');
+  commands=page;draw(report.start&&report.end?`Рядом, ${date(report.start)} — ${date(report.end)}`:'Рядом — резюме специалиста',48,30,8,'0.30 0.36 0.33');draw(`${index+1} / ${pageStreams.length}`,510,30,9,'0.30 0.36 0.33');
   const pageId=reserve(),contentId=reserve();pageIds.push(pageId);
   put(contentId,stream(bytes(page.join('\n'))));
   put(pageId,`<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${type0} 0 R >> >> /Contents ${contentId} 0 R >>`);
@@ -82,5 +82,5 @@ export function createReportPdf(report:PdfReport,font:Uint8Array,metrics:FontMet
 export async function downloadReportPdf(report:PdfReport){
  const {font,metrics}=await loadReportFont();const pdf=createReportPdf(report,font,metrics);
  const url=URL.createObjectURL(new Blob([pdf],{type:'application/pdf'}));
- const link=document.createElement('a');link.href=url;link.download=`ryadom-report-${report.end}.pdf`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+ const link=document.createElement('a');link.href=url;link.download=report.fileName||`ryadom-report-${report.end||'cv'}.pdf`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
