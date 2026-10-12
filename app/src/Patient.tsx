@@ -18,6 +18,7 @@ import {AccountSettings} from './AccountSettings';
 import {ReminderSettings} from './ReminderSettings';
 import {Treatment,AssessmentFlow,AssessmentReview} from './Care';
 import {EditEntry} from './EditEntry';
+import {History} from './History';
 import {useDraft} from './useDraft';
 
 export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:{user:User;route:string;onLogout:()=>void;themeLabel:string;onToggleTheme:()=>void}){
@@ -154,24 +155,6 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
   <Button type="submit" size="lg" fullWidth loading={busy} disabled={entry.mood<1} rightSection={<IconCheck size={19}/>}>Сохранить отметку</Button>
   {entry.mood<1?<p className="checkin-hint">Выберите самочувствие, чтобы сохранить отметку</p>:null}
  </form>;
-}
-export function History({entries,doctor=false}:{entries:Entry[];doctor?:boolean}){
- const [period,setPeriod]=useState('30');const [showAll,setShowAll]=useState(false);const compact=typeof window!=='undefined'&&window.matchMedia('(max-width:700px)').matches;const shortList=compact?7:14;const filtered=entries.filter(e=>(Date.parse(today())-Date.parse(e.date))/86400000<Number(period));
- return <><PageHead level={doctor?2:1} title={doctor?'Динамика состояния':'Ваша история'} description={doctor?'Самоотчёты пациента. Пропуски остаются пропусками.':'Самочувствие, сон и заметки по дням'} action={<Group><SegmentedControl value={period} onChange={setPeriod} data={[{value:'14',label:'14 дней'},{value:'30',label:'30 дней'},{value:'90',label:'90 дней'}]}/></Group>}/>
-  {!entries.length?<Empty title="История начнётся с первой отметки" description={doctor?'Пациент пока не добавил записи':'В ней будут ваши ответы и заметки. Можно начать с сегодняшнего дня.'} action={doctor?undefined:'Сделать отметку'} onAction={()=>navigate('/checkin')} icon={<IconFileText size={30}/>} />:<>
-   <details className="history-charts" open={!compact}><summary>Графики за период</summary><div className="chart-grid">
-    <section className="chart-panel"><h3>Самочувствие</h3><p className="chart-caption">От «очень тяжело» до «очень хорошо»</p><HistoryChart entries={filtered} kind="mood" showTrend/></section>
-    <section className="chart-panel"><h3>Сон</h3><p className="chart-caption">Продолжительность, часы</p><HistoryChart entries={filtered} kind="sleep" showTrend/></section>
-    {doctor?<><section className="chart-panel"><h3>Тревога</h3><p className="chart-caption">Вверху меньше тревоги (4 — не замечал), внизу больше (0 — очень сильная)</p><HistoryChart entries={filtered} kind="anxiety" showTrend/></section>
-    <section className="chart-panel"><h3>Энергия</h3><p className="chart-caption">От 1 (очень мало) до 5 (необычно много)</p><HistoryChart entries={filtered} kind="energy" showTrend/></section>
-    <section className="chart-panel"><h3>Обычные дела</h3><p className="chart-caption">Вверху легче (3 — без трудностей), внизу тяжелее (1 — очень трудно)</p><HistoryChart entries={filtered} kind="functioning" showTrend/></section></>:null}
-   </div>
-   {!doctor?<details className="more-charts"><summary>Тревога, энергия и обычные дела</summary><div className="chart-grid">{([{kind:'anxiety',title:'Тревога',caption:'Вверху меньше тревоги (4 — не замечал), внизу больше (0 — очень сильная)'},{kind:'energy',title:'Энергия',caption:'От 1 (очень мало) до 5 (необычно много)'},{kind:'functioning',title:'Обычные дела',caption:'Вверху легче (3 — без трудностей), внизу тяжелее (1 — очень трудно)'}] as const).map(c=><section className="chart-panel" key={c.kind}><h3>{c.title}</h3><p className="chart-caption">{c.caption}</p><HistoryChart entries={filtered} kind={c.kind}/></section>)}</div></details>:null}
-   </details>
-   <div className="section-title history-title"><h2>Записи по дням</h2><span className="muted small">{filtered.length} записей за период</span>{doctor&&filtered.length>shortList?<Button variant="subtle" size="sm" onClick={()=>setShowAll(v=>!v)}>{showAll?'Свернуть':`Показать все (${filtered.length})`}</Button>:null}</div>
-   {!filtered.length?<p className="muted">За выбранный период записей нет</p>:<div className="entries-list">{(doctor&&!showAll?filtered.slice(0,shortList):filtered).map(e=><article className={e.mood<=2?'entry-row hard':'entry-row'} data-scroll-anchor={`entry-${e.id}`} key={e.id}><div className="entry-date"><strong>{formatDate(e.date)}</strong><span>{new Date(e.date+'T12:00:00').toLocaleDateString('ru-RU',{weekday:'long'})}</span></div><div className="entry-body"><div className="entry-values"><span className="entry-mood"><Face value={e.mood} size={25}/>{moods[e.mood-1]}</span>{e.sleep!==null?<span><IconMoon size={16}/>{e.sleep} ч сна</span>:null}{e.anxiety!==null?<span>Тревога: {['очень сильная','сильная','умеренная','небольшая','не замечал(а)'][e.anxiety]}</span>:null}{e.energy!==null?<span>Энергия: {e.energy}/5</span>:null}{e.functioning!==null?<span>Обычные дела: {e.functioning===3?'без трудностей':e.functioning===2?'с трудностями':'очень трудно'}</span>:null}</div>{e.sleepContext?<p className="entry-context">После сна: {e.sleepContext==='active'?'необычно много энергии':e.sleepContext==='tired'?'усталость':'как обычно'}.</p>:null}{e.note?<p className="entry-note">{e.note}</p>:null}{e.updated_at?<small>Исправлена {new Date(e.updated_at).toLocaleString('ru-RU')}</small>:null}{!doctor&&true?<Button variant="subtle" size="sm" onClick={()=>navigate(`/edit/${e.id}`)}>Исправить запись</Button>:null}</div></article>)}</div>}
-  </>}
- </>;
 }
 function PracticeFlow({practice,allowed,onSaved}:{practice:typeof practiceContent[number];allowed:boolean;onSaved:()=>Promise<void>}){
  const [index,setIndex]=useState(-1),[feedback,setFeedback]=useState<string|null>(null),[note,setNote]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState('');const evaluating=index>=practice.steps.length;

@@ -1,14 +1,15 @@
-import {SurveyBuilder} from './SurveyBuilder';
 import {AssessmentMethodology} from './AssessmentMethodology';
 import {CustomAssessmentFlow} from './CustomAssessmentFlow';
 import {assessmentTitle,assessmentScore,assessmentAnswerLines} from './assessments';
-import {useState} from 'react';
+import {lazy,Suspense,useState} from 'react';
 import {Alert,Button,Group,Switch,Textarea,TextInput} from '@mantine/core';
 import {api,errorText} from './api';
 import {Empty,ErrorBox,formatDate,PageHead} from './ui';
 import {navigate} from './App';
 import {today,todayInTimezone,type PatientData,type Assessment} from './shared';
 import {assessmentContent,answerOptions,standardKind,phq9NeedsReview} from './assessments';
+// Only a clinician ever sees the authoring form, so patients do not pay for it up front.
+const SurveyBuilder=lazy(()=>import('./SurveyBuilder').then(m=>({default:m.SurveyBuilder})));
 export function AssessmentFlow(props:{assessment:Assessment;onSaved:()=>Promise<void>}){return props.assessment.definition?<CustomAssessmentFlow {...props}/>:<StandardAssessmentFlow {...props}/>;}
 function StandardAssessmentFlow({assessment,onSaved}:{assessment:Assessment;onSaved:()=>Promise<void>}){
  const kind=standardKind(assessment.kind),content=assessmentContent[kind];const [answers,setAnswers]=useState<(number|null)[]>(content.items.map(()=>null)),[index,setIndex]=useState(0),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -46,7 +47,7 @@ export function AssessmentResults({assessments,doctor=false,id,onSaved,timezone=
     <p className="muted">{a.due_date>todayInTimezone(timezone)?'Будет доступен в назначенный день':'Можно заполнить'}</p>
     <Button variant="outline" disabled={a.due_date>todayInTimezone(timezone)} onClick={()=>navigate(`/assessment/${a.id}`)}>Заполнить опросник</Button>
    </article>):<p className="muted">Врач пока не назначил опросники</p>}
-  </>:<div className="custom-surveys"><SurveyBuilder patientId={id!} dueDate={today()} onAssigned={onSaved}/></div>}
+  </>:<Suspense fallback={<p className="muted">Загружаем конструктор…</p>}><div className="custom-surveys"><SurveyBuilder patientId={id!} dueDate={today()} onAssigned={onSaved}/></div></Suspense>}
  </section>;
 }
 export function Treatment({data,doctor=false,id,onSaved,canRx=false}:{data:PatientData;doctor?:boolean;id?:string;onSaved:()=>Promise<void>;canRx?:boolean}){

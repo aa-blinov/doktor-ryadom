@@ -10,7 +10,7 @@ import { Alert, Avatar, Button, Checkbox, Group, Loader, Modal, Select, Tabs, Te
 import { IconArrowLeft, IconArrowRight, IconCheck, IconCopy, IconDownload, IconLink, IconSearch, IconUsers } from '@tabler/icons-react';
 import { api,errorText } from './api';
 import { Empty,ErrorBox,formatDate,PageHead } from './ui';
-import { History } from './Patient';
+import { History } from './History';
 import {AccountSettings} from './AccountSettings';
 import {DoctorReminders} from './DoctorReminders';
 import {Treatment,AssessmentResults,AssessmentReview} from './Care';
