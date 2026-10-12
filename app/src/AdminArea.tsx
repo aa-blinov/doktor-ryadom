@@ -32,7 +32,7 @@ function AdminDoctors(){
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!doctors.length?<p className="muted">{q.trim()?'Поиск ничего не нашёл':'Врачей пока нет'}</p>:null}
   <div className="admin-list">{doctors.map(d=><article className="care-record admin-card" key={d.id}>
-   <h3>{d.name}{d.blocked_at?' · заблокирован':''}</h3>
+   <h2>{d.name}{d.blocked_at?' · заблокирован':''}</h2>
    <p className="muted small">{d.email} · создан {formatDate(new Date(d.created_at).toISOString().slice(0,10))}</p>
    <p className="small">{d.specialist_verified_at?'Подтверждён':d.request_status?requestText[d.request_status]??'не подтверждён':'не подтверждён, заявки нет'}</p>
    <>
@@ -53,7 +53,7 @@ function AdminPatients(){
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!patients.length?<p className="muted">Пациентов пока нет</p>:null}
   <div className="admin-list">{patients.map((p,i)=><article className="care-record admin-card" key={p.id}>
-   <h3>Пациент {i+1}{p.blocked_at?' · заблокирован':''}</h3>
+   <h2>Пациент {i+1}{p.blocked_at?' · заблокирован':''}</h2>
    <p className="muted small">Аккаунт создан {formatDate(new Date(p.created_at).toISOString().slice(0,10))}</p>
    <BlockButton blocked={!!p.blocked_at} busy={busy===p.id} onClick={()=>void toggle(p)}/>
   </article>)}</div>

@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Alert,Button,Group,Textarea,TextInput} from '@mantine/core';
+import {Alert,Button,Group,Modal,Textarea,TextInput} from '@mantine/core';
 import {api,errorText} from './api';
 import {ErrorBox,formatDate} from './ui';
 import type {Goal,GoalLog,PatientData} from './shared';
@@ -12,14 +12,15 @@ export function GoalRecords({goals,logs}:{goals:Goal[];logs:GoalLog[]}){
 }
 
 export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:boolean;id?:string;onSaved:()=>Promise<void>}){
- const [title,setTitle]=useState(''),[reason,setReason]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
- const goals=data.goals??[],logs=data.goalLogs??[],active=goals.filter(g=>!g.closed_at);
+ const [title,setTitle]=useState(''),[reason,setReason]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[closing,setClosing]=useState<Goal|null>(null),[restoring,setRestoring]=useState<string|null>(null);
+ const goals=data.goals??[],logs=data.goalLogs??[],active=goals.filter(g=>!g.closed_at),closed=goals.filter(g=>g.closed_at);
  async function addGoal(e:React.FormEvent){
   e.preventDefault();setError('');setMessage('');setBusy(true);
   try{await api('/patient/goals',{title,reason});setTitle('');setReason('');await onSaved();setMessage('Цель добавлена');}
   catch(err){setError(errorText(err));}finally{setBusy(false);}
  }
- async function closeGoal(goalId:string){setError('');setBusy(true);try{await api(`/patient/goals/${goalId}/close`,{},'PUT');await onSaved();setMessage('Цель завершена');}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ async function closeGoal(goalId:string){setError('');setBusy(true);try{await api(`/patient/goals/${goalId}/close`,{},'PUT');await onSaved();setMessage('Цель завершена');setClosing(null);}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ async function restoreGoal(goalId:string){setError('');setRestoring(goalId);try{await api(`/patient/goals/${goalId}/restore`,{},'PUT');await onSaved();setMessage('Цель снова активна');}catch(e){setError(errorText(e));}finally{setRestoring(null);}}
  return <section className="care-section goals-section">
   <h2>{doctor?'Личные цели пациента':'Мои цели'}</h2>
   <p className="muted">{doctor?'Цели формулирует пациент. Обсудите посильный следующий шаг.':'До трёх целей. Отмечайте шаг — это не оценка и не соревнование.'}</p>
@@ -32,7 +33,7 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
   {active.length?active.map(goal=><article className="goal-card" key={goal.id}>
    <div className="goal-card-head">
     <h3>{goal.title}</h3>
-    {!doctor?<Button variant="subtle" size="xs" disabled={busy} onClick={()=>void closeGoal(goal.id)}>Завершить</Button>:null}
+    {!doctor?<Button variant="subtle" size="xs" disabled={busy} onClick={()=>setClosing(goal)}>Завершить</Button>:null}
    </div>
    {goal.reason?<p className="muted goal-reason">{goal.reason}</p>:null}
    {!doctor?<GoalProgress goal={goal} busy={busy} save={async(status,note)=>{
@@ -47,6 +48,24 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
      {doctor&&(!log.reviewed_at||log.reviewer_id!==data.doctor?.id)?<Button variant="outline" size="xs" mt="xs" onClick={async()=>{setError('');setMessage('');try{await api(`/doctor/patients/${id}/goal-logs/${log.id}/review`,{});await onSaved();setMessage('Просмотр отметки подтверждён');}catch(e){setError(errorText(e));}}}>Подтвердить просмотр отметки</Button>:null}
    </div>)}
   </article>):<p className="muted">Активных целей нет</p>}
+  {!doctor&&closed.length?<section className="goal-archive">
+   <h3>Архив</h3>
+   <p className="muted small">Завершённые цели можно вернуть в список.</p>
+   {closed.map(goal=><article className="goal-card closed" key={goal.id}>
+    <div className="goal-card-head">
+     <h4>{goal.title}</h4>
+     <Button variant="subtle" size="xs" loading={restoring===goal.id} disabled={busy||restoring!==null} onClick={()=>void restoreGoal(goal.id)}>Вернуть в список</Button>
+    </div>
+    {goal.closed_at?<p className="muted small">Завершена {new Date(goal.closed_at).toLocaleDateString('ru-RU')}</p>:null}
+   </article>)}
+  </section>:null}
+  <Modal opened={!!closing} onClose={()=>setClosing(null)} title="Завершить цель" centered>
+   <p>Цель «{closing?.title}» перестанет предлагаться. Отметки останутся в истории, а саму цель можно вернуть из архива.</p>
+   <Group justify="flex-end">
+    <Button variant="default" onClick={()=>setClosing(null)}>Отмена</Button>
+    <Button color="red" loading={busy} onClick={()=>closing&&void closeGoal(closing.id)}>Завершить</Button>
+   </Group>
+  </Modal>
   {error?<ErrorBox message={error}/>:null}
   {message?<Alert color="forest" role="status">{message}</Alert>:null}
  </section>;

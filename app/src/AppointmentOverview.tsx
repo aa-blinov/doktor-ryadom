@@ -38,7 +38,7 @@ export function AppointmentOverview({data,onOpen}:{data:PatientData;onOpen:(tab:
    </ul>
 
   <section className="overview-panel overview-attention" aria-labelledby="attention-title">
-   <h3 id="attention-title">На что обратить внимание</h3>
+   <h2 id="attention-title">На что обратить внимание</h2>
    {attention.length?<div className="attention-list">
     {attention.map((item,i)=><div key={i} className={`attention-row attention-${item.kind}`}>
      <p>{item.text}</p>

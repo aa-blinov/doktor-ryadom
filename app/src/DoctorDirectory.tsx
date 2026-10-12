@@ -56,7 +56,7 @@ export function DoctorDirectory(){
   <div className="doctor-list">{shown.map(d=><a key={d.id} className="doctor-card" href={`#/doctors/${d.id}`}>
    <Avatar src={d.photoUrl} size={64} radius="xl" alt="">{d.name.slice(0,1)}</Avatar>
    <div className="doctor-card-main">
-    <h3>{d.name}</h3>
+    <h2>{d.name}</h2>
     <p className="doctor-card-meta"><span className={`pill kind-${d.kind??'none'}`}>{d.kind?specialtyLabels[d.kind]:'Специалист'}</span>{specialtyLine(d.kind,d.specialty)?<span>{specialtyLine(d.kind,d.specialty)}</span>:null}</p>
     <p className="muted small">{[d.city,d.clinic,d.experienceYears!==null?`стаж ${d.experienceYears} ${years(d.experienceYears)}`:''].filter(Boolean).join(' · ')}</p>
     {d.about?<p className="doctor-card-about">{d.about}{d.about.length>=180?'…':''}</p>:null}

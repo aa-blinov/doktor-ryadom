@@ -30,6 +30,10 @@ export function patientCareRoutes(app:App){
   const result=await run(database(c.env),'UPDATE goals SET closed_at=? WHERE id=? AND patient_id=? AND closed_at IS NULL',Date.now(),c.req.param('goalId'),c.get('user').id);
   return result.meta.changes?c.json({ok:true}):c.json({error:'Цель недоступна или уже завершена'},404);
  });
+ app.put('/api/patient/goals/:goalId/restore',async c=>{
+  const result=await run(database(c.env),'UPDATE goals SET closed_at=NULL WHERE id=? AND patient_id=? AND closed_at IS NOT NULL',c.req.param('goalId'),c.get('user').id);
+  return result.meta.changes?c.json({ok:true}):c.json({error:'Цель недоступна или ещё не завершена'},404);
+ });
  app.put('/api/patient/draft',async c=>{
   const parsed=z.object({entry:entrySchema.extend({mood:z.number().int().min(0).max(5)}),plan:planSchema,step:z.number().int().min(0).max(8)}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Не удалось сохранить черновик.'},400);
   const db=database(c.env),id=c.get('user').id;if(Math.abs(Date.parse(parsed.data.entry.date)-Date.now())>2*86400000)return c.json({error:'Этот черновик относится к прошедшему дню.'},400);
