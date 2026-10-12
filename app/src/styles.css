@@ -88,6 +88,10 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .profile-entry-rows li{display:flex;gap:8px;align-items:center}
 .profile-entry-rows li .mantine-InputWrapper-root{flex:1;min-width:0}
 .profile-entry-add{min-width:220px;flex:1}
+.profile-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.profile-chip{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:var(--soft);color:var(--accent);font-size:14px;font-weight:600}
+.profile-chip button{appearance:none;border:0;background:none;color:inherit;font-size:18px;line-height:1;cursor:pointer;min-width:24px;min-height:24px;padding:0}
+.profile-chip button:hover{opacity:.7}
 .profile-document-links{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .document-preview{display:flex;flex-direction:column;align-items:center;gap:8px}
 .document-preview img{max-width:100%;max-height:70vh;border-radius:12px;border:1px solid var(--line)}
