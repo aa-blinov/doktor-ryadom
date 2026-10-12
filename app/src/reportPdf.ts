@@ -53,10 +53,11 @@ export function createReportPdf(report:PdfReport,font:Uint8Array,metrics:FontMet
    y-=12;commands.push(`0.76 0.84 0.79 RG 48 ${y+20} m 547 ${y+20} l S`);
   }
   for(const line of lines){if(y-leading<60)newPage();draw(line,48,y,size,kind==='heading'?'0.13 0.35 0.26':kind==='note'?'0.30 0.36 0.33':'0.12 0.19 0.16');y-=leading;}
-  y-=kind==='heading'?7:8;
+  y-=kind==='heading'?10:kind==='note'?6:7;
  };
- paragraph(report.name,22);
- paragraph(`${date(report.start)} — ${date(report.end)}`,12,'note');
+  paragraph(report.headerTitle??report.name,24);
+  if(report.start&&report.end)paragraph(`${date(report.start)} — ${date(report.end)}`,12,'note');
+  else if(report.name&&report.name!==(report.headerTitle??report.name))paragraph(report.name,13,'note');
  for(const block of report.blocks)paragraph(block.text,block.kind==='heading'?14:block.kind==='note'?10:11,block.kind);
  const pageIds:number[]=[];
  pageStreams.forEach((page,index)=>{
