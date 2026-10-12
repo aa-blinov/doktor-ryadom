@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import type {PracticeId} from './shared';
 import {practiceContent} from './practices';
 import {scenes,heroStep} from './practiceScenes';
@@ -18,7 +19,13 @@ export function PracticeVisual({id,step='hero',compact=false}:{id:PracticeId;ste
  const index=step==='hero'?heroStep[id]:Math.min(Math.max(step,0),list.length-1);
  const scene=list[index];
  const {tone,wash,acc}=colorsFor(id);
+ // Every frame is a generated picture, one file per step. The drawn scene stays as the fallback
+ // for when a picture cannot load (the files are not precached, so offline is the common case).
+ const [dropped,setDropped]=useState(false);
+ const art=!dropped
+  ?<img src={`practices/${id}-${index}.webp`} alt={scene.label} loading="lazy" decoding="async" onError={()=>setDropped(true)}/>
+  :<svg viewBox="0 0 260 175" role="img" aria-label={scene.label} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:scene.svg}}/>;
  return <div className={`practice-art${compact?' compact':''}`} style={{background:wash,color:tone,['--art-acc' as string]:acc}} data-practice-visual={id} data-practice-category={practiceContent.find(p=>p.id===id)?.category}>
-  <svg viewBox="0 0 260 175" role="img" aria-label={scene.label} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:scene.svg}}/>
+  {art}
  </div>;
 }
