@@ -425,13 +425,10 @@ body:has(.pwa-notice) #root{padding-top:72px}
 }
 
 /* Calm patient today: one primary action */
-/* Reach for the goals from Today: SCREENS.md puts the entry there, not in the bottom nav */
-.today-goals-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:0 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--accent);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
-.today-goals-link:hover{background:var(--soft);text-decoration:none}
 .today-simple{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:24px}.today-side{display:flex;flex-direction:column;gap:24px}
-@media(min-width:900px){.today-side{position:sticky;top:24px;align-self:start}}
+
 @media(max-width:700px){.today-simple .checkin-form{gap:16px;padding:20px 16px}.today-simple .scale-row{gap:4px}}
-@media(min-width:900px){.today-simple{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px 32px;align-items:start}.today-simple>.today-simple-head{grid-column:1/-1}.today-simple>.today-side{grid-column:2;grid-row:2;display:flex;flex-direction:column;gap:24px}}
+@media(min-width:900px){.today-simple{display:flex;flex-direction:column;gap:24px;max-width:860px}}
 .today-simple-head h1{font-size:28px;letter-spacing:-.5px}
 .today-simple-card{border:1px solid var(--line);border-radius:20px;background:var(--surface);padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
 .today-simple-card h2{font-size:20px;font-weight:700}

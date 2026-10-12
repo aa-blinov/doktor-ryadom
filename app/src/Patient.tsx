@@ -7,7 +7,7 @@ import {ProfileSettings,DoctorProfileDetails} from './ProfileSettings';
 import { useRefreshOnReturn } from './useRefreshOnReturn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Switch, Textarea, TextInput } from '@mantine/core';
-import { IconArrowLeft, IconArrowRight, IconCheck, IconFileText, IconFlag, IconLeaf, IconLink, IconMoon, IconShieldCheck } from '@tabler/icons-react';
+import { IconArrowLeft, IconArrowRight, IconCheck, IconFileText, IconLeaf, IconLink, IconMoon, IconShieldCheck } from '@tabler/icons-react';
 import { api, errorText } from './api';
 import { Empty, ErrorBox, Face, formatDate, HistoryChart, PageHead, ScaleRow, SleepInput} from './ui';
 import { navigate } from './App';
@@ -60,7 +60,7 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
     <div className="today-done-main"><Face value={marked.mood} size={40}/><div><strong>{moods[marked.mood-1]}</strong><span className="muted small">Отметка за сегодня есть</span></div></div>
     <Button size="md" rightSection={<IconCheck size={19}/>} onClick={()=>navigate('/history')}>Открыть историю</Button>
    </section>:<Checkin data={data} onSaved={async()=>{await reload();navigate('/saved');}}/>}
-   <div className="today-side"><button className="today-goals-link" onClick={()=>navigate('/goals')}><IconFlag size={19}/>Мои цели</button><SosButton userId={user.id} hasDoctor={!!data.doctor}/>
+   <div className="today-side"><SosButton userId={user.id} hasDoctor={!!data.doctor}/>
 </div>
   </div>
  </>;
