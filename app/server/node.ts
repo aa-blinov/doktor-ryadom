@@ -14,7 +14,7 @@ let running=false;
 async function jobs(){if(running)return;running=true;try{await deliverNotifications(database.binding,services);await dailyBackup(databasePath);}catch(e){console.error('Background job failed',e instanceof Error?e.name:'Unknown');}finally{running=false;}}
 const jobsTimer=setInterval(jobs,60000);jobsTimer.unref();
 void jobs();
-const types:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2'};
+const types:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2'};
 const assets={fetch:async(request:Request)=>{
  let pathname:string;try{pathname=decodeURIComponent(new URL(request.url).pathname);}catch{return new Response('Invalid path',{status:400});}
  let path=resolve(client,'.'+pathname);
