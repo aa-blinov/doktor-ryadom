@@ -1,6 +1,6 @@
 /** Local, selectable-text PDF export. Font assets are bundled; no patient data leaves the browser. */
 export type PdfBlock = {text:string;kind?:'heading'|'note'|'body'};
-export type PdfReport = {name:string;start:string;end:string;blocks:PdfBlock[];headerTitle?:string;headerSubtitle?:string;fileName?:string};
+export type PdfReport = {name:string;start:string;end:string;blocks:PdfBlock[];headerTitle?:string;headerSubtitle?:string;fileName?:string;photo?:{data:Uint8Array;width:number;height:number};contactLines?:string[]};
 type FontMetrics={characters:Record<string,[number,number]>;bbox:number[];ascent:number;descent:number};
 const encoder=new TextEncoder();
 const bytes=(s:string)=>encoder.encode(s);
@@ -55,8 +55,20 @@ export function createReportPdf(report:PdfReport,font:Uint8Array,metrics:FontMet
   for(const line of lines){if(y-leading<60)newPage();draw(line,48,y,size,kind==='heading'?'0.13 0.35 0.26':kind==='note'?'0.30 0.36 0.33':'0.12 0.19 0.16');y-=leading;}
   y-=kind==='heading'?10:kind==='note'?6:7;
  };
-  paragraph(report.headerTitle??report.name,24);
-  if(report.start&&report.end)paragraph(`${date(report.start)} — ${date(report.end)}`,12,'note');
+  let photoXObject=0;
+  if(report.photo){
+   photoXObject=reserve();
+   put(photoXObject,stream(report.photo.data,`/Type /XObject /Subtype /Image /Width ${report.photo.width} /Height ${report.photo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode`));
+   const box=96;
+   commands.push(`q ${box} 0 0 ${box} 451 640 cm /Im0 Do Q`);
+   commands.push(`0.76 0.84 0.79 RG 48 722 m 430 722 l S`);
+  }
+  if(report.photo){draw(report.headerTitle??report.name,48,700,26);y=658;}
+  else paragraph(report.headerTitle??report.name,24);
+  if(report.contactLines?.length){
+   for(const line of report.contactLines){draw(line,48,y,11,'0.30 0.36 0.33');y-=16;}
+   y-=8;
+  }else if(report.start&&report.end)paragraph(`${date(report.start)} — ${date(report.end)}`,12,'note');
   else if(report.name&&report.name!==(report.headerTitle??report.name))paragraph(report.name,13,'note');
  for(const block of report.blocks)paragraph(block.text,block.kind==='heading'?14:block.kind==='note'?10:11,block.kind);
  const pageIds:number[]=[];
@@ -64,7 +76,7 @@ export function createReportPdf(report:PdfReport,font:Uint8Array,metrics:FontMet
   commands=page;draw(report.start&&report.end?`Рядом, ${date(report.start)} — ${date(report.end)}`:'Рядом — резюме специалиста',48,30,8,'0.30 0.36 0.33');draw(`${index+1} / ${pageStreams.length}`,510,30,9,'0.30 0.36 0.33');
   const pageId=reserve(),contentId=reserve();pageIds.push(pageId);
   put(contentId,stream(bytes(page.join('\n'))));
-  put(pageId,`<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${type0} 0 R >> >> /Contents ${contentId} 0 R >>`);
+  put(pageId,`<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${type0} 0 R >>${photoXObject?` /XObject << /Im0 ${photoXObject} 0 R >>`:''} >> /Contents ${contentId} 0 R >>`);
  });
  const mapping=new Uint8Array((characters.size+1)*2),widths:string[]=[],unicodeLines:string[]=[];
  for(const [cp,cid] of characters){const [gid,w]=metrics.characters[cp]??metrics.characters[63]??[0,600];mapping[cid*2]=gid>>8;mapping[cid*2+1]=gid&255;widths.push(`${cid} [${w}]`);unicodeLines.push(`<${hex(cid)}> <${unicode(cp)}>`);}
