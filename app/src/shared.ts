@@ -63,3 +63,5 @@ export const doctorProfileSchema=z.object({name:profileName,specialty:z.string()
 export type PatientProfile=Omit<z.infer<typeof patientProfileSchema>,'name'>;
 export type DoctorProfile=Omit<z.infer<typeof doctorProfileSchema>,'name'>&{photoUrl:string|null;documents:ProfileDocument[]};
 export type ProfileDocument={id:string;category:'education'|'courses'|'workHistory';entry:string;filename:string;mime:string;shared:boolean;createdAt:number};
+// "2 вопроса", "5 вопросов": the case comes from the last digits, not from the number alone.
+export const plural=(n:number,one:string,few:string,many:string)=>n%10===1&&n%100!==11?one:n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?few:many;

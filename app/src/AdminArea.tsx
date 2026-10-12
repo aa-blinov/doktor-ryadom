@@ -30,7 +30,7 @@ function AdminDoctors(){
   <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="md"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
-  {!loading&&!error&&!doctors.length?<p className="muted">Врачей пока нет</p>:null}
+  {!loading&&!error&&!doctors.length?<p className="muted">{q.trim()?'Поиск ничего не нашёл':'Врачей пока нет'}</p>:null}
   <div className="admin-list">{doctors.map(d=><article className="care-record admin-card" key={d.id}>
    <h3>{d.name}{d.blocked_at?' · заблокирован':''}</h3>
    <p className="muted small">{d.email} · создан {formatDate(new Date(d.created_at).toISOString().slice(0,10))}</p>
@@ -53,7 +53,7 @@ function AdminPatients(){
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!patients.length?<p className="muted">Пациентов пока нет</p>:null}
   <div className="admin-list">{patients.map((p,i)=><article className="care-record admin-card" key={p.id}>
-   <h3>Пациент {patients.length-i}{p.blocked_at?' · заблокирован':''}</h3>
+   <h3>Пациент {i+1}{p.blocked_at?' · заблокирован':''}</h3>
    <p className="muted small">Аккаунт создан {formatDate(new Date(p.created_at).toISOString().slice(0,10))}</p>
    <BlockButton blocked={!!p.blocked_at} busy={busy===p.id} onClick={()=>void toggle(p)}/>
   </article>)}</div>
@@ -62,19 +62,20 @@ function AdminPatients(){
 type Event={action:string;action_label?:string;subject_id:string|null;subject_name?:string|null;created_at:number;actor_name:string|null;actor_role:string|null};
 
 function AdminAudit(){
- const [events,setEvents]=useState<Event[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[hasMore,setHasMore]=useState(true),[error,setError]=useState(''),[actionFilter,setActionFilter]=useState('');
- const load=useCallback(async(offset:number)=>{setBusy(true);setError('');try{const r=await api<{events:Event[];limit:number}>(`/admin/audit?limit=200&offset=${offset}`);setEvents(prev=>offset?[...prev,...r.events]:r.events);setHasMore(r.events.length>=200);}catch(e){setError(errorText(e));}finally{setLoading(false);setBusy(false);}},[]);
+ const [events,setEvents]=useState<Event[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[hasMore,setHasMore]=useState(true),[error,setError]=useState(''),[actionFilter,setActionFilter]=useState(''),[known,setKnown]=useState<Record<string,string>>({});
+ // The filter goes to the server so that "показать ещё" keeps paging through the same action.
+ const load=useCallback(async(offset:number)=>{setBusy(true);setError('');try{const r=await api<{events:Event[];limit:number}>(`/admin/audit?limit=200&offset=${offset}${actionFilter?`&action=${encodeURIComponent(actionFilter)}`:''}`);setEvents(prev=>offset?[...prev,...r.events]:r.events);setHasMore(r.events.length>=200);setKnown(prev=>{const next={...prev};for(const e of r.events)next[e.action]=e.action_label??e.action;return next;});}catch(e){setError(errorText(e));}finally{setLoading(false);setBusy(false);}},[actionFilter]);
  useEffect(()=>{void load(0);},[load]);
  return <><PageHead title="Журнал действий" description="Кто и что сделал в портале. Содержимое записей здесь не показывается"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error}/>:null}
-  {events.length?<NativeSelect mb="md" label="Тип события" value={actionFilter} onChange={e=>setActionFilter(e.currentTarget.value)} data={[{value:'',label:'Все события'},...[...new Map(events.map(e=>[e.action,e.action_label??e.action])).entries()].map(([value,label])=>({value,label}))]}/>:null}
-  {!loading&&!error&&!events.length?<p className="muted">Событий пока нет</p>:null}
-   <div className="admin-list">{(actionFilter?events.filter(e=>e.action===actionFilter):events).map((e,i)=><article className="care-record" key={i}>
+  {Object.keys(known).length?<NativeSelect mb="md" label="Тип события" value={actionFilter} onChange={e=>setActionFilter(e.currentTarget.value)} data={[{value:'',label:'Все события'},...Object.entries(known).map(([value,label])=>({value,label}))]}/>:null}
+  {!loading&&!error&&!events.length?<p className="muted">{actionFilter?'Событий такого типа пока нет':'Событий пока нет'}</p>:null}
+   <div className="admin-list">{events.map((e,i)=><article className="care-record" key={`${e.created_at}-${i}`}>
    <p><strong>{e.action_label??e.action}</strong>{e.subject_name?<span className="muted"> · {e.subject_name}</span>:null}</p>
    <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??'неизвестно'}{e.actor_role?` (${e.actor_role})`:''}</p>
   </article>)}</div>
-  {hasMore&&!loading&&!error&&!actionFilter?<Button mt="md" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
+  {hasMore&&!loading&&!error?<Button mt="md" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
  </>;
 }
 

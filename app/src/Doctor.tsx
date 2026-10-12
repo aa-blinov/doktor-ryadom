@@ -6,7 +6,7 @@ import {DoctorInvites} from './DoctorInvites';
 import {ProfileSettings,PatientProfileDetails} from './ProfileSettings';
 import { useRefreshOnReturn } from './useRefreshOnReturn';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Avatar, Button, Checkbox, Group, Loader, Modal, Select, Tabs, TextInput } from '@mantine/core';
+import { Alert, Avatar, Button, Checkbox, Group, Loader, Modal, Select, Tabs, Textarea, TextInput } from '@mantine/core';
 import { IconArrowLeft, IconArrowRight, IconCheck, IconCopy, IconDownload, IconLink, IconSearch, IconUsers } from '@tabler/icons-react';
 import { api,errorText } from './api';
 import { Empty,ErrorBox,formatDate,PageHead } from './ui';
@@ -18,7 +18,7 @@ import {assessmentContent,standardKinds} from './assessments';
 import { csvCell } from './report';
 import { practiceContent } from './practices';
 import { navigate } from './App';
-import { attentionFlags, canPrescribe, signals, today, type Assessment, type PatientData, type PatientRow, type Plan, type PatientProfile, type User } from './shared';
+import { plural, attentionFlags, canPrescribe, signals, today, type Assessment, type PatientData, type PatientRow, type Plan, type PatientProfile, type User } from './shared';
 export function DoctorWorkspace({user,route}:{user:User;route:string}){
  useSectionScroll(route.startsWith('/patient/')?null:`${user.id}:${route}`);
  const [patients,setPatients]=useState<PatientRow[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[search,setSearch]=useState(''),[listFilter,setListFilter]=useState('all'),[inviting,setInviting]=useState(false),[invite,setInvite]=useState<{token:string;expires:number}|null>(null),[busy,setBusy]=useState(false),[copied,setCopied]=useState(false);
@@ -84,6 +84,11 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
    <div className="plan-checks">{([{key:'sleep',label:'Сон'},{key:'anxiety',label:'Тревога'},{key:'energy',label:'Энергия'},{key:'functioning',label:'Обычные дела'}] as const).map(p=><Checkbox key={p.key} label={p.label} checked={plan[p.key]} onChange={e=>setPlan({...plan,[p.key]:e.currentTarget.checked})}/>)}</div>
   </section>
   <section>
+   <h2>Что обсудить с пациентом</h2>
+   <Textarea label="Привычка пациента" description="Например: прогулка после ужина. Пациент увидит это в своих настройках." value={plan.habit} onChange={e=>setPlan({...plan,habit:e.currentTarget.value})} maxLength={180} minRows={1} autosize/>
+   <Textarea label="Порядок просмотра записей" description="Обязательный текст, минимум 5 символов. Пациент прочитает его в своих настройках." value={plan.reviewNote} onChange={e=>setPlan({...plan,reviewNote:e.currentTarget.value})} maxLength={500} minRows={2} required/>
+  </section>
+  <section>
    <h2>Практики</h2>
    <div className="plan-list">
     {practiceContent.map(p=><label className="plan-row" key={p.id}>
@@ -105,7 +110,7 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
         if(e.currentTarget.checked)next.add(kind);else next.delete(kind);
         setChosen(next);
        }}/>
-       <span className="plan-row-main"><strong>{assessmentContent[kind].title}</strong><span className="muted small">{already?(assessments.some(a=>a.kind===kind&&a.completed_at)?'Пройден':'Ждёт ответа пациента'):`${assessmentContent[kind].items.length} вопросов`}</span></span>
+       <span className="plan-row-main"><strong>{assessmentContent[kind].title}</strong><span className="muted small">{already?(assessments.some(a=>a.kind===kind&&a.completed_at)?'Пройден':'Ждёт ответа пациента'):`${assessmentContent[kind].items.length} ${plural(assessmentContent[kind].items.length,'вопрос','вопроса','вопросов')}`}</span></span>
        <a href={assessmentContent[kind].source} target="_blank" rel="noreferrer">Источник</a>
       </label>
       {kind==='phq9'&&!already&&chosen.has('phq9')?<div className="plan-phq9">

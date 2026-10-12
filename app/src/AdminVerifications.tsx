@@ -24,7 +24,7 @@ export function AdminVerifications(){
    {r.admin_note?<p className="muted small">Ваш комментарий: {r.admin_note}</p>:null}
    {r.status==='pending'||r.status==='needs_info'?<>
     <Textarea label="Комментарий врачу" description="Нужен для уточнения и отказа" value={notes[r.id]??''} onChange={e=>setNotes({...notes,[r.id]:e.currentTarget.value})} maxLength={500} minRows={2}/>
-    {(notes[r.id]??'').trim()?null:<p className="muted small">!r.kind?'Укажите тип специалиста в заявке врача — без него подтвердить нельзя':"Чтобы запросить уточнение или отклонить заявку, напишите комментарий врачу"</p>}
+    {(notes[r.id]??'').trim()?null:<p className="muted small">{!r.kind?'Укажите тип специалиста в заявке врача — без него подтвердить нельзя':"Чтобы запросить уточнение или отклонить заявку, напишите комментарий врачу"}</p>}
     <div className="admin-actions">
      <Button loading={busy===r.id} disabled={busy!==null||!r.kind} onClick={()=>void decide(r.id,'approve')}>Подтвердить</Button>
      <Button variant="outline" disabled={busy!==null||!(notes[r.id]??'').trim()} onClick={()=>void decide(r.id,'needs_info')}>Запросить уточнение</Button>

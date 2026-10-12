@@ -1,7 +1,7 @@
 import { PracticeVisual } from './PracticeVisual';
 import { useState } from 'react';
 import { Select, TextInput } from '@mantine/core';
-import { IconChevronRight, IconSearch } from '@tabler/icons-react';
+import { IconChevronRight, IconLeaf, IconSearch } from '@tabler/icons-react';
 import { practiceContent } from './practices';
 import type { PatientData } from './shared';
 import { Empty, PageHead } from './ui';
@@ -15,5 +15,6 @@ export function PracticeLibrary({data}:{data:PatientData}) {
 }
 
 export function PracticeExperienceList({data}:{data:PatientData}) {
- return <div className="practice-experience-list">{data.practices.slice(0,8).map(log=><div className="history-row" key={log.id}><div><strong>{practiceContent.find(p=>p.id===log.practice_id)?.title??'Практика'}</strong><small>{new Date(log.completed_at).toLocaleDateString('ru-RU')}</small>{log.note?<p className="care-prose">{log.note}</p>:null}<small>{log.reviewed_at?(log.reviewer_id===data.doctor?.id?'Врач подтвердил просмотр':'Просмотрено предыдущим врачом'):data.doctor?'Ожидает просмотра':'Сохранено в вашем дневнике'}</small></div><span className={`pill ${log.feedback==='unpleasant'?'warm':''}`}>{log.feedback==='comfortable'?'Комфортно':log.feedback==='same'?'Без изменений':'Неприятно'}</span></div>)}</div>;
+ const logs=data.practices.slice(0,8);
+ return logs.length?<div className="practice-experience-list">{logs.map(log=><div className="history-row" key={log.id}><div><strong>{practiceContent.find(p=>p.id===log.practice_id)?.title??'Практика'}</strong><small>{new Date(log.completed_at).toLocaleDateString('ru-RU')}</small>{log.note?<p className="care-prose">{log.note}</p>:null}<small>{log.reviewed_at?(log.reviewer_id===data.doctor?.id?'Врач подтвердил просмотр':'Просмотрено предыдущим врачом'):data.doctor?'Ожидает просмотра':'Сохранено в вашем дневнике'}</small></div><span className={`pill ${log.feedback==='unpleasant'?'warm':''}`}>{log.feedback==='comfortable'?'Комфортно':log.feedback==='same'?'Без изменений':'Неприятно'}</span></div>)}</div>:<Empty icon={<IconLeaf size={28}/>} title="Практик пока нет" description="Здесь появятся оценки выполненных практик из вашего плана." action="К практикам" onAction={()=>navigate('/practices')}/>;
 }

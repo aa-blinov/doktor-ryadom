@@ -57,7 +57,8 @@ export function adminRoutes(app:App){
  app.get('/api/admin/audit',async c=>{
   const limit=Math.min(Math.max(Number(c.req.query('limit')??200)||200,1),500);
   const offset=Math.max(Number(c.req.query('offset')??0)||0,0);
-  const rows=await many<{action:string;subject_id:string|null;created_at:number;actor_name:string|null;actor_role:string|null;subject_name:string|null}>(database(c.env),"SELECT a.action,a.subject_id,a.created_at,CASE WHEN u.role='patient' THEN NULL ELSE u.name END AS actor_name,CASE WHEN u.role='patient' THEN 'пациент' ELSE u.role END AS actor_role,CASE WHEN s.role='patient' THEN 'пациент' WHEN s.id IS NULL THEN NULL ELSE s.name END AS subject_name FROM audit a LEFT JOIN users u ON u.id=a.actor_id LEFT JOIN users s ON s.id=a.subject_id ORDER BY a.created_at DESC LIMIT ? OFFSET ?",limit,offset);
+  const action=(c.req.query('action')??'').trim();
+  const rows=await many<{action:string;subject_id:string|null;created_at:number;actor_name:string|null;actor_role:string|null;subject_name:string|null}>(database(c.env),`SELECT a.action,a.subject_id,a.created_at,CASE WHEN u.role='patient' THEN NULL ELSE u.name END AS actor_name,CASE WHEN u.role='patient' THEN 'пациент' ELSE u.role END AS actor_role,CASE WHEN s.role='patient' THEN 'пациент' WHEN s.id IS NULL THEN NULL ELSE s.name END AS subject_name FROM audit a LEFT JOIN users u ON u.id=a.actor_id LEFT JOIN users s ON s.id=a.subject_id${action?' WHERE a.action=?':''} ORDER BY a.created_at DESC LIMIT ? OFFSET ?`,...(action?[action]:[]),limit,offset);
   return c.json({events:rows.map(r=>({...r,action_label:actionLabels[r.action]??r.action})),limit,offset});
  });
 }
