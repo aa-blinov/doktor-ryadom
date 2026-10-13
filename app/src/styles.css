@@ -780,3 +780,6 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* Reports waiting for the doctor's acknowledgement, next to the signals block */
 .attention-pending{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
 .attention-pending h3{font-size:15px;font-weight:650;margin:0 0 10px}
+/* The diary list is capped server-side; say so rather than pretend the year is all there is */
+.history-truncated{margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.list-cap{margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}

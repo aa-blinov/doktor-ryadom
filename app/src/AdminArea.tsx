@@ -28,6 +28,7 @@ function AdminDoctors(){
  async function setKind(d:Doctor,kind:SpecialtyKind|''){setBusy(d.id);setError('');try{await api(`/admin/doctors/${d.id}/kind`,{kind:kind||null});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход и завершает сессии"/>
   <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="md"/>
+  {doctors.length>=300?<p className="muted small list-cap">Показаны первые 300 врачей. Для остальных пользуйтесь поиском.</p>:null}
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!doctors.length?<p className="muted">{q.trim()?'Поиск ничего не нашёл':'Врачей пока нет'}</p>:null}
@@ -52,6 +53,7 @@ function AdminPatients(){
  return <><PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
+  {patients.length>=200?<p className="muted small list-cap">Показаны первые 200 пациентов.</p>:null}
   {!loading&&!error&&!patients.length?<p className="muted">Пациентов пока нет</p>:null}
   {undone?<div className="admin-undo" role="status"><span>{undone.who} заблокирован. Это было сделано только что.</span><Button variant="subtle" size="xs" onClick={async()=>{const id=undone?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
   <div className="admin-list">{patients.map((p,i)=><article className="care-record admin-card" key={p.id}>
