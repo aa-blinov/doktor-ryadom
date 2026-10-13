@@ -14,8 +14,8 @@ export function PracticeReview({data,id,onSaved}:{data:PatientData;id:string;onS
   <details className="review-fold" open={pending.length===0}>
    <summary>{pending.length?`Ожидают подтверждения: ${pending.length}`:'Все отзывы подтверждены'}</summary>
    <div className="review-fold-body">
-    {pending.length>1?<Button variant="outline" mb="md" loading={busy==='all'} disabled={busy!==null} onClick={()=>void reviewAll()}>Подтвердить все ({pending.length})</Button>:null}
-    {logs.length>pending.length?<Button variant="subtle" mb="md" onClick={()=>setShowReviewed(v=>!v)}>{showReviewed?'Скрыть просмотренные':`Показать просмотренные (${logs.length-pending.length})`}</Button>:null}
+    {pending.length>1?<Button variant="outline" mb="var(--sp-4)" loading={busy==='all'} disabled={busy!==null} onClick={()=>void reviewAll()}>Подтвердить все ({pending.length})</Button>:null}
+    {logs.length>pending.length?<Button variant="subtle" mb="var(--sp-4)" onClick={()=>setShowReviewed(v=>!v)}>{showReviewed?'Скрыть просмотренные':`Показать просмотренные (${logs.length-pending.length})`}</Button>:null}
     {done?<p className="muted small" role="status">{done}</p>:null}
     {error?<ErrorBox message={error}/>:null}
     {(showReviewed?logs:pending).length?(showReviewed?logs:pending).map(log=><article className="care-record" key={log.id}><h3>{practiceContent.find(p=>p.id===log.practice_id)?.title??'Практика'}</h3><p>{log.feedback==='comfortable'?'Комфортно':log.feedback==='same'?'Без изменений':'Неприятно'}, {new Date(log.completed_at).toLocaleString('ru-RU')}</p>{log.note?<p className="care-prose">{log.note}</p>:null}{log.reviewed_at&&log.reviewer_id===data.doctor?.id?<p className="muted small">Просмотр подтверждён</p>:<Button variant="outline" disabled={busy!==null} loading={busy===log.id} onClick={()=>review(log.id)}>Подтвердить просмотр отзыва</Button>}</article>):<p className="muted">Пациент пока не сохранил отзывы о практиках</p>}

@@ -27,7 +27,7 @@ function AdminDoctors(){
  async function toggle(d:Doctor){if(!d.blocked_at&&!window.confirm(`Заблокировать ${d.name}? Вход закроется, сеансы завершатся.`))return;setBusy(d.id);setError('');try{await api(`/admin/accounts/${d.id}/block`,{blocked:!d.blocked_at});setUndone(d.blocked_at?null:{id:d.id,who:`Врач ${d.name}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  async function setKind(d:Doctor,kind:SpecialtyKind|''){setBusy(d.id);setError('');try{await api(`/admin/doctors/${d.id}/kind`,{kind:kind||null});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход и завершает сессии"/>
-  <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="md"/>
+  <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="var(--sp-4)"/>
   {doctors.length>=300?<p className="muted small list-cap">Показаны первые 300 врачей. Для остальных пользуйтесь поиском.</p>:null}
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
@@ -73,13 +73,13 @@ function AdminAudit(){
  return <><PageHead title="Журнал действий" description="Кто и что сделал в портале. Содержимое записей здесь не показывается"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error}/>:null}
-  {Object.keys(known).length?<NativeSelect mb="md" label="Тип события" value={actionFilter} onChange={e=>setActionFilter(e.currentTarget.value)} data={[{value:'',label:'Все события'},...Object.entries(known).map(([value,label])=>({value,label}))]}/>:null}
+  {Object.keys(known).length?<NativeSelect mb="var(--sp-4)" label="Тип события" value={actionFilter} onChange={e=>setActionFilter(e.currentTarget.value)} data={[{value:'',label:'Все события'},...Object.entries(known).map(([value,label])=>({value,label}))]}/>:null}
   {!loading&&!error&&!events.length?<p className="muted">{actionFilter?'Событий такого типа пока нет':'Событий пока нет'}</p>:null}
    <div className="admin-list">{events.map((e,i)=><article className="care-record" key={`${e.created_at}-${i}`}>
    <p><strong>{e.action_label??e.action}</strong>{e.subject_name?<span className="muted"> · {e.subject_name}</span>:null}</p>
    <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??(e.actor_role==='patient'||e.actor_role==='пациент'?'Пациент':'Система')}{e.actor_role&&e.actor_role!=='patient'&&e.actor_role!=='пациент'?` (${e.actor_role==='admin'?'администратор':e.actor_role==='doctor'?'врач':e.actor_role})`:''}</p>
   </article>)}</div>
-  {hasMore&&!loading&&!error?<Button mt="md" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
+  {hasMore&&!loading&&!error?<Button mt="var(--sp-4)" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
  </>;
 }
 

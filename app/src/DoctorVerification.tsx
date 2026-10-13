@@ -16,10 +16,10 @@ export function DoctorVerification({user}:{user:User}){
  return <><PageHead title="Подключение врача" description="Проверим квалификацию, после этого откроются пациенты и приглашения"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
-  {status==='pending'?<Alert color="forest" mb="md" title="Заявка на проверке">Мы проверим данные и сообщим результат. Пока можно заполнить настройки аккаунта.</Alert>:null}
-  {status==='needs_info'?<Alert color="yellow" mb="md" title="Нужны уточнения">{request?.admin_note||'Уточните данные и отправьте заявку снова.'}</Alert>:null}
-  {status==='rejected'?<Alert color="red" mb="md" title="Заявка отклонена">{request?.admin_note||'Проверьте данные и отправьте заявку снова.'}</Alert>:null}
-  {status==='approved'||user.specialist_verified_at?<Alert color="forest" mb="md" title="Профиль подтверждён">Можно приглашать пациентов. Если пациентов не видно, обновите страницу.<div><Button mt="sm" onClick={()=>navigate('/patients')}>К пациентам</Button></div></Alert>:null}
+  {status==='pending'?<Alert color="forest" mb="var(--sp-4)" title="Заявка на проверке">Мы проверим данные и сообщим результат. Пока можно заполнить настройки аккаунта.</Alert>:null}
+  {status==='needs_info'?<Alert color="yellow" mb="var(--sp-4)" title="Нужны уточнения">{request?.admin_note||'Уточните данные и отправьте заявку снова.'}</Alert>:null}
+  {status==='rejected'?<Alert color="red" mb="var(--sp-4)" title="Заявка отклонена">{request?.admin_note||'Проверьте данные и отправьте заявку снова.'}</Alert>:null}
+  {status==='approved'||user.specialist_verified_at?<Alert color="forest" mb="var(--sp-4)" title="Профиль подтверждён">Можно приглашать пациентов. Если пациентов не видно, обновите страницу.<div><Button mt="var(--sp-3)" onClick={()=>navigate('/patients')}>К пациентам</Button></div></Alert>:null}
   {canSubmit&&!loading?<form className="care-form" onSubmit={e=>{e.preventDefault();void submit();}}>
    <NativeSelect label="Тип специалиста" description="Назначать препараты в приложении может только психиатр" value={form.kind} onChange={e=>setForm({...form,kind:e.currentTarget.value as SpecialtyKind|''})} required data={[{value:'',label:'Выберите'},...specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]}))]}/>
    <TextInput label="Специальность" placeholder="Как указано в дипломе, например: врач-психиатр" value={form.specialty} onChange={e=>setForm({...form,specialty:e.currentTarget.value})} required minLength={2} maxLength={80}/>
