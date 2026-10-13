@@ -38,7 +38,7 @@ export function DoctorDirectory(){
  useEffect(()=>{void load();},[load]);
  const shown=useMemo(()=>doctors.filter(d=>(kind==='all'||d.kind===kind)&&(!city||d.city===city)&&(!query.trim()||[d.name,d.specialty,d.clinic,d.focusAreas].join(' ').toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')))),[doctors,kind,city,query]);
  return <section className="directory">
-  <button className="back-link" onClick={()=>navigate('/doctor')}><IconArrowLeft size={17}/>Мой врач</button>
+  <button className="back-link" onClick={()=>navigate('/doctor')}><IconArrowLeft size={18}/>Мой врач</button>
   <PageHead title="Найти врача" description="Психологи, психотерапевты и психиатры, чью квалификацию проверил администратор"/>
   <div className="directory-filters">
    <div className="kind-filter" role="group" aria-label="Специальность">
@@ -71,11 +71,11 @@ export function DoctorPage({id,onChanged}:{id:string;onChanged:()=>Promise<void>
  const load=useCallback(async()=>{setError('');try{setData(await api<Detail>(`/directory/${id}`));}catch(e){setError(errorText(e));}finally{setLoading(false);}},[id]);
  useEffect(()=>{void load();},[load]);
  if(loading)return <Loader/>;
- if(!data)return <section className="directory"><button className="back-link" onClick={()=>navigate('/doctors')}><IconArrowLeft size={17}/>Все врачи</button>{error?<ErrorBox message={error} retry={load}/>:null}</section>;
+ if(!data)return <section className="directory"><button className="back-link" onClick={()=>navigate('/doctors')}><IconArrowLeft size={18}/>Все врачи</button>{error?<ErrorBox message={error} retry={load}/>:null}</section>;
  const d=data.doctor;
  const sections=[{title:'Направления консультаций',text:d.focusAreas},{title:'Образование',text:d.education},{title:'Курсы',text:d.courses},{title:'Опыт работы',text:d.workHistory},{title:'Адрес приёма',text:d.address}].filter(s=>s.text);
  return <section className="directory doctor-page-public">
-  <button className="back-link" onClick={()=>navigate('/doctors')}><IconArrowLeft size={17}/>Все врачи</button>
+  <button className="back-link" onClick={()=>navigate('/doctors')}><IconArrowLeft size={18}/>Все врачи</button>
   <header className="doctor-hero">
    <Avatar src={d.photoUrl} size={96} radius="xl" alt={`Фото ${d.name}`}>{d.name.slice(0,1)}</Avatar>
    <div>
