@@ -23,7 +23,7 @@ export function DoctorInvites(){
    {copied?<p role="status">{copied}</p>:null}
    <p className="muted small">Действует до {formatDate(new Date(active.expires).toISOString().slice(0,10),true).replace(/\.$/,'')}. Ссылку можно скопировать повторно, пока её не использовали или не отозвали.</p>
   </>:null}
-  <h3 style={{marginTop:24}}>Неиспользованные</h3>
+  <h3 style={{marginTop:24}}>Активные ссылки</h3>
   {loading?<Loader size="sm"/>:null}
   {!loading&&!invites.length?<p className="muted small">Активных ссылок нет.</p>:null}
   {invites.map(row=>{const rowLink=row.token?`${window.location.origin}/?invite=${row.token}`:'';return <Group key={row.id} justify="space-between" py={8} style={{borderTop:'1px solid var(--line)'}}>

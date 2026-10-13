@@ -59,7 +59,7 @@ export function AppointmentOverview({data,onOpen}:{data:PatientData;onOpen:(tab:
 
     {anxietyPoints.length>=3?<section className="chart-panel">
      <h3>Тревога</h3>
-     <p className="chart-caption">Вверху меньше тревоги (4: не замечал), внизу больше (0: очень сильная)</p>
+     <p className="chart-caption">Вверху меньше тревоги (4: без тревоги), внизу больше (0: очень сильная)</p>
      <HistoryChart entries={chartEntries} kind="anxiety" showTrend/>
     </section>:null}
    </div>
@@ -121,7 +121,7 @@ export function AppointmentOverview({data,onOpen}:{data:PatientData;onOpen:(tab:
    <h3>Как считаются показатели</h3>
    <p className="muted">Тяжёлое самочувствие: ответы «Тяжело» и «Очень тяжело». Сильная тревога: «Сильная» и «Очень сильная». Трудные дела: «Очень трудно».</p>
    {current.sleep&&previous.sleep?<p className="muted">Сон в предыдущем периоде: {String(previous.sleep.average).replace('.',',')} ч, ответов {previous.sleep.count}</p>:null}
-   <p className="muted">Приём препаратов: отметок {medicationLogs.length}{medicationLogs.length?`, с пропуском ${medicationLogs.filter(l=>l.status==='missed').length}`:''}. Наблюдений пациента: {experiences.length}.</p>
+   <p className="muted">Приём препаратов: отметок {medicationLogs.length}{medicationLogs.length?`, с пропуском ${medicationLogs.filter(l=>l.status==='missed').length}`:''}. Практик пациента: {experiences.length}.</p>
   </section>
  </section>;
 }

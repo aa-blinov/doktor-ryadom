@@ -41,7 +41,7 @@ export function EditEntry({entry,onSaved}:{entry:Entry;onSaved:()=>Promise<void>
    </fieldset>:null}
    <fieldset>
     <legend>Тревога</legend>
-    <ScaleRow label="Тревога" options={['Очень сильная','Сильная','Умеренная','Небольшая','Не замечал(а)'].map((l,i)=>({value:i,label:l}))} value={value.anxiety} onChange={v=>update('anxiety',v)} ends={['хуже','лучше']}/>
+    <ScaleRow label="Тревога" options={['Очень сильная','Сильная','Умеренная','Небольшая','Без тревоги'].map((l,i)=>({value:i,label:l}))} value={value.anxiety} onChange={v=>update('anxiety',v)} ends={['хуже','лучше']}/>
    </fieldset>
    <fieldset>
     <legend>Энергия</legend>

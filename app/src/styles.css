@@ -448,7 +448,7 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .checkin-form fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
 .checkin-form legend{font-size:16px;font-weight:650;margin-bottom:4px}
 .checkin-moods{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.checkin-mood{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:72px;cursor:pointer;color:var(--tone-6a806c)}
+.checkin-mood{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:72px;cursor:pointer;color:var(--tone-5a7062)}
 .checkin-mood span{font-size:13px;line-height:1.3;color:var(--ink)}
 .checkin-mood.selected{border-color:var(--accent);background:var(--soft);color:var(--accent)}
 .checkin-sleep{width:120px;min-height:56px;border:1px solid var(--line);border-radius:12px;font:650 28px 'Golos Text';text-align:center;background:var(--tone-f6f8f2);color:var(--ink)}
@@ -720,3 +720,14 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .goal-archive h3{font-size:16px;margin:0 0 4px}
 .goal-card.closed{opacity:.85}
 .goal-card.closed h4{margin:0;font-size:15px;font-weight:600}
+
+/* The emergency number was a 32x45 inline link; it should be the easiest target to hit */
+.sos-link{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0 10px;margin:0 -4px;border-radius:10px;font-weight:650;text-decoration:underline;text-underline-offset:3px}
+.sos-link:hover{background:var(--soft)}
+/* Document links sat at 24x17; give them a finger-sized target like every other link */
+.qualification-download a{display:inline-flex;align-items:center;min-height:44px;padding:0 6px;margin:0 -6px;border-radius:8px}
+.qualification-download a:hover{background:var(--soft)}
+/* NumberInput steppers rendered at 24x17 with no name; give them a finger-sized target */
+.mantine-NumberInput-controls{width:44px}
+.mantine-NumberInput-control{width:44px;min-height:42px;display:flex;align-items:center;justify-content:center}
+.mantine-NumberInput-control:hover{background:var(--soft)}

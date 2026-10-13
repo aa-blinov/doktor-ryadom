@@ -9,7 +9,7 @@ export function downloadText(name:string,text:string){const url=URL.createObject
 export function csvCell(value:unknown){let text=String(value??'');if(typeof value==='string'&&/^\s*[=+\-@]|^[\t\r\n]/.test(text))text="'"+text;return `"${text.replaceAll('"','""')}"`;}
 
 import type {PatientData,Report} from './shared';
-const goalStatus={step:'Сделал(а) шаг',difficult:'Возникла трудность',reached:'Достиг(ла) цели'};
+const goalStatus={step:'Шаг сделан',difficult:'Возникла трудность',reached:'Цель достигнута'};
 import {assessmentTitle,assessmentScore,assessmentAnswerLines,assessmentMethodology,standardKind,phq9NeedsReview} from './assessments';
 export function selectCareData(data:PatientData,snapshot:Report|undefined,start:string,end:string){
  const source=snapshot??data;return {assessments:(source.assessments??[]).filter(a=>a.completed_at&&a.completed_at>=Date.parse(start)&&a.completed_at<Date.parse(end)+86400000),medications:(source.medications??[]).filter(m=>m.start_date<=end&&(!m.end_date||m.end_date>=start)),logs:(source.medicationLogs??[]).filter(l=>l.date>=start&&l.date<=end),experiences:(source.experiences??[]).filter(e=>e.date>=start&&e.date<=end),followups:(source.followups??[]).filter(f=>f.created_at>=Date.parse(start)&&f.created_at<Date.parse(end)+86400000)};
@@ -24,7 +24,7 @@ export function careTextLines(data:PatientData,snapshot:Report|undefined,start:s
  ];
 }
 
-import {moods} from './shared';
+import {moods, energyWords} from './shared';
 import {practiceContent} from './practices';
 import type {PdfReport,PdfBlock} from './reportPdf';
 export function reportPdfData(data:PatientData,snapshot:Report|undefined,name:string,start:string,end:string):PdfReport{
@@ -42,7 +42,7 @@ export function reportPdfData(data:PatientData,snapshot:Report|undefined,name:st
  for(const e of [...summary.notes].sort((a,b)=>a.date.localeCompare(b.date)))body(`${e.date}: ${e.note}`);
  heading('Ответы по дням');
  for(const e of [...summary.entries].sort((a,b)=>a.date.localeCompare(b.date))){
-  body(`${e.date}: ${moods[e.mood-1]}. Сон: ${e.sleep===null?'нет ответа':`${e.sleep} ч`}. Тревога: ${e.anxiety===null?'нет ответа':['очень сильная','сильная','умеренная','небольшая','не замечал(а)'][e.anxiety]}. Энергия: ${e.energy===null?'нет ответа':`${e.energy}/5`}. Обычные дела: ${e.functioning===null?'нет ответа':e.functioning===1?'без трудностей':e.functioning===2?'с трудностями':'очень трудно'}${e.sleepContext?`. После короткого сна: ${e.sleepContext==='tired'?'усталость':e.sleepContext==='active'?'необычно много энергии':'как обычно'}`:''}${e.habit===null?'':`. Небольшое действие: ${e.habit?'получилось':'не получилось'}`}`);
+  body(`${e.date}: ${moods[e.mood-1]}. Сон: ${e.sleep===null?'нет ответа':`${e.sleep} ч`}. Тревога: ${e.anxiety===null?'нет ответа':['очень сильная','сильная','умеренная','небольшая','без тревоги'][e.anxiety]}. Энергия: ${e.energy===null?'нет ответа':energyWords[e.energy-1]}. Обычные дела: ${e.functioning===null?'нет ответа':e.functioning===1?'без трудностей':e.functioning===2?'с трудностями':'очень трудно'}${e.sleepContext?`. После короткого сна: ${e.sleepContext==='tired'?'усталость':e.sleepContext==='active'?'необычно много энергии':'как обычно'}`:''}${e.habit===null?'':`. Небольшое действие: ${e.habit?'получилось':'не получилось'}`}`);
  }
  const careHeadings=new Set(['Опросники:','Назначения:','Ощущения и события:','Личные цели:','После приёма:']);
  const careLines=careTextLines(data,snapshot,start,end);

@@ -5,7 +5,7 @@ import {ErrorBox,formatDate} from './ui';
 import type {Goal,GoalLog,PatientData} from './shared';
 
 export const goalStatus={step:'Шаг',difficult:'Трудность',reached:'Цель достигнута'};
-const goalStatusFull={step:'Сделал(а) шаг',difficult:'Возникла трудность',reached:'Достиг(ла) цели'};
+const goalStatusFull={step:'Шаг сделан',difficult:'Возникла трудность',reached:'Цель достигнута'};
 
 export function GoalRecords({goals,logs}:{goals:Goal[];logs:GoalLog[]}){
  return <>{logs.map(log=><article className="care-record" key={log.id}><strong>{goals.find(g=>g.id===log.goal_id)?.title??'Личная цель'}</strong><p>{goalStatusFull[log.status]}, {formatDate(new Date(log.created_at).toISOString().slice(0,10))}</p>{log.note?<p className="care-prose">{log.note}</p>:null}</article>)}</>;
