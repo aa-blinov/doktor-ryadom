@@ -95,7 +95,7 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
     {practiceContent.map(p=><label className="plan-row" key={p.id}>
      <Checkbox checked={plan.practices.includes(p.id)} onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?[...plan.practices,p.id]:plan.practices.filter(x=>x!==p.id)})}/>
      <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time}</span></span>
-     <a href={p.source} target="_blank" rel="noreferrer">Источник</a>
+     <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
     </label>)}
    </div>
   </section>
@@ -112,7 +112,7 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
         setChosen(next);
        }}/>
        <span className="plan-row-main"><strong>{assessmentContent[kind].title}</strong><span className="muted small">{already?(assessments.some(a=>a.kind===kind&&a.completed_at)?'Пройден':'Ждёт ответа пациента'):`${assessmentContent[kind].items.length} ${plural(assessmentContent[kind].items.length,'вопрос','вопроса','вопросов')}`}</span></span>
-       <a href={assessmentContent[kind].source} target="_blank" rel="noreferrer">Источник</a>
+       <a className="source-link" href={assessmentContent[kind].source} target="_blank" rel="noreferrer">Источник</a>
       </label>
       {kind==='phq9'&&!already&&chosen.has('phq9')?<div className="plan-phq9">
        <TextInput label="Связь с врачом" value={phq9Contact} onChange={e=>setPhq9Contact(e.currentTarget.value)} maxLength={300}/>

@@ -743,3 +743,6 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .checkin-nav{display:flex;gap:12px;margin-top:20px}
 .checkin-nav .mantine-Button-root{flex:1;min-width:0}
 .checkin-nav .mantine-Button-label{overflow-wrap:anywhere}
+/* "Источник" links rendered 72x23, too small to hit on a phone */
+.source-link{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;margin:0 -10px;border-radius:8px;white-space:nowrap}
+.source-link:hover{background:var(--soft)}
