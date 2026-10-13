@@ -14,6 +14,10 @@ export function GoalRecords({goals,logs}:{goals:Goal[];logs:GoalLog[]}){
 export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:boolean;id?:string;onSaved:()=>Promise<void>}){
  const [title,setTitle]=useState(''),[reason,setReason]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[closing,setClosing]=useState<Goal|null>(null),[restoring,setRestoring]=useState<string|null>(null),[bulk,setBulk]=useState(false);
  const goals=data.goals??[],logs=data.goalLogs??[],active=goals.filter(g=>!g.closed_at),closed=goals.filter(g=>g.closed_at);
+ const pending=logs.filter(l=>!l.reviewed_at||l.reviewer_id!==data.doctor?.id);
+ // The patient page already says «Мои цели» as its heading, so the section used to
+ // repeat it right above the goal. The clinician has no such heading, so theirs stays.
+ const Heading=doctor?'h3':'h2',ArchivedHeading=doctor?'h4':'h3';
  async function addGoal(e:React.FormEvent){
   e.preventDefault();setError('');setMessage('');setBusy(true);
   try{await api('/patient/goals',{title,reason});setTitle('');setReason('');await onSaved();setMessage('Цель добавлена');}
@@ -31,7 +35,7 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
  }
  async function restoreGoal(goalId:string){setError('');setRestoring(goalId);try{await api(`/patient/goals/${goalId}/restore`,{},'PUT');await onSaved();setMessage('Цель снова активна');}catch(e){setError(errorText(e));}finally{setRestoring(null);}}
  return <section className="care-section goals-section">
-  <div className="section-title"><h2>{doctor?'Личные цели пациента':'Мои цели'}</h2>{doctor&&logs.some(l=>!l.reviewed_at||l.reviewer_id!==data.doctor?.id)?<Button variant="subtle" size="sm" loading={bulk} disabled={bulk} onClick={()=>void reviewAll()}>Подтвердить все непрочитанные</Button>:null}</div>
+  {doctor?<div className="section-title"><h2>Личные цели пациента</h2>{pending.length?<Button variant="subtle" size="sm" loading={bulk} disabled={bulk} onClick={()=>void reviewAll()}>Подтвердить все непрочитанные</Button>:null}</div>:null}
   <p className="muted">{doctor?'Цели формулирует пациент. Обсудите посильный следующий шаг.':'До трёх целей. Отмечайте шаг — это не оценка и не соревнование.'}</p>
   {!doctor?<form className="goal-add-form" onSubmit={addGoal}>
    <TextInput label="Новая цель" placeholder="Например: снова встречаться с друзьями" value={title} onChange={e=>setTitle(e.currentTarget.value)} required minLength={3} maxLength={180}/>
@@ -41,7 +45,7 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
   </form>:null}
   {active.length?active.map(goal=><article className="goal-card" key={goal.id}>
    <div className="goal-card-head">
-    <h3>{goal.title}</h3>
+    <Heading>{goal.title}</Heading>
     {!doctor?<Button variant="subtle" size="xs" disabled={busy} onClick={()=>setClosing(goal)}>Завершить</Button>:null}
    </div>
    {goal.reason?<p className="muted goal-reason">{goal.reason}</p>:null}
@@ -58,11 +62,11 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
    </div>)}
   </article>):<p className="muted">Активных целей нет</p>}
   {!doctor&&closed.length?<section className="goal-archive">
-   <h3>Архив</h3>
+   <Heading>Архив</Heading>
    <p className="muted small">Завершённые цели можно вернуть в список.</p>
    {closed.map(goal=><article className="goal-card closed" key={goal.id}>
     <div className="goal-card-head">
-     <h4>{goal.title}</h4>
+     <ArchivedHeading>{goal.title}</ArchivedHeading>
      <Button variant="subtle" size="xs" loading={restoring===goal.id} disabled={busy||restoring!==null} onClick={()=>void restoreGoal(goal.id)}>Вернуть в список</Button>
     </div>
     {goal.closed_at?<p className="muted small">Завершена {new Date(goal.closed_at).toLocaleDateString('ru-RU')}</p>:null}
