@@ -788,3 +788,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* Phone: mood answers are full-width rows (DESIGN.md), so labels never wrap inside a word. */
 @media(max-width:700px){.checkin-moods{grid-template-columns:minmax(0,1fr);gap:var(--sp-2)}.checkin-mood{flex-direction:row;justify-content:flex-start;min-height:54px;padding:var(--sp-2) var(--sp-4)}}
 .admin-card>.mantine-Button-root{margin-top:var(--sp-3)}
+/* The doctor screen opens with its own heading, so the section rule above it is dropped. */
+.doctor-page{margin-top:0;padding-top:0;border-top:0}
