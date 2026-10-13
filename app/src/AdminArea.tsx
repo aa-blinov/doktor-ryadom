@@ -47,7 +47,7 @@ function AdminPatients(){
  const [patients,setPatients]=useState<Patient[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState('');
  const load=useCallback(async()=>{setError('');try{const r=await api<{patients:Patient[]}>('/admin/patients');setPatients(r.patients);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
  useEffect(()=>{void load();},[load]);
- async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm('Заблокировать пациента? Вход закроется, сеансы завершатся.'))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
+ async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm(`Заблокировать пациента №${patients.length-patients.indexOf(p)}? Вход закроется, сеансы завершатся. Действие обратимо только вручную в списке.`))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
@@ -73,7 +73,7 @@ function AdminAudit(){
   {!loading&&!error&&!events.length?<p className="muted">{actionFilter?'Событий такого типа пока нет':'Событий пока нет'}</p>:null}
    <div className="admin-list">{events.map((e,i)=><article className="care-record" key={`${e.created_at}-${i}`}>
    <p><strong>{e.action_label??e.action}</strong>{e.subject_name?<span className="muted"> · {e.subject_name}</span>:null}</p>
-   <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??'неизвестно'}{e.actor_role?` (${e.actor_role})`:''}</p>
+   <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??(e.actor_role==='patient'?'Пациент':'Система')}{e.actor_role&&e.actor_role!=='patient'?` (${e.actor_role==='admin'?'администратор':e.actor_role==='doctor'?'врач':e.actor_role})`:''}</p>
   </article>)}</div>
   {hasMore&&!loading&&!error?<Button mt="md" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
  </>;

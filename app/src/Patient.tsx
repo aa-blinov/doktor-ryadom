@@ -166,6 +166,7 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
     :<Button type="button" size="lg" onClick={()=>setStep(step+1)} rightSection={<IconArrowRight size={18}/>}>Дальше</Button>}
   </div>
   {step===0&&entry.mood<1?<p className="checkin-hint">Выберите самочувствие, чтобы сохранить отметку</p>:null}
+  {!last&&entry.mood>0?<p className="checkin-skip"><button type="button" onClick={()=>void save()}>Сохранить и пропустить остальное</button></p>:null}
  </form>;
 }
 function PracticeFlow({practice,allowed,onSaved}:{practice:typeof practiceContent[number];allowed:boolean;onSaved:()=>Promise<void>}){

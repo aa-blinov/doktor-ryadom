@@ -73,7 +73,7 @@ export function SleepInput({value,onChange,label='Сон, часов',showTitle=
 export function ScaleRow({label,options,value,onChange,ends}:{label:string;options:{value:number;label:string}[];value:number|null;onChange:(v:number)=>void;ends:[string,string]}){
  const shown=options;
  return <div className="scale-row" role="group" aria-label={label}>
-  <p className={value===null?"scale-hint":"scale-hint scale-hint-chosen"}>{options.find(o=>o.value===value)?.label??"Не выбрано"}</p>
+  <p className={value===null?"scale-hint scale-hint-empty":value===undefined?"scale-hint":"scale-hint scale-hint-chosen"}>{options.find(o=>o.value===value)?.label??"Выберите ответ"}</p>
   <div className="scale-steps" style={{gridTemplateColumns:`repeat(${options.length},minmax(0,1fr))`}}>
    {shown.map(o=><button type="button" key={o.value} className={value===o.value?'scale-step selected':'scale-step'} aria-pressed={value===o.value} aria-label={o.label} onClick={()=>onChange(o.value)}><span className="scale-dot" aria-hidden="true"/><span className="scale-text">{o.label}</span></button>)}
   </div>

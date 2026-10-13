@@ -746,3 +746,12 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* "Источник" links rendered 72x23, too small to hit on a phone */
 .source-link{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;margin:0 -10px;border-radius:8px;white-space:nowrap}
 .source-link:hover{background:var(--soft)}
+/* An unchosen scale showed "Не выбрано" as if something were already recorded */
+.scale-hint-empty{opacity:1;font-weight:600;color:var(--ink)}
+/* A flat list of eleven practices buried the ones actually assigned */
+.plan-more{margin-top:12px}
+.plan-more>summary{cursor:pointer;color:var(--accent);font-size:15px;min-height:44px;display:flex;align-items:center}
+.plan-more .plan-list{margin-top:8px}
+/* Someone in a hurry should not have to walk through every question to save */
+.checkin-skip{margin:12px 0 0;text-align:center}
+.checkin-skip button{border:0;background:none;color:var(--accent);font:inherit;font-size:14px;cursor:pointer;min-height:44px;padding:0 8px;text-decoration:underline;text-underline-offset:3px}
