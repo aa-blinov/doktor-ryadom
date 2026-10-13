@@ -38,7 +38,7 @@ function AdminDoctors(){
    <p className="small">{d.specialist_verified_at?'Подтверждён':d.request_status?requestText[d.request_status]??'не подтверждён':'не подтверждён, заявки нет'}</p>
    <>
     <p className="small admin-specialty"><span className={`pill kind-${d.specialty_kind??'none'}`}>{d.specialty_kind?specialtyLabels[d.specialty_kind]:'Тип не указан'}</span>{d.profile_specialty||d.request_specialty?<span className="muted">{d.profile_specialty||d.request_specialty}</span>:null}</p>
-    <NativeSelect label="Тип специалиста" description="Проверьте по специальности в дипломе" value={d.specialty_kind??''} onChange={e=>void setKind(d,e.currentTarget.value as SpecialtyKind|'')} data={[{value:'',label:'Не указан'},...specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]}))]}/>
+    <NativeSelect label="Тип специалиста" description={d.specialist_verified_at?'У подтверждённого врача тип изменить нельзя — только через новую заявку':'Проверьте по специальности в дипломе'} value={d.specialty_kind??''} onChange={e=>void setKind(d,e.currentTarget.value as SpecialtyKind|'')} data={d.specialist_verified_at?specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]})):[{value:'',label:'Не указан'},...specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]}))]}/>
    </>
    <BlockButton blocked={!!d.blocked_at} busy={busy===d.id} onClick={()=>void toggle(d)}/>
   </article>)}</div>

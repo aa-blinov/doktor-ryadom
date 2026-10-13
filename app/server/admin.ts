@@ -32,6 +32,9 @@ export function adminRoutes(app:App){
   const row=await one<{role:string;specialist_verified_at:number|null}>(db,'SELECT role,specialist_verified_at FROM users WHERE id=?',target);
   if(!row)return c.json({error:'Врач не найден.'},404);
   if(row.role!=='doctor')return c.json({error:'Тип специалиста меняется только у врача.'},400);
+  // Clearing the type on a confirmed doctor left them verified with nothing verified about,
+  // and they dropped out of every catalogue filter. Re-verification is the way back.
+  if(!parsed.data.kind&&row.specialist_verified_at)return c.json({error:'У подтверждённого врача нельзя снять тип. Отзовите подтверждение или попросите врача подать заявку заново.'},400);
   const kind=parsed.data.kind,requestId=(await one<{id:string}>(db,"SELECT id FROM specialist_requests WHERE doctor_id=? ORDER BY CASE status WHEN 'approved' THEN 0 WHEN 'needs_info' THEN 1 WHEN 'pending' THEN 2 ELSE 3 END, updated_at DESC LIMIT 1",target))?.id;
   await db.batch([
    db.prepare('UPDATE users SET specialty_kind=? WHERE id=?').bind(kind,target),
