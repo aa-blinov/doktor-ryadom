@@ -33,8 +33,8 @@ export function AppointmentOverview({data,onOpen}:{data:PatientData;onOpen:(tab:
   </header>
    <ul className="triage-line triage-list" aria-label="Состояние сейчас">
     <li>Последняя отметка: {lastEntry?<><strong>{moodWord}</strong>, {formatDate(lastEntry.date)}{sinceLast===0?' (сегодня)':sinceLast===1?' (вчера)':sinceLast!==null?` (${dayWord(sinceLast)} назад)`:''}</>:<strong>пока нет</strong>}</li>
-    <li>Отметок за период: <strong>{current.entries.length} из {days}</strong></li>
-    <li>Сигналов: <strong>{signalCount}</strong></li>
+    <li>Дней с отметкой: <strong>{current.entries.length} из {days}</strong></li>
+    <li>Обращений: <strong>{signalCount}</strong></li>
    </ul>
 
   <section className="overview-panel overview-attention" aria-labelledby="attention-title">
@@ -44,7 +44,7 @@ export function AppointmentOverview({data,onOpen}:{data:PatientData;onOpen:(tab:
      <p>{item.text}</p>
      {item.tab?<Button size="xs" variant="subtle" onClick={()=>onOpen(item.tab!)}>{item.actionLabel??'Открыть'}</Button>:null}
     </div>)}
-   </div>:<p className="muted">Явных сигналов нет. Материалы к просмотру появятся здесь.</p>}
+   </div>:<p className="muted">Явных сигналов нет. Ждут просмотра появятся здесь.</p>}
    {attention.some(a=>a.kind==='signal')?<p className="muted small attention-note">Наблюдаемые ответы. Клиническую значимость оценивает врач.</p>:null}
   </section>
 
@@ -76,7 +76,7 @@ export function AppointmentOverview({data,onOpen}:{data:PatientData;onOpen:(tab:
      </div>
     </div>:<p className="muted">Пока нет отметок</p>}
     <dl className="overview-metrics">
-     <div><dt>Отметок за период</dt><dd>{current.entries.length} из {days}</dd></div>
+     <div><dt>Дней с отметкой</dt><dd>{current.entries.length} из {days}</dd></div>
      <div><dt>Тяжёлое самочувствие</dt><dd>{current.entries.length?`${current.difficult} из ${current.entries.length}`:noData}</dd></div>
      <div><dt>Средний сон</dt><dd>{current.sleep?`${String(current.sleep.average).replace('.',',')} ч`:noData}</dd></div>
      <div><dt>Сильная тревога</dt><dd>{current.anxietyAnswers?`${current.highAnxiety} из ${current.anxietyAnswers}`:noData}</dd></div>

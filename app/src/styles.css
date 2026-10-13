@@ -758,3 +758,17 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* A block is a consequence, not a dead end: it can be taken back immediately */
 .admin-undo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border:1px solid var(--line);border-radius:14px;background:var(--soft);font-size:15px}
 .admin-undo .mantine-Button-root{margin-left:auto;min-height:44px}
+/* At 320 px the practice row no longer fitted: title, duration and the source link overflowed
+   and were clipped, because the row is a flex line with a non-shrinkable link. */
+@media(max-width:700px){
+  .plan-row{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start;gap:8px 12px;padding:12px 0}
+  .plan-row>input,.plan-row>.mantine-Checkbox-root{grid-column:1;grid-row:1}
+  .plan-row>span{grid-column:2;grid-row:1;min-width:0}
+  .plan-row>a{grid-column:2;grid-row:2;justify-self:start;font-weight:500;font-size:14px}
+  .plan-row .plan-row-main>span{display:block}
+}
+/* The plan sub-section switcher was cut off at 320 px: three long labels do not fit */
+@media(max-width:700px){
+  .plan-sections .mantine-SegmentedControl-control{flex:1 1 0;min-width:0;min-height:52px;padding:6px 6px;overflow:visible}
+  .plan-sections .mantine-SegmentedControl-label{font-size:13px;line-height:1.15;white-space:normal;overflow-wrap:normal;hyphens:none}
+}
