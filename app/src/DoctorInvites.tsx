@@ -27,7 +27,7 @@ export function DoctorInvites(){
   {loading?<Loader size="sm"/>:null}
   {!loading&&!invites.length?<p className="muted small">Активных ссылок нет.</p>:null}
   {invites.map(row=>{const rowLink=row.token?`${window.location.origin}/?invite=${row.token}`:'';return <Group key={row.id} justify="space-between" py="var(--sp-2)" style={{borderTop:'1px solid var(--line)'}}>
-   <span className="small">до {formatDate(new Date(row.expires).toISOString().slice(0,10),true).replace(/\.$/,'')}{row.token?null:' · старая ссылка, создайте новую'}</span>
+   <span className="small">до {formatDate(new Date(row.expires).toISOString().slice(0,10),true).replace(/\.$/,'')}{row.token?null:' · ссылка показана один раз, создайте новую'}</span>
    <Group gap="var(--sp-3)">{row.token?<Button size="xs" variant="outline" onClick={()=>void copy(rowLink)}>Скопировать ссылку</Button>:null}
    <Button size="xs" variant="subtle" color="red" loading={busy===String(row.id)} onClick={()=>void revoke(row.id)}>Отозвать</Button></Group>
   </Group>;})}

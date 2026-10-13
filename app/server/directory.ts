@@ -45,13 +45,13 @@ export function directoryRoutes(app:App){
   const [base,profile,reviews,mine,link,pending]=await Promise.all([
    card(db,row),doctorProfile(db,id,false),
    many<{id:string;rating:number;body:string;created_at:number;hidden_at:number|null;name:string}>(db,'SELECT v.id,v.rating,v.body,v.created_at,v.hidden_at,u.name FROM doctor_reviews v JOIN users u ON u.id=v.patient_id WHERE v.doctor_id=? AND (v.hidden_at IS NULL OR ?) ORDER BY v.created_at DESC LIMIT 100',id,user.role==='admin'?1:0),
-   user.role==='patient'?one<{rating:number;body:string}>(db,'SELECT rating,body FROM doctor_reviews WHERE doctor_id=? AND patient_id=?',id,user.id):null,
+   user.role==='patient'?one<{rating:number;body:string;hidden_at:number|null}>(db,'SELECT rating,body,hidden_at FROM doctor_reviews WHERE doctor_id=? AND patient_id=?',id,user.id):null,
    user.role==='patient'?one<{doctor_id:string}>(db,'SELECT doctor_id FROM links WHERE patient_id=? AND revoked_at IS NULL',user.id):null,
    user.role==='patient'?one<{id:string}>(db,"SELECT id FROM connection_requests WHERE patient_id=? AND doctor_id=? AND status='pending'",user.id,id):null,
   ]);
   return c.json({doctor:{...base,about:profile.about,address:profile.address,education:profile.education,courses:profile.courses,workHistory:profile.workHistory},
    reviews:reviews.map(r=>({id:r.id,rating:r.rating,body:r.body,createdAt:r.created_at,author:firstName(r.name),hidden:!!r.hidden_at})),
-   mine:mine??null,
+   mine:mine?{rating:mine.rating,body:mine.body,hidden:!!mine.hidden_at}:null,
    connection:{linkedToThis:link?.doctor_id===id,linkedToOther:!!link&&link.doctor_id!==id,pendingRequestId:pending?.id??null}});
  });
 

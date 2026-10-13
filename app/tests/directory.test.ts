@@ -38,7 +38,7 @@ it('catalogue lists verified doctors with filters, rating and patient-only acces
  expect((await request(`/directory/${a.id}/review`,{rating:4,body:'Обновил'},patient.cookie,'PUT')).status).toBe(200);
  const detail=await request('/directory/'+a.id,undefined,patient.cookie);
  expect(detail.data.reviews).toHaveLength(2);expect(detail.data.doctor.rating).toBe(3.5);expect(detail.data.doctor.reviewCount).toBe(2);
- expect(detail.data.mine).toEqual({rating:4,body:'Обновил'});expect(detail.data.reviews[0].author).toBe('Тест');
+ expect(detail.data.mine).toEqual({rating:4,body:'Обновил',hidden:false});expect(detail.data.reviews[0].author).toBe('Тест');
  // admin can hide a review; it disappears from patients and the average
  const admin=await register('doctor','dir-admin');await db.binding.prepare("UPDATE users SET role='admin' WHERE id=?").bind(admin.id).run();
  const rid=detail.data.reviews[0].id;expect((await request(`/admin/reviews/${rid}/hide`,{hidden:true},patient.cookie)).status).toBe(403);

@@ -11,7 +11,7 @@ import { IconArrowLeft, IconArrowRight, IconCheck, IconFileText, IconLeaf, IconL
 import { api, errorText } from './api';
 import { Empty, ErrorBox, Face, formatDate, HistoryChart, PageHead, ScaleRow, SleepInput} from './ui';
 import { navigate } from './App';
-import { plural, moods, today, firstNameOf, type Entry, type EntryInput, type PatientData, type Settings, type DoctorProfile, type User } from './shared';
+import { plural, moods, today, todayInTimezone, firstNameOf, type Entry, type EntryInput, type PatientData, type Settings, type DoctorProfile, type User } from './shared';
 import { practiceContent } from './practices';
 import { PracticeLibrary } from './PracticeLibrary';
 import {AccountSettings} from './AccountSettings';
@@ -100,11 +100,13 @@ function SosDialog({opened,onClose,hasDoctor,lastSosAt,onSent}:{opened:boolean;o
 }
 type Step={key:keyof EntryInput;title:string;description:string;type:'mood'|'choices'|'sleep'|'note';choices?:{value:number|string|boolean;label:string}[]};
 function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
- const plan=data.draft?.entry.date===today()?data.draft.plan:data.plan;
- const [entry,setEntry]=useState<EntryInput>(data.draft?.entry.date===today()?data.draft.entry:{date:today(),mood:0,sleep:null,anxiety:null,energy:null,functioning:null,sleepContext:null,note:'',habit:null});
+ // The day comes from the patient's own timezone setting, the same clock the doctor's summary uses.
+ const day=todayInTimezone(data.settings.timezone);
+ const plan=data.draft?.entry.date===day?data.draft.plan:data.plan;
+ const [entry,setEntry]=useState<EntryInput>(data.draft?.entry.date===day?data.draft.entry:{date:day,mood:0,sleep:null,anxiety:null,energy:null,functioning:null,sleepContext:null,note:'',habit:null});
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const lastIndex=2+(plan.anxiety?1:0)+(plan.energy?1:0)+(plan.functioning?1:0);
- const [step,setStep]=useState(()=>data.draft?.entry.date===today()?Math.min(data.draft.step,lastIndex):0); const [saveReady,setSaveReady]=useState(false);
+ const [step,setStep]=useState(()=>data.draft?.entry.date===day?Math.min(data.draft.step,lastIndex):0); const [saveReady,setSaveReady]=useState(false);
  useEffect(()=>{// настроение, [тревога], [энергия], [обычные дела], сон и действие, заметка
   const lastStep=2+(plan.anxiety?1:0)+(plan.energy?1:0)+(plan.functioning?1:0);
   if(step!==lastStep){setSaveReady(false);return;}
