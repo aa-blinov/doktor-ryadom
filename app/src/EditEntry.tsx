@@ -3,11 +3,11 @@ import {Button,Group,Textarea} from '@mantine/core';
 import {api,errorText} from './api';
 import {ErrorBox,PageHead,formatDate, ScaleRow, SleepInput} from './ui';
 import {navigate} from './App';
-import {moods,type Entry} from './shared';
+import {moods,type Entry,type PatientData} from './shared';
 
 function goBack(){if(window.history.length>1)window.history.back();else navigate('/history');}
 
-export function EditEntry({entry,onSaved}:{entry:Entry;onSaved:()=>Promise<void>}){
+export function EditEntry({entry,plan,onSaved}:{entry:Entry;plan:PatientData['plan'];onSaved:()=>Promise<void>}){
  const [value,setValue]=useState(entry),[busy,setBusy]=useState(false),[error,setError]=useState(''),[sleepOther,setSleepOther]=useState(entry.sleep!==null&&![4,5,6,7,8,9].includes(entry.sleep));
  const update=(key:keyof Entry,v:unknown)=>setValue(e=>({...e,[key]:v,...(key==='sleep'&&(v===null||Number(v)>=6)?{sleepContext:null}:{})}));
  async function save(){setBusy(true);setError('');try{await api(`/patient/checkins/${entry.id}`,{...value,expectedVersion:entry.version??1},'PUT');await onSaved();goBack();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
@@ -39,18 +39,18 @@ export function EditEntry({entry,onSaved}:{entry:Entry;onSaved:()=>Promise<void>
       <button type="button" key={v} className={value.sleepContext===v?'checkin-chip selected':'checkin-chip'} aria-pressed={value.sleepContext===v} onClick={()=>update('sleepContext',value.sleepContext===v?null:v)}>{l}</button>)}
     </div>
    </fieldset>:null}
-   <fieldset>
+   {plan.anxiety||entry.anxiety!==null?<fieldset>
     <legend>Тревога</legend>
     <ScaleRow label="Тревога" options={['Очень сильная','Сильная','Умеренная','Небольшая','Без тревоги'].map((l,i)=>({value:i,label:l}))} value={value.anxiety} onChange={v=>update('anxiety',v)} ends={['хуже','лучше']}/>
-   </fieldset>
-   <fieldset>
+   </fieldset>:null}
+   {plan.energy||entry.energy!==null?<fieldset>
     <legend>Энергия</legend>
     <ScaleRow label="Энергия" options={['Очень мало','Мало','Как обычно','Много','Необычно много'].map((l,i)=>({value:i+1,label:l}))} value={value.energy} onChange={v=>update('energy',v)} ends={['хуже','лучше']}/>
-   </fieldset>
-   <fieldset>
+   </fieldset>:null}
+   {plan.functioning||entry.functioning!==null?<fieldset>
     <legend>Обычные дела</legend>
     <ScaleRow label="Обычные дела" options={[{value:1,label:'Очень трудно'},{value:2,label:'С трудностями'},{value:3,label:'Без трудностей'}]} value={value.functioning} onChange={v=>update('functioning',v)} ends={['хуже','лучше']}/>
-   </fieldset>
+   </fieldset>:null}
    <fieldset>
     <legend>Небольшое действие</legend>
     <div className="checkin-chips" role="group" aria-label="Небольшое действие">

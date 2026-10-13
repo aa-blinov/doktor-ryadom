@@ -47,7 +47,7 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme,s
 type ScreenProps={route:string;data:PatientData;user:User;reload:()=>Promise<void>;onLogout:()=>void;themeLabel:string;onToggleTheme:()=>void;error:string;available:typeof practiceContent;marked:Entry|undefined;firstName:string;invitation:string|null};
 function patientScreen({route,data,user,reload,onLogout,themeLabel,onToggleTheme,error,available,marked,firstName,invitation}:ScreenProps){
  if(route==='/checkin'&&data.entries.some(e=>e.date===today()))return <Empty title="Сегодняшняя отметка уже сохранена" description="Она доступна в истории" icon={<IconCheck size={28}/>} action="Посмотреть историю" onAction={()=>navigate('/history')}/>;
- if(route.startsWith('/edit/')){const entry=data.entries.find(e=>e.id===route.split('/')[2]);return entry?<EditEntry key={entry.id} entry={entry} onSaved={reload}/>:<ErrorBox message="Запись не найдена. Откройте историю заново."/>;}
+ if(route.startsWith('/edit/')){const entry=data.entries.find(e=>e.id===route.split('/')[2]);return entry?<EditEntry key={entry.id} entry={entry} plan={data.plan} onSaved={reload}/>:<ErrorBox message="Запись не найдена. Откройте историю заново."/>;}
  if(route.startsWith('/assessment/')){const a=data.assessments.find(a=>a.id===route.split('/')[2]);return a?<AssessmentFlow key={a.id} assessment={a} onSaved={reload}/>:<ErrorBox message="Опросник недоступен. Откройте план врача."/>;}
  if(route==='/goals')return <><button className="back-link" onClick={()=>navigate('/today')}>На сегодня</button><PageHead title="Мои цели" description="Небольшие шаги к тому, что для вас важно"/><Goals data={data} onSaved={reload}/></>;
  if(route==='/plan')return <Treatment data={data} onSaved={reload}/>;
