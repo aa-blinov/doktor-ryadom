@@ -30,12 +30,12 @@ export function AppointmentOverview({data,onOpen,patientId,onSaved}:{data:Patien
   <header className="overview-toolbar">
    <div>
     <h2>Перед приёмом</h2>
-    <p className="muted">Период: с {formatDate(summary.start)} по {formatDate(summary.end)}, {dayWord(days)}</p>
+    <p className="muted">Период: с {formatDate(summary.start,true)} по {formatDate(summary.end,true)}, {dayWord(days)}</p>
    </div>
    <SegmentedControl aria-label="Период обзора" value={String(period)} onChange={v=>setPeriod(v==='visit'?'visit':Number(v) as 14|30)} data={[...(hasVisit?[{value:'visit',label:'С рекомендации'}]:[]),{value:'14',label:'14 дней'},{value:'30',label:'30 дней'}]}/>
   </header>
    <ul className="triage-line triage-list" aria-label="Состояние сейчас">
-    <li>Последняя отметка: {lastEntry?<><strong>{moodWord}</strong>, {formatDate(lastEntry.date)}{sinceLast===0?' (сегодня)':sinceLast===1?' (вчера)':sinceLast!==null?` (${dayWord(sinceLast)} назад)`:''}</>:<strong>пока нет</strong>}</li>
+    <li>Последняя отметка: {lastEntry?<><strong>{moodWord}</strong>, {formatDate(lastEntry.date,true)}{sinceLast===0?' (сегодня)':sinceLast===1?' (вчера)':sinceLast!==null?` (${dayWord(sinceLast)} назад)`:''}</>:<strong>пока нет</strong>}</li>
     <li>Дней с отметкой: <strong>{current.entries.length} из {days}</strong></li>
     <li>Обращений: <strong>{signalCount}</strong></li>
    </ul>
@@ -97,7 +97,7 @@ export function AppointmentOverview({data,onOpen,patientId,onSaved}:{data:Patien
 
    <section className="overview-panel overview-dynamics" aria-labelledby="dynamics-title">
     <h3 id="dynamics-title">Динамика</h3>
-    <p className="muted">Сравнение с предыдущим периодом: с {formatDate(summary.previousStart)} по {formatDate(summary.previousEnd)}</p>
+    <p className="muted">Сравнение с предыдущим периодом: с {formatDate(summary.previousStart,true)} по {formatDate(summary.previousEnd,true)}</p>
     <dl className="overview-metrics">
      {dynamics.map(d=><div key={d.label}>
       <dt>{d.label}</dt>
