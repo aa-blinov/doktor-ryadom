@@ -22,14 +22,14 @@ export function AdminVerifications(){
    <p>Лицензия или диплом: {r.license}</p></>:<p className="small">{r.kind?specialtyLabels[r.kind]+' · ':''}{r.specialty}, {r.city} · {r.license}</p>}
    {r.note?<p className="care-prose">{r.note}</p>:null}
    {r.admin_note?<p className="muted small">Ваш комментарий: {r.admin_note}</p>:null}
-   {r.status==='pending'||r.status==='needs_info'?<>
+   {r.status==='pending'||r.status==='needs_info'?<div className="admin-decision">
     <Textarea label="Комментарий врачу" description="Нужен для уточнения и отказа" value={notes[r.id]??''} onChange={e=>setNotes({...notes,[r.id]:e.currentTarget.value})} maxLength={500} minRows={2}/>
     {(notes[r.id]??'').trim()?null:<p className="muted small">{!r.kind?'Подтвердить нельзя без типа специалиста — укажите его в разделе «Врачи»':'Комментарий нужен только для уточнения и отказа'}</p>}
     <div className="admin-actions">
      <Button loading={busy===r.id} disabled={busy!==null||!r.kind} onClick={()=>void decide(r.id,'approve')}>Подтвердить</Button>
      <Button variant="outline" disabled={busy!==null||!(notes[r.id]??'').trim()} onClick={()=>void decide(r.id,'needs_info')}>Запросить уточнение</Button>
      <Button className="danger-button" variant="subtle" color="red" disabled={busy!==null||!(notes[r.id]??'').trim()} onClick={()=>void decide(r.id,'reject')}>Отклонить</Button>
-    </div></>:null}
+    </div></div>:null}
   </article>)}</div>
  </>;
 }

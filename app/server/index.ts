@@ -73,8 +73,11 @@ app.post('/api/auth/login', async c => {
 publicAccountRoutes(app);
 app.use('/api/*', async (c,next) => {
   const token = getCookie(c,sessionName); if (!token) return c.json({ error: 'Войдите, чтобы продолжить.' }, 401);
-  const user = await one<User>(database(c.env),'SELECT u.id,u.email,u.name,u.role,u.email_verified_at,u.specialist_verified_at,u.specialty_kind FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>? AND u.blocked_at IS NULL',await digest(token),Date.now());
-  if (!user) return c.json({ error: 'Сеанс завершён. Войдите снова.' }, 401); c.set('user',user); await next();
+  const row = await one<User & { blocked_at: number | null }>(database(c.env),'SELECT u.id,u.email,u.name,u.role,u.email_verified_at,u.specialist_verified_at,u.specialty_kind,u.blocked_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?',await digest(token),Date.now());
+  if (!row) return c.json({ error: 'Сеанс завершён. Войдите снова.' }, 401);
+  // A blocked account keeps its session row, so the next open says why it cannot enter instead of showing a silent login form.
+  if (row.blocked_at) return c.json({ error: 'Аккаунт заблокирован. Обратитесь к администратору.' }, 403);
+  const { blocked_at: _blocked, ...user } = row; c.set('user',user as User); await next();
 });
 app.get('/api/me',async c=>{const user=c.get('user');return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(database(c.env),user.id)).photoUrl}:user});});
 app.post('/api/auth/logout', async c => { const body=await c.req.json().catch(()=>({}));if(typeof body.endpoint==='string')await run(database(c.env),'DELETE FROM push_subscriptions WHERE endpoint=? AND user_id=?',body.endpoint,c.get('user').id); await run(database(c.env),'DELETE FROM sessions WHERE token=?',await digest(getCookie(c,sessionName) || '')); deleteCookie(c,sessionName,{ path:'/' }); return c.json({ ok:true }); });
