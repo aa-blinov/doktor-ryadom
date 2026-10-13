@@ -107,12 +107,13 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
   ...(plan.anxiety?[{key:'anxiety',title:'Тревога',description:'Насколько вы тревожитесь сегодня?',type:'choices'} as Step]:[]),
   ...(plan.energy?[{key:'energy',title:'Энергия',description:'Как ваша энергия сегодня?',type:'choices'} as Step]:[]),
   ...(plan.functioning?[{key:'functioning',title:'Обычные дела',description:'Как справляетесь с обычными делами?',type:'choices'} as Step]:[]),
-  {key:'note',title:'Подробности',description:'Сон, небольшое действие и заметка врачу. Можно пропустить целиком.',type:'note'}
+  {key:'habit',title:'Сон и действие',description:'Можно пропустить целиком.',type:'sleep'},
+  {key:'note',title:'Заметка врачу',description:'Что хочется рассказать. Можно пропустить.',type:'note'}
  ];
  const total=steps.length;
  const cur=steps[Math.min(step,total-1)];
  const last=step===total-1;
- const detailsStep=cur.type==='note';
+ const detailsStep=cur.key==='habit'||cur.key==='note';
  return <form className="checkin-form" onSubmit={e=>{e.preventDefault();if(entry.mood>0)void save();}}>
   <h2>Отметка за сегодня</h2>
   <div className="checkin-progress" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step+1} aria-label={`Вопрос ${step+1} из ${total}`}>{steps.map((_,i)=><span key={i} className={i<=step?'done':''}/>)}</div>
@@ -132,7 +133,7 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
    {cur.key==='energy'?<ScaleRow label="Энергия" options={['Очень мало','Мало','Как обычно','Много','Необычно много'].map((l,i)=>({value:i+1,label:l}))} value={entry.energy} onChange={v=>set({energy:v})} ends={['хуже','лучше']}/>:null}
    {cur.key==='functioning'?<ScaleRow label="Обычные дела" options={[{value:1,label:'Очень трудно'},{value:2,label:'С трудностями'},{value:3,label:'Без трудностей'}]} value={entry.functioning} onChange={v=>set({functioning:v})} ends={['хуже','лучше']}/>:null}
    {detailsStep?<>
-    {plan.sleep?<fieldset>
+    {cur.key==='habit'&&plan.sleep?<fieldset>
      <legend>Сон</legend>
      <div className="checkin-chips" role="group" aria-label="Сон, часов">
       {sleepChips.map(h=><button type="button" key={h} className={entry.sleep===h&&!sleepOther?'checkin-chip selected':'checkin-chip'} aria-pressed={entry.sleep===h&&!sleepOther} onClick={()=>{setSleepOther(false);set({sleep:entry.sleep===h?null:h});}}>{h} ч</button>)}
@@ -144,17 +145,17 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
        <button type="button" key={v} className={entry.sleepContext===v?'checkin-chip selected':'checkin-chip'} aria-pressed={entry.sleepContext===v} onClick={()=>set({sleepContext:entry.sleepContext===v?null:v})}>{l}</button>)}
      </div>:null}
     </fieldset>:null}
-    <fieldset>
+    {cur.key==='habit'?<fieldset>
      <legend>Небольшое действие</legend>
      <div className="checkin-chips" role="group" aria-label="Небольшое действие">
       <button type="button" className={entry.habit===true?'checkin-chip selected':'checkin-chip'} aria-pressed={entry.habit===true} onClick={()=>set({habit:entry.habit===true?null:true})}>Получилось</button>
       <button type="button" className={entry.habit===false?'checkin-chip selected':'checkin-chip'} aria-pressed={entry.habit===false} onClick={()=>set({habit:entry.habit===false?null:false})}>Не получилось</button>
      </div>
-    </fieldset>
-    <fieldset>
+    </fieldset>:null}
+    {cur.key==='note'?<fieldset>
      <legend>Заметка врачу</legend>
      <Textarea aria-label="Что хотите рассказать" placeholder="Что хотите рассказать" minRows={3} maxLength={2000} value={entry.note} onChange={e=>set({note:e.currentTarget.value})}/>
-    </fieldset>
+    </fieldset>:null}
     <p className="checkin-count">Заполнено {detailsFilled} из {detailsTotal}</p>
    </>:null}
   </fieldset>
