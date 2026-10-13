@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button, Group, SegmentedControl } from '@mantine/core';
 import { IconFileText, IconMoon } from '@tabler/icons-react';
 import { Empty, Face, formatDate, HistoryChart, PageHead } from './ui';
 import { navigate } from './App';
 import { moods, plural, today, type Entry , energyWords} from './shared';
-export function History({entries,doctor=false}:{entries:Entry[];doctor?:boolean}){
+export function History({entries,doctor=false,switcher}:{entries:Entry[];doctor?:boolean;switcher?:ReactNode}){
  const [period,setPeriod]=useState('30');const [showAll,setShowAll]=useState(false);const compact=typeof window!=='undefined'&&window.matchMedia('(max-width:700px)').matches;const shortList=compact?7:14;const filtered=entries.filter(e=>(Date.parse(today())-Date.parse(e.date))/86400000<Number(period));
  return <><PageHead level={doctor?2:1} title={doctor?'Динамика состояния':'Ваша история'} description={doctor?'Самоотчёты пациента. Пропуски остаются пропусками.':'Самочувствие, сон и заметки по дням'} action={<Group><SegmentedControl value={period} onChange={setPeriod} data={[{value:'14',label:'14 дней'},{value:'30',label:'30 дней'},{value:'90',label:'90 дней'}]}/></Group>}/>
+  {switcher}
   {!entries.length?<Empty title={typeof navigator!=='undefined'&&navigator.onLine===false?'Нет соединения':'История начнётся с первой отметки'} description={doctor?'Пациент пока не добавил записи':'В ней будут ваши ответы и заметки. Можно начать с сегодняшнего дня.'} action={doctor?undefined:'Сделать отметку'} onAction={()=>navigate('/checkin')} icon={<IconFileText size={30}/>} />:<>
    <details className="history-charts" open={!compact}><summary>Графики за период</summary><div className="chart-grid">
     <section className="chart-panel"><h2>Самочувствие</h2><p className="chart-caption">От «очень тяжело» до «очень хорошо»</p><HistoryChart entries={filtered} kind="mood" showTrend/></section>
