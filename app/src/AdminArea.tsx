@@ -39,7 +39,7 @@ function AdminDoctors(){
    <p className="small">{d.specialist_verified_at?'Подтверждён':d.request_status?requestText[d.request_status]??'не подтверждён':'не подтверждён, заявки нет'}</p>
    <>
     <p className="small admin-specialty"><span className={`pill kind-${d.specialty_kind??'none'}`}>{d.specialty_kind?specialtyLabels[d.specialty_kind]:'Тип не указан'}</span>{d.profile_specialty||d.request_specialty?<span className="muted">{d.profile_specialty||d.request_specialty}</span>:null}</p>
-    <NativeSelect label="Тип специалиста" description={d.specialist_verified_at?'У подтверждённого врача тип изменить нельзя — только через новую заявку':'Проверьте по специальности в дипломе'} value={d.specialty_kind??''} onChange={e=>void setKind(d,e.currentTarget.value as SpecialtyKind|'')} data={d.specialist_verified_at?specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]})):[{value:'',label:'Тип не указан'},...specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]}))]}/>
+    <NativeSelect label="Тип специалиста" description={d.specialist_verified_at?'Исправьте по диплому. Подтверждение врача от этого не снимается':'Проверьте по специальности в дипломе'} value={d.specialty_kind??''} onChange={e=>void setKind(d,e.currentTarget.value as SpecialtyKind|'')} data={d.specialist_verified_at?specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]})):[{value:'',label:'Тип не указан'},...specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]}))]}/>
    </>
    <BlockButton blocked={!!d.blocked_at} busy={busy===d.id} onClick={()=>void toggle(d)}/>
   </article>)}</div>
@@ -49,7 +49,7 @@ function AdminPatients(){
  const [patients,setPatients]=useState<Patient[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[undone,setUndone]=useState<{id:string;who:string}|null>(null);
  const load=useCallback(async()=>{setError('');try{const r=await api<{patients:Patient[]}>('/admin/patients');setPatients(r.patients);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
  useEffect(()=>{void load();},[load]);
- async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm(`Заблокировать пациента №${patients.indexOf(p)+1}? Вход закроется, сеансы завершатся. Действие обратимо только вручную в списке.`))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});setUndone(p.blocked_at?null:{id:p.id,who:`Пациент №${patients.indexOf(p)+1}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
+ async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm(`Заблокировать пациента №${patients.indexOf(p)+1}? Вход закроется, сеансы завершатся. Разблокировать можно кнопкой в списке или сразу после блокировки.`))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});setUndone(p.blocked_at?null:{id:p.id,who:`Пациент №${patients.indexOf(p)+1}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
