@@ -179,7 +179,7 @@ Workspace panels are flat. Borders, spacing and tonal fills establish separation
 
 ## Shapes
 
-Mantine controls use gently rounded corners (8px); bespoke answer rows use 12–13px, practice/history containers 15px, and dominant task panels 20px. Circular icons and small rounded chips soften the otherwise ruled journal structure. Borders are generally one pixel.
+Radii come from four steps: 8px for controls, chips and small tiles; 12px for answer rows, schedule and practice rows, and the overview panel; 16px for lists, containers and modals; 20px for dominant task panels. Circular icons and small rounded chips soften the otherwise ruled journal structure. Borders are one pixel and always use the line token (`--line`), never a separate grey. Transitions share one duration (0.16s for hover and focus, 0.22s for entering content) and one ease-out curve.
 
 ## Components
 
