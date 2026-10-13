@@ -54,7 +54,7 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
     <p><strong>{goalStatusFull[log.status]}</strong><span className="muted small"> · {new Date(log.created_at).toLocaleDateString('ru-RU')}</span></p>
     {log.note?<p className="care-prose">{log.note}</p>:null}
     {log.reviewed_at?<p className="muted small">{log.reviewer_id===data.doctor?.id?'Врач подтвердил просмотр':'Просмотрено предыдущим врачом'}</p>:doctor?<p className="muted small">Ожидает просмотра</p>:null}
-     {doctor&&(!log.reviewed_at||log.reviewer_id!==data.doctor?.id)?<Button variant="outline" size="xs" mt="xs" onClick={async()=>{setError('');setMessage('');try{await api(`/doctor/patients/${id}/goal-logs/${log.id}/review`,{});await onSaved();setMessage('Просмотр отметки подтверждён');}catch(e){setError(errorText(e));}}}>Подтвердить просмотр отметки</Button>:null}
+     {doctor&&(!log.reviewed_at||log.reviewer_id!==data.doctor?.id)?<Button variant="outline" size="xs" mt="var(--sp-3)" onClick={async()=>{setError('');setMessage('');try{await api(`/doctor/patients/${id}/goal-logs/${log.id}/review`,{});await onSaved();setMessage('Просмотр отметки подтверждён');}catch(e){setError(errorText(e));}}}>Подтвердить просмотр отметки</Button>:null}
    </div>)}
   </article>):<p className="muted">Активных целей нет</p>}
   {!doctor&&closed.length?<section className="goal-archive">

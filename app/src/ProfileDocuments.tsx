@@ -36,7 +36,7 @@ export function ProfileDocuments({profile,disabled}:{profile:DoctorProfile;disab
   </div>
   <Group justify="space-between" wrap="wrap">
    <Switch label="Показывать подключённым пациентам" checked={doc.shared} onChange={e=>void change(doc,e.currentTarget.checked)} disabled={busy||disabled}/>
-   <Group gap="xs">
+   <Group gap="var(--sp-3)">
     <FileButton resetRef={replaceReset} onChange={file=>void upload(file,doc)} accept="application/pdf,image/jpeg,image/png,image/webp">{props=><Button {...props} variant="outline" size="sm" disabled={busy||disabled}>Заменить</Button>}</FileButton>
     <Button variant="subtle" color="red" size="sm" onClick={()=>void change(doc)} disabled={busy||disabled}>Удалить</Button>
    </Group>
@@ -50,7 +50,7 @@ export function ProfileDocuments({profile,disabled}:{profile:DoctorProfile;disab
  <Modal opened={!!preview} onClose={()=>setPreview(null)} title={preview?.entry??'Документ'} size="lg" centered>
   {preview?<div className="document-preview">
    {isImage(preview)?<img src={'/api/profile/documents/'+preview.id} alt={preview.filename}/>:<iframe title={preview.filename} src={'/api/profile/documents/'+preview.id}/>}
-   <Group mt="md"><Button component="a" href={'/api/profile/documents/'+preview.id} download variant="outline">Скачать</Button></Group>
+   <Group mt="var(--sp-4)"><Button component="a" href={'/api/profile/documents/'+preview.id} download variant="outline">Скачать</Button></Group>
   </div>:null}
  </Modal>
  </section>;

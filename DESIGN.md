@@ -167,6 +167,10 @@ One 4 px grid, exposed as custom properties on `:root`. Every vertical and horiz
 
 Negative spacing uses `calc(var(--sp-N) * -1)`. Layout maths stays literal: `calc()`, `max()`, `min()` and `clamp()` carry sidebar offsets, viewport widths and safe-area insets, so they are deliberately not tokenised.
 
+Nine literal pixel values remain in spacing declarations, none of them spacing decisions: three `margin-left` values on `.main-shell` mirror the sidebar width at each breakpoint, two `padding-top` values on `body:has(.pwa-notice) #root` offset the install banner (both multiples of 4), three `margin-top:1px` are optical nudges under small labels, and `.sr-only` keeps the standard `margin:-1px` clip.
+
+Mantine style props (`mt`, `mb`, `gap`, `py`) take the same tokens — `mt="var(--sp-4)"`, not `mt="md"` — so the library's own 10/20 px steps cannot reintroduce a second rhythm.
+
 ## Elevation & Depth
 
 Workspace panels are flat. Borders, spacing and tonal fills establish separation within the current theme. Decorative notebook illustrations use a restrained shadow: registration uses `0 12px 30px rgba(53,74,42,.07)` and onboarding uses `0 16px 32px #23382f12`. Mantine overlays retain library behavior.

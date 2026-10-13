@@ -18,17 +18,17 @@ export function DoctorInvites(){
   <p className="muted">Пациент подключается только по такой ссылке. Она срабатывает один раз: второй человек по ней уже не пройдёт. Постоянного кода нет.</p>
   <Button loading={busy==='new'} onClick={()=>void create()}>Создать ссылку</Button>
   {active?<>
-   <TextInput label="Ссылка для пациента" value={link} readOnly onFocus={e=>e.currentTarget.select()} mt="md"/>
-   <Group mt="sm"><Button variant="outline" onClick={()=>void copy(link)}>Скопировать ссылку</Button><Button variant="subtle" color="red" loading={busy===String(active.id)} onClick={()=>void revoke(active.id)}>Отозвать</Button></Group>
+   <TextInput label="Ссылка для пациента" value={link} readOnly onFocus={e=>e.currentTarget.select()} mt="var(--sp-4)"/>
+   <Group mt="var(--sp-3)"><Button variant="outline" onClick={()=>void copy(link)}>Скопировать ссылку</Button><Button variant="subtle" color="red" loading={busy===String(active.id)} onClick={()=>void revoke(active.id)}>Отозвать</Button></Group>
    {copied?<p role="status">{copied}</p>:null}
    <p className="muted small">Действует до {formatDate(new Date(active.expires).toISOString().slice(0,10),true).replace(/\.$/,'')}. Ссылку можно скопировать повторно, пока её не использовали или не отозвали.</p>
   </>:null}
-  <h3 style={{marginTop:24}}>Активные ссылки</h3>
+  <h3 style={{marginTop:'var(--sp-5)'}}>Активные ссылки</h3>
   {loading?<Loader size="sm"/>:null}
   {!loading&&!invites.length?<p className="muted small">Активных ссылок нет.</p>:null}
   {invites.map(row=>{const rowLink=row.token?`${window.location.origin}/?invite=${row.token}`:'';return <Group key={row.id} justify="space-between" py="var(--sp-2)" style={{borderTop:'1px solid var(--line)'}}>
    <span className="small">до {formatDate(new Date(row.expires).toISOString().slice(0,10),true).replace(/\.$/,'')}{row.token?null:' · старая ссылка, создайте новую'}</span>
-   <Group gap="xs">{row.token?<Button size="xs" variant="outline" onClick={()=>void copy(rowLink)}>Скопировать ссылку</Button>:null}
+   <Group gap="var(--sp-3)">{row.token?<Button size="xs" variant="outline" onClick={()=>void copy(rowLink)}>Скопировать ссылку</Button>:null}
    <Button size="xs" variant="subtle" color="red" loading={busy===String(row.id)} onClick={()=>void revoke(row.id)}>Отозвать</Button></Group>
   </Group>;})}
   {error?<ErrorBox message={error} retry={invites.length?undefined:load}/>:null}

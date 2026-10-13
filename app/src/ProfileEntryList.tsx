@@ -15,7 +15,7 @@ export function ProfileEntryList({label,description,value,onChange,disabled,maxL
   {description?<p className="muted small">{description}</p>:null}
   {bulkOpen?<>
    <Textarea label="Вставить списком" description="Каждая запись — с новой строки" autosize minRows={4} maxRows={10} value={bulk} disabled={disabled} onChange={e=>setBulk(e.currentTarget.value)} placeholder={bulkPlaceholder??'Например:\n2014 · Медицинский университет\n2020 · Ординатура'} autoFocus/>
-   <Group gap="xs" mt={8}>
+   <Group gap="var(--sp-3)" mt={8}>
     <Button size="sm" disabled={disabled||!bulk.trim()} onClick={addBulk}>Добавить записи</Button>
     <Button size="sm" variant="subtle" onClick={()=>{setBulkOpen(false);setBulk('');}}>Отмена</Button>
    </Group>
@@ -27,7 +27,7 @@ export function ProfileEntryList({label,description,value,onChange,disabled,maxL
     </li>)}
    </ul>
    {!lines.length?<p className="muted small">Пока нет записей</p>:null}
-   <Group gap="xs" align="flex-end" wrap="wrap">
+   <Group gap="var(--sp-3)" align="flex-end" wrap="wrap">
     <TextInput className="profile-entry-add" placeholder={placeholder??'Новая запись'} value={draft} disabled={disabled} maxLength={maxLength} onChange={e=>setDraft(e.currentTarget.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add();}}} aria-label={`Добавить: ${label}`}/>
     <Button variant="outline" size="sm" disabled={disabled||!draft.trim()} onClick={add}>Добавить</Button>
     <Button variant="subtle" size="sm" disabled={disabled} onClick={()=>setBulkOpen(true)}>Вставить списком</Button>
@@ -52,7 +52,7 @@ export function ProfileChipList({label,description,value,onChange,disabled,maxLe
    </span>)}
   </div>
   {!items.length?<p className="muted small">Пока нет направлений</p>:null}
-  <Group gap="xs" mt={8} align="flex-end">
+  <Group gap="var(--sp-3)" mt={8} align="flex-end">
    <TextInput className="profile-entry-add" placeholder={placeholder??'Например: Тревога'} value={draft} disabled={disabled} maxLength={maxLength} onChange={e=>setDraft(e.currentTarget.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add();}}} aria-label={`Добавить: ${label}`}/>
    <Button variant="outline" size="sm" disabled={disabled||!draft.trim()} onClick={add}>Добавить</Button>
   </Group>
