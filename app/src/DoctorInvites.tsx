@@ -16,7 +16,7 @@ export function DoctorInvites(){
  return <section className="settings-panel doctor-code">
   <h2>Одноразовые ссылки</h2>
   <p className="muted">Пациент подключается только по такой ссылке. Она срабатывает один раз: второй человек по ней уже не пройдёт. Постоянного кода нет.</p>
-  <Button loading={busy==='new'} onClick={()=>void create()}>Создать ссылку</Button>
+  <Button loading={busy==='new'} onClick={()=>void create()}>Создать приглашение</Button>
   {active?<>
    <TextInput label="Ссылка для пациента" value={link} readOnly onFocus={e=>e.currentTarget.select()} mt="var(--sp-4)"/>
    <Group mt="var(--sp-3)"><Button variant="outline" onClick={()=>void copy(link)}>Скопировать ссылку</Button><Button variant="subtle" color="red" loading={busy===String(active.id)} onClick={()=>void revoke(active.id)}>Отозвать</Button></Group>
