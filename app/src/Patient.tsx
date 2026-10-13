@@ -86,7 +86,8 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
  const plan=data.draft?.entry.date===today()?data.draft.plan:data.plan;
  const [entry,setEntry]=useState<EntryInput>(data.draft?.entry.date===today()?data.draft.entry:{date:today(),mood:0,sleep:plan.sleep?8:null,anxiety:null,energy:null,functioning:null,sleepContext:null,note:'',habit:null});
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
- const draft=useDraft({entry,plan,step:0},busy);
+ const [step,setStep]=useState(()=>data.draft?.entry.date===today()?Math.min(data.draft.step,4):0);
+ const draft=useDraft({entry,plan,step},busy);
  const set=(patch:Partial<EntryInput>)=>setEntry(e=>{
   const next={...e,...patch};
   if(patch.sleep!==undefined&&(patch.sleep===null||Number(patch.sleep)>=6))next.sleepContext=null;
@@ -99,32 +100,38 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
  const detailsFilled=[plan.sleep&&entry.sleep!==null,entry.note.trim().length>0].filter(Boolean).length;
  const detailsTotal=[plan.sleep].filter(Boolean).length+1;
  const [detailsOpen,setDetailsOpen]=useState(!compact||detailsFilled>0);
+ // One question per screen. Someone filling this in is often not in a good state, and a wall of
+ // five scales with three save-shaped buttons is a lot to hold in the head at once.
+ const steps:Step[]=[
+  {key:'mood',title:'Самочувствие',description:'Как вы сегодня?',type:'mood'},
+  ...(plan.anxiety?[{key:'anxiety',title:'Тревога',description:'Насколько вы тревожитесь сегодня?',type:'choices'} as Step]:[]),
+  ...(plan.energy?[{key:'energy',title:'Энергия',description:'Как ваша энергия сегодня?',type:'choices'} as Step]:[]),
+  ...(plan.functioning?[{key:'functioning',title:'Обычные дела',description:'Как справляетесь с обычными делами?',type:'choices'} as Step]:[]),
+  {key:'note',title:'Подробности',description:'Сон, небольшое действие и заметка врачу. Можно пропустить целиком.',type:'note'}
+ ];
+ const total=steps.length;
+ const cur=steps[Math.min(step,total-1)];
+ const last=step===total-1;
+ const detailsStep=cur.type==='note';
  return <form className="checkin-form" onSubmit={e=>{e.preventDefault();if(entry.mood>0)void save();}}>
   <h2>Отметка за сегодня</h2>
-  <fieldset>
-   <legend>Самочувствие</legend>
-   <div className="checkin-moods" role="group" aria-label="Самочувствие">
-    {moods.map((label,i)=><button type="button" key={label} className={entry.mood===i+1?'checkin-mood selected':'checkin-mood'} aria-label={label} aria-pressed={entry.mood===i+1} onClick={()=>set({mood:i+1})}>
-     <Face value={i+1} size={36}/><span>{label.replace('Нейтрально','Нейтраль\u00ADно')}</span>
-    </button>)}
-   </div>
-   <div className="scale-ends"><span>хуже</span><span>лучше</span></div>
-  </fieldset>
-   {plan.anxiety?<fieldset>
-    <legend>Тревога</legend>
-    <ScaleRow label="Тревога" options={['Очень сильная','Сильная','Умеренная','Небольшая','Без тревоги'].map((l,i)=>({value:i,label:l}))} value={entry.anxiety} onChange={v=>set({anxiety:v})} ends={['хуже','лучше']}/>
-   </fieldset>:null}
-   {plan.energy?<fieldset>
-    <legend>Энергия</legend>
-    <ScaleRow label="Энергия" options={['Очень мало','Мало','Как обычно','Много','Необычно много'].map((l,i)=>({value:i+1,label:l}))} value={entry.energy} onChange={v=>set({energy:v})} ends={['хуже','лучше']}/>
-   </fieldset>:null}
-   {plan.functioning?<fieldset>
-    <legend>Обычные дела</legend>
-    <ScaleRow label="Обычные дела" options={[{value:1,label:'Очень трудно'},{value:2,label:'С трудностями'},{value:3,label:'Без трудностей'}]} value={entry.functioning} onChange={v=>set({functioning:v})} ends={['хуже','лучше']}/>
-   </fieldset>:null}
-  <details className="checkin-details" open={detailsOpen} onToggle={e=>setDetailsOpen(e.currentTarget.open)}>
-   <summary>Подробности, по желанию <span className="checkin-details-count">{detailsFilled} из {detailsTotal}</span></summary>
-   <div className="checkin-details-body">
+  <div className="checkin-progress" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step+1} aria-label={`Вопрос ${step+1} из ${total}`}>{steps.map((_,i)=><span key={i} className={i<=step?'done':''}/>)}</div>
+  <p className="checkin-count">Вопрос {step+1} из {total}{last?' · последний':''}</p>
+  <fieldset key={cur.key}>
+   <legend>{cur.title}</legend>
+   <p className="checkin-question">{cur.description}</p>
+   {cur.key==='mood'?<>
+    <div className="checkin-moods" role="group" aria-label="Самочувствие">
+     {moods.map((label,i)=><button type="button" key={label} className={entry.mood===i+1?'checkin-mood selected':'checkin-mood'} aria-label={label} aria-pressed={entry.mood===i+1} onClick={()=>set({mood:i+1})}>
+      <Face value={i+1} size={36}/><span>{label.replace('Нейтрально','Нейтраль\u00ADно')}</span>
+     </button>)}
+    </div>
+    <div className="scale-ends"><span>хуже</span><span>лучше</span></div>
+   </>:null}
+   {cur.key==='anxiety'?<ScaleRow label="Тревога" options={['Очень сильная','Сильная','Умеренная','Небольшая','Без тревоги'].map((l,i)=>({value:i,label:l}))} value={entry.anxiety} onChange={v=>set({anxiety:v})} ends={['хуже','лучше']}/>:null}
+   {cur.key==='energy'?<ScaleRow label="Энергия" options={['Очень мало','Мало','Как обычно','Много','Необычно много'].map((l,i)=>({value:i+1,label:l}))} value={entry.energy} onChange={v=>set({energy:v})} ends={['хуже','лучше']}/>:null}
+   {cur.key==='functioning'?<ScaleRow label="Обычные дела" options={[{value:1,label:'Очень трудно'},{value:2,label:'С трудностями'},{value:3,label:'Без трудностей'}]} value={entry.functioning} onChange={v=>set({functioning:v})} ends={['хуже','лучше']}/>:null}
+   {detailsStep?<>
     {plan.sleep?<fieldset>
      <legend>Сон</legend>
      <div className="checkin-chips" role="group" aria-label="Сон, часов">
@@ -148,12 +155,17 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
      <legend>Заметка врачу</legend>
      <Textarea aria-label="Что хотите рассказать" placeholder="Что хотите рассказать" minRows={3} maxLength={2000} value={entry.note} onChange={e=>set({note:e.currentTarget.value})}/>
     </fieldset>
-   </div>
-  </details>
+    <p className="checkin-count">Заполнено {detailsFilled} из {detailsTotal}</p>
+   </>:null}
+  </fieldset>
   {error?<ErrorBox message={error}/>:null}
   {draft.status?<p className="muted small">{draft.status}</p>:null}
-  <Button type="submit" size="lg" fullWidth loading={busy} disabled={entry.mood<1} rightSection={<IconCheck size={19}/>}>Сохранить отметку</Button>
-  {entry.mood<1?<p className="checkin-hint">Выберите самочувствие, чтобы сохранить отметку</p>:null}
+  <div className="checkin-nav">
+   {step>0?<Button type="button" size="lg" variant="default" onClick={()=>setStep(step-1)} leftSection={<IconArrowLeft size={18}/>}>Назад</Button>:null}
+   {last?<Button type="submit" size="lg" loading={busy} disabled={entry.mood<1} rightSection={<IconCheck size={19}/>}>Сохранить отметку</Button>
+    :<Button type="button" size="lg" onClick={()=>setStep(step+1)} rightSection={<IconArrowRight size={18}/>}>Дальше</Button>}
+  </div>
+  {step===0&&entry.mood<1?<p className="checkin-hint">Выберите самочувствие, чтобы сохранить отметку</p>:null}
  </form>;
 }
 function PracticeFlow({practice,allowed,onSaved}:{practice:typeof practiceContent[number];allowed:boolean;onSaved:()=>Promise<void>}){

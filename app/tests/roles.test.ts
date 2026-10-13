@@ -26,7 +26,7 @@ it('patient, doctor and administrator complete their core flows without page err
     const r=await app.request(req.url(),{method:req.method(),headers:req.headers(),body:req.method()==='GET'?undefined:req.postData()??undefined},env);
     await route.fulfill({status:r.status,headers:Object.fromEntries(r.headers),body:Buffer.from(await r.arrayBuffer())});
    }else{
-    const path=url.pathname==='/'?'index.html':url.pathname.slice(1),mime:Record<string,string>={'.html':'text/html','.js':'application/javascript','.css':'text/css','.woff2':'font/woff2','.png':'image/png','.webmanifest':'application/manifest+json'};
+    const path=url.pathname==='/'?'index.html':url.pathname.slice(1),mime:Record<string,string>={'.html':'text/html','.js':'application/javascript','.css':'text/css','.woff2':'font/woff2','.png':'image/png','.webmanifest':'application/manifest+json','.webp':'image/webp'};
     try{await route.fulfill({contentType:mime[extname(path)]??'text/plain',body:readFileSync(resolve('dist/client',path))});}catch{await route.fulfill({status:404,body:'missing asset'});}
    }
   });
@@ -38,8 +38,21 @@ it('patient, doctor and administrator complete their core flows without page err
   const patient=await session('roles-patient','patient','Пациент Ролевой');
   const p:Page=patient.page;
   await p.goto(origin+'/#/today');
-  await p.getByRole('radio',{name:'Хорошо'}).check().catch(()=>p.getByRole('button',{name:'Хорошо',exact:true}).click());
-  await p.getByRole('button',{name:'Сохранить отметку'}).click();
+  // The check-in is a sequence now: one question per screen, saving on the last.
+  // Clicks go through the element itself: a coordinate click can land on the submit button
+  // once the last step swaps "Дальше" for "Сохранить отметку".
+  await p.waitForSelector('.checkin-mood',{timeout:15000});
+  await p.evaluate(()=>{const b=[...document.querySelectorAll<HTMLButtonElement>('.checkin-mood')].find(x=>x.getAttribute('aria-label')==='Хорошо');b?.click();});
+  await p.waitForSelector('.checkin-mood.selected',{timeout:15000});
+  for(let i=0;i<8;i++){
+   await p.waitForSelector('.checkin-nav',{timeout:15000});
+   const more=await p.evaluate(()=>!![...document.querySelectorAll<HTMLButtonElement>('.checkin-nav button')].find(x=>x.textContent?.trim()==='Дальше'));
+   if(!more)break;
+   await p.evaluate(()=>{const b=[...document.querySelectorAll<HTMLButtonElement>('.checkin-nav button')].find(x=>x.textContent?.trim()==='Дальше');b?.click();});
+   await p.getByText(/Вопрос \d+ из/).first().waitFor();
+  }
+  await p.waitForSelector('.checkin-nav',{timeout:15000});
+  await p.evaluate(()=>{const b=[...document.querySelectorAll<HTMLButtonElement>('.checkin-nav button')].find(x=>x.textContent?.includes('Сохранить отметку')&&!x.disabled);b?.click();});
   await p.getByRole('heading',{name:'Отметка сохранена'}).waitFor();
   await p.goto(origin+'/#/sos');
   await p.getByText('Врач не подключён, поэтому сигнал некому отправить.').waitFor();

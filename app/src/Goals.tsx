@@ -12,7 +12,7 @@ export function GoalRecords({goals,logs}:{goals:Goal[];logs:GoalLog[]}){
 }
 
 export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:boolean;id?:string;onSaved:()=>Promise<void>}){
- const [title,setTitle]=useState(''),[reason,setReason]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[closing,setClosing]=useState<Goal|null>(null),[restoring,setRestoring]=useState<string|null>(null);
+ const [title,setTitle]=useState(''),[reason,setReason]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[closing,setClosing]=useState<Goal|null>(null),[restoring,setRestoring]=useState<string|null>(null),[bulk,setBulk]=useState(false);
  const goals=data.goals??[],logs=data.goalLogs??[],active=goals.filter(g=>!g.closed_at),closed=goals.filter(g=>g.closed_at);
  async function addGoal(e:React.FormEvent){
   e.preventDefault();setError('');setMessage('');setBusy(true);
@@ -20,9 +20,18 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
   catch(err){setError(errorText(err));}finally{setBusy(false);}
  }
  async function closeGoal(goalId:string){setError('');setBusy(true);try{await api(`/patient/goals/${goalId}/close`,{},'PUT');await onSaved();setMessage('Цель завершена');setClosing(null);}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ async function reviewAll(){
+  const pending=logs.filter(l=>!l.reviewed_at||l.reviewer_id!==data.doctor?.id);
+  if(!pending.length)return;
+  setError('');setMessage('');setBulk(true);
+  try{for(const log of pending){await api(`/doctor/patients/${id}/goal-logs/${log.id}/review`,{});}
+   await onSaved();setMessage(`Просмотр подтверждён: ${pending.length}`);}
+  catch(e){setError(errorText(e));}
+  finally{setBulk(false);}
+ }
  async function restoreGoal(goalId:string){setError('');setRestoring(goalId);try{await api(`/patient/goals/${goalId}/restore`,{},'PUT');await onSaved();setMessage('Цель снова активна');}catch(e){setError(errorText(e));}finally{setRestoring(null);}}
  return <section className="care-section goals-section">
-  <h2>{doctor?'Личные цели пациента':'Мои цели'}</h2>
+  <div className="section-title"><h2>{doctor?'Личные цели пациента':'Мои цели'}</h2>{doctor&&logs.some(l=>!l.reviewed_at||l.reviewer_id!==data.doctor?.id)?<Button variant="subtle" size="sm" loading={bulk} disabled={bulk} onClick={()=>void reviewAll()}>Подтвердить все непрочитанные</Button>:null}</div>
   <p className="muted">{doctor?'Цели формулирует пациент. Обсудите посильный следующий шаг.':'До трёх целей. Отмечайте шаг — это не оценка и не соревнование.'}</p>
   {!doctor?<form className="goal-add-form" onSubmit={addGoal}>
    <TextInput label="Новая цель" placeholder="Например: снова встречаться с друзьями" value={title} onChange={e=>setTitle(e.currentTarget.value)} required minLength={3} maxLength={180}/>

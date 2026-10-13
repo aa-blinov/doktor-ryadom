@@ -731,3 +731,15 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .mantine-NumberInput-controls{width:44px}
 .mantine-NumberInput-control{width:44px;min-height:42px;display:flex;align-items:center;justify-content:center}
 .mantine-NumberInput-control:hover{background:var(--soft)}
+
+/* Check-in as a sequence: one question on screen, progress above, navigation below */
+.checkin-progress{display:flex;gap:6px;margin:16px 0 10px}
+.checkin-progress span{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.checkin-progress span.done{background:var(--accent)}
+.checkin-count{margin:0 0 4px;font-size:14px;color:var(--muted)}
+.checkin-question{margin:0 0 16px;font-size:16px;color:var(--muted);line-height:1.5}
+.checkin-form>fieldset{border:0;padding:0;margin:0 0 8px}
+.checkin-form>fieldset>legend{font-size:22px;font-weight:650;padding:0;margin-bottom:6px}
+.checkin-nav{display:flex;gap:12px;margin-top:20px}
+.checkin-nav .mantine-Button-root{flex:1;min-width:0}
+.checkin-nav .mantine-Button-label{overflow-wrap:anywhere}
