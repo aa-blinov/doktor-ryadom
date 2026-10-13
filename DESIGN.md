@@ -146,9 +146,26 @@ Desktop page headings use the headline token; section headings use the title tok
 
 Desktop uses a fixed sidebar (240px), a top bar (76px) and a workspace with maximum width 1200px and horizontal padding 46px. Patient check-ins use a flexible main column and a narrower context column. The questionnaire column is capped at 720px. History and settings can use two columns.
 
-At 1150px the sidebar narrows to 210px and workspace padding to 28px; at 900px it narrows to 190px and primary task layouts become one column. At 700px the sidebar gives way to a compact header (68px) and fixed bottom navigation with safe-area padding. The patient bottom bar has five items: Сегодня, Практики, История, Врач, Настройки. History is its own destination, with an inner switch between check-ins and practice notes. The header carries a persistent «Мне плохо» pill that opens the SOS screen. Workspace padding becomes 20px horizontally. Every interactive control on a phone is at least 44px high (answer steps, buttons, inputs, password toggles, text links to 112). Charts, settings and plans become one column; patient rows expose their field labels.
+At 1150px the sidebar narrows to 210px and workspace padding to 28px; at 900px it narrows to 190px and primary task layouts become one column. At 700px the sidebar gives way to a compact header (68px) and fixed bottom navigation with safe-area padding. The patient bottom bar has five items: Сегодня, Практики, История, Врач, Настройки. History is its own destination, with an inner switch between check-ins and practice notes. The header carries a persistent «Мне плохо» pill that opens the distress dialog. Workspace padding becomes 20px horizontally. Every interactive control on a phone is at least 44px high (answer steps, buttons, inputs, password toggles, text links to 112). Charts, settings and plans become one column; patient rows expose their field labels.
 
 Mobile mood answers are full-width rows with a 54px minimum height. Mobile practice rows use an icon/content/chevron grid with duration below the description. The narrow dashboard and mood-preview grid use zero-minimum flexible columns so content fits at 320px. Registration's two-column story/form layout becomes a concise introduction followed by the form; the notebook illustration is hidden.
+
+## Spacing
+
+One 4 px grid, exposed as custom properties on `:root`. Every vertical and horizontal gap, padding and margin in `styles.css` is one of these steps; there are no literal pixel values left in spacing declarations.
+
+| Token | Value | Used for |
+|---|---|---|
+| `--sp-1` | 4px | hairlines, icon-to-label gaps |
+| `--sp-2` | 8px | inside a control, between a label and its value |
+| `--sp-3` | 12px | between closely related blocks |
+| `--sp-4` | 16px | the base step: card gutters, list gaps |
+| `--sp-5` | 24px | between blocks, card padding |
+| `--sp-6` | 32px | between sections, generous card padding |
+| `--sp-7` | 48px | page rhythm, empty-state padding |
+| `--sp-8` | 64px | rare, large breathing room |
+
+Negative spacing uses `calc(var(--sp-N) * -1)`. Layout maths stays literal: `calc()`, `max()`, `min()` and `clamp()` carry sidebar offsets, viewport widths and safe-area insets, so they are deliberately not tokenised.
 
 ## Elevation & Depth
 
