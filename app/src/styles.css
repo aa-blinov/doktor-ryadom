@@ -785,3 +785,6 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .history-truncated{margin:0 0 var(--sp-3);padding:var(--sp-3) var(--sp-3);border:1px solid var(--line);border-radius:8px}
 .list-cap{margin:0 0 var(--sp-3);padding:var(--sp-3) var(--sp-3);border:1px solid var(--line);border-radius:8px}
 .admin-decision{display:grid;gap:var(--sp-3);margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line)}
+/* Phone: mood answers are full-width rows (DESIGN.md), so labels never wrap inside a word. */
+@media(max-width:700px){.checkin-moods{grid-template-columns:minmax(0,1fr);gap:var(--sp-2)}.checkin-mood{flex-direction:row;justify-content:flex-start;min-height:54px;padding:var(--sp-2) var(--sp-4)}}
+.admin-card>.mantine-Button-root{margin-top:var(--sp-3)}
