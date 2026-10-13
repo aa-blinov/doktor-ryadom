@@ -728,8 +728,10 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* Document links sat at 24x17; give them a finger-sized target like every other link */
 .qualification-download a{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--sp-2);margin:0 calc(var(--sp-2) * -1);border-radius:8px}
 .qualification-download a:hover{background:var(--soft)}
-/* NumberInput steppers rendered at 24x17 with no name; give them a finger-sized target */
-.mantine-NumberInput-controls{width:44px}
+/* NumberInput steppers rendered at 24x17 with no name; give them a finger-sized target.
+   Mantine sizes the right section (and caps the controls) at 24px, so widen both, or the 44px buttons overflow the field */
+.mantine-NumberInput-wrapper{--ni-right-section-width-sm:44px}
+.mantine-NumberInput-controls{width:44px;max-width:44px}
 .mantine-NumberInput-control{width:44px;min-height:42px;display:flex;align-items:center;justify-content:center}
 .mantine-NumberInput-control:hover{background:var(--soft)}
 

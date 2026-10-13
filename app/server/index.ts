@@ -152,13 +152,14 @@ app.use('/api/doctor/*', async(c,next) => { if(c.get('user').role!=='doctor') re
 app.get('/api/doctor/patients', async c => c.json({ patients:await many(database(c.env),'SELECT u.id,u.name,(SELECT date FROM checkins WHERE patient_id=u.id ORDER BY date DESC LIMIT 1) AS last_date,(SELECT mood FROM checkins WHERE patient_id=u.id ORDER BY date DESC LIMIT 1) AS last_mood,(SELECT count(*) FROM checkins WHERE patient_id=u.id) AS count,(SELECT count(*) FROM reports WHERE patient_id=u.id AND doctor_id=l.doctor_id AND reviewed_at IS NULL) AS pending_reports,(SELECT count(*) FROM assessments WHERE patient_id=u.id AND doctor_id=l.doctor_id AND completed_at IS NOT NULL AND reviewed_at IS NULL) AS pending_assessments,(SELECT count(*) FROM assessments WHERE patient_id=u.id AND doctor_id=l.doctor_id AND kind=\'phq9\' AND completed_at IS NOT NULL AND reviewed_at IS NULL AND json_extract(answers,\'$[8]\')>0) AS pending_safety,(SELECT count(*) FROM practices WHERE patient_id=u.id AND (reviewed_at IS NULL OR reviewer_id IS NULL OR reviewer_id!=l.doctor_id)) AS pending_practices,(SELECT count(*) FROM goal_logs WHERE patient_id=u.id AND (reviewed_at IS NULL OR reviewer_id IS NULL OR reviewer_id!=l.doctor_id)) AS pending_goals ,(SELECT count(*) FROM sos_events WHERE patient_id=u.id AND acknowledged_at IS NULL) AS open_sos FROM links l JOIN users u ON u.id=l.patient_id WHERE l.doctor_id=? AND l.revoked_at IS NULL ORDER BY open_sos DESC,pending_safety DESC,(pending_reports+pending_assessments+pending_practices+pending_goals) DESC,u.name',c.get('user').id) }));
 app.get('/api/doctor/invites', async c => {
   const db=database(c.env),user=c.get('user');
-  const rows=await many<{rowid:number;expires:number;raw:string|null}>(db,'SELECT rowid AS rowid,expires,raw FROM invites WHERE doctor_id=? AND used=0 AND expires>? ORDER BY expires DESC LIMIT 50',user.id,Date.now());
-  return c.json({invites:rows.map(r=>({id:r.rowid,expires:r.expires,token:r.raw??null}))});
+  // The token is shown once, when the invite is created. Only its digest is kept, so a listing cannot hand it out again.
+  const rows=await many<{rowid:number;expires:number}>(db,'SELECT rowid AS rowid,expires FROM invites WHERE doctor_id=? AND used=0 AND expires>? ORDER BY expires DESC LIMIT 50',user.id,Date.now());
+  return c.json({invites:rows.map(r=>({id:r.rowid,expires:r.expires,token:null}))});
 });
 app.post('/api/doctor/invites', async c => {
   if(!c.get('user').specialist_verified_at)return c.json({error:'Подтвердите профиль специалиста у администратора, чтобы приглашать пациентов.'},403);
   const db=database(c.env),token=randomToken(),expires=Date.now()+7*86400000;
-  const inserted=await run(db,'INSERT INTO invites (token,doctor_id,expires,used,raw) VALUES (?,?,?,0,?)',await digest(token),c.get('user').id,expires,token);
+  const inserted=await run(db,'INSERT INTO invites (token,doctor_id,expires,used) VALUES (?,?,?,0)',await digest(token),c.get('user').id,expires);
   await logAction(db,c.get('user').id,'create_invite',String(inserted.meta.last_row_id));
   return c.json({ id:inserted.meta.last_row_id, token, expires },201);
 });

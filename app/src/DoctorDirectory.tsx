@@ -10,7 +10,7 @@ const kindFilters=[{label:'Все',value:'all'},{label:'Психологи',valu
 
 type Card={id:string;name:string;kind:SpecialtyKind|null;city:string;specialty:string;clinic:string;experienceYears:number|null;focusAreas:string;about:string;photoUrl:string|null;rating:number|null;reviewCount:number};
 type Review={id:string;rating:number;body:string;createdAt:number;author:string;hidden:boolean};
-type Detail={doctor:Card&{address:string;education:string;courses:string;workHistory:string};reviews:Review[];mine:{rating:number;body:string}|null;connection:{linkedToThis:boolean;linkedToOther:boolean;pendingRequestId:string|null}};
+type Detail={doctor:Card&{address:string;education:string;courses:string;workHistory:string};reviews:Review[];mine:{rating:number;body:string;hidden:boolean}|null;connection:{linkedToThis:boolean;linkedToOther:boolean;pendingRequestId:string|null}};
 
 const reviewWord=(n:number)=>{const a=n%100,b=n%10;return a>10&&a<20?'отзывов':b===1?'отзыв':b>1&&b<5?'отзыва':'отзывов';};
 const years=(n:number)=>{const a=n%100,b=n%10;return a>10&&a<20?'лет':b===1?'год':b>1&&b<5?'года':'лет';};
@@ -107,9 +107,9 @@ function Reviews({doctorId,reviews,mine,onChanged}:{doctorId:string;reviews:Revi
  async function remove(){setBusy(true);setError('');try{await api(`/directory/${doctorId}/review`,undefined,'DELETE');setRating(0);setBody('');await onChanged();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
  return <section className="doctor-section reviews">
   <h2>Отзывы</h2>
-  {reviews.length?<div className="review-list">{reviews.map(r=><article className="review" key={r.id}><div className="review-head"><strong>{r.author}</strong><Stars value={r.rating} size={16}/><span className="muted small">{formatDate(new Date(r.createdAt).toISOString().slice(0,10))}</span></div>{r.body?<p className="care-prose">{r.body}</p>:null}</article>)}</div>:<p className="muted">Пока нет отзывов. Вы можете оставить первый.</p>}
+  {reviews.length?<div className="review-list">{reviews.map(r=><article className="review" key={r.id}><div className="review-head"><strong>{r.author}</strong><Stars value={r.rating} size={16}/><span className="muted small">{formatDate(new Date(r.createdAt).toISOString().slice(0,10))}</span></div>{r.body?<p className="care-prose">{r.body}</p>:null}</article>)}</div>:<p className="muted">{mine?.hidden?'Ваш отзыв скрыт модерацией. Остальные его не видят.':'Пока нет отзывов. Вы можете оставить первый.'}</p>}
   <form className="care-form review-form" onSubmit={e=>{e.preventDefault();if(rating)void save();}}>
-   <h3>{mine?'Ваш отзыв':'Оставить отзыв'}</h3>
+   <h3>{mine?'Ваш отзыв':'Оставить отзыв'}</h3>{mine?.hidden?<p className="muted small">Отзыв скрыт администратором, поэтому его не видно в каталоге. Обновить его можно, но он останется скрытым, пока администратор не вернёт его.</p>:null}
    <div className="rating-input" role="group" aria-label="Оценка врачу">{[1,2,3,4,5].map(i=><button type="button" key={i} className={i<=rating?'rating-star selected':'rating-star'} aria-label={`${i} из 5`} aria-pressed={rating===i} onClick={()=>setRating(i)}>{i<=rating?<IconStarFilled size={28}/>:<IconStar size={28}/>}</button>)}</div>
    <Textarea label="Текст отзыва" description="Необязательно. Опишите, как прошла работа, без диагнозов и личных данных других людей" value={body} onChange={e=>setBody(e.currentTarget.value)} maxLength={1000} minRows={3}/>
    {error?<ErrorBox message={error}/>:null}
