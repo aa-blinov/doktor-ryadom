@@ -45,7 +45,7 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
  if(route==='/doctor')return <section className="care-section doctor-page"><h1>Ваш врач</h1>{data.doctor?<><p><strong>{data.doctor.name}</strong></p><DoctorProfileDetails name={data.doctor.name} profile={data.doctor.profile}/><div className="doctor-page-actions"><Button variant="outline" onClick={()=>navigate('/plan')}>План врача</Button><Button variant="subtle" onClick={()=>navigate('/doctors')}>Каталог врачей</Button></div></>:<><p className="muted">Врач не подключён. Выберите специалиста в каталоге или подключитесь по приглашению.</p><div className="doctor-page-actions"><Button size="lg" onClick={()=>navigate('/doctors')}>Найти врача</Button><Button variant="outline" onClick={()=>navigate('/settings/connect')}>У меня есть приглашение</Button></div><Button variant="subtle" mt="md" onClick={()=>navigate('/plan')}>План врача</Button></>}</section>;
  if(route==='/settings'||route==='/settings/connect')return <PatientSettings data={data} user={user} focusConnect={route==='/settings/connect'} onSaved={reload} onLogout={onLogout} themeLabel={themeLabel} onToggleTheme={onToggleTheme}/>;
  if(route==='/saved')return <div className="success-panel"><div className="success-icon"><IconCheck size={34}/></div><h1>Отметка сохранена</h1><p>Она появилась в вашей истории. Врач увидит её у себя в кабинете.</p><div className="success-actions"><Button onClick={()=>navigate('/history')}>Посмотреть историю</Button><Button variant="outline" onClick={()=>{const e=data.entries.find(x=>x.date===today());navigate(e?`/edit/${e.id}`:'/history');}}>Исправить отметку</Button><Button variant="subtle" onClick={()=>navigate('/today')}>На сегодня</Button></div>{data.doctor?<p className="muted small">Ваш лечащий врач: {data.doctor.name}</p>:<p className="muted small">Врач пока не подключён. История останется в вашем аккаунте.</p>}</div>;
- if(route==='/sos')return <section className="sos-screen"><PageHead title="Мне сейчас плохо" description="Сигнал уйдёт вашему врачу. Если опасно, звоните 112."/><SosButton userId={user.id} hasDoctor={!!data.doctor} lastSosAt={data.lastSosAt??null}/></section>;
+ if(route==='/sos')return <section className="sos-screen"><PageHead title="Мне сейчас плохо" description="Сигнал уйдёт вашему врачу. Если опасно, звоните 112."/><SosButton hasDoctor={!!data.doctor} lastSosAt={data.lastSosAt??null}/></section>;
  const marked=data.entries.find(e=>e.date===today());
  const firstName=firstNameOf(user.name);
  const invitation=new URLSearchParams(window.location.search).get('invite');
@@ -60,12 +60,10 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
     <div className="today-done-main"><Face value={marked.mood} size={40}/><div><strong>{moods[marked.mood-1]}</strong><span className="muted small">Отметка за сегодня есть</span></div></div>
     <Button size="md" rightSection={<IconCheck size={19}/>} onClick={()=>navigate('/history')}>Открыть историю</Button>
    </section>:<Checkin data={data} onSaved={async()=>{await reload();navigate('/saved');}}/>}
-   <div className="today-side"><SosButton userId={user.id} hasDoctor={!!data.doctor} lastSosAt={data.lastSosAt??null}/>
-</div>
-  </div>
+ </div>
  </>;
 }
-function SosButton({userId,hasDoctor,lastSosAt}:{userId:string;hasDoctor:boolean;lastSosAt:number|null}){
+function SosButton({hasDoctor,lastSosAt}:{hasDoctor:boolean;lastSosAt:number|null}){
  // The server is the source of truth: sessionStorage lost the state on every new tab,
  // so the button offered to send the same signal twice.
  const recent=():number|null=>lastSosAt&&Date.now()-lastSosAt<30*60000?lastSosAt:null;
