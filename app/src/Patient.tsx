@@ -45,7 +45,7 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
  if(route==='/doctor')return <section className="care-section doctor-page"><h1>Ваш врач</h1>{data.doctor?<><p><strong>{data.doctor.name}</strong></p><DoctorProfileDetails name={data.doctor.name} profile={data.doctor.profile}/><div className="doctor-page-actions"><Button variant="outline" onClick={()=>navigate('/plan')}>План врача</Button><Button variant="subtle" onClick={()=>navigate('/doctors')}>Каталог врачей</Button></div></>:<><p className="muted">Врач не подключён. Выберите специалиста в каталоге или подключитесь по приглашению.</p><div className="doctor-page-actions"><Button size="lg" onClick={()=>navigate('/doctors')}>Найти врача</Button><Button variant="outline" onClick={()=>navigate('/settings/connect')}>У меня есть приглашение</Button></div><Button variant="subtle" mt="md" onClick={()=>navigate('/plan')}>План врача</Button></>}</section>;
  if(route==='/settings'||route==='/settings/connect')return <PatientSettings data={data} user={user} focusConnect={route==='/settings/connect'} onSaved={reload} onLogout={onLogout} themeLabel={themeLabel} onToggleTheme={onToggleTheme}/>;
  if(route==='/saved')return <div className="success-panel"><div className="success-icon"><IconCheck size={34}/></div><h1>Отметка сохранена</h1><p>Она появилась в вашей истории. Врач увидит её у себя в кабинете.</p><div className="success-actions"><Button onClick={()=>navigate('/history')}>Посмотреть историю</Button><Button variant="outline" onClick={()=>{const e=data.entries.find(x=>x.date===today());navigate(e?`/edit/${e.id}`:'/history');}}>Исправить отметку</Button><Button variant="subtle" onClick={()=>navigate('/today')}>На сегодня</Button></div>{data.doctor?<p className="muted small">Ваш лечащий врач: {data.doctor.name}</p>:<p className="muted small">Врач пока не подключён. История останется в вашем аккаунте.</p>}</div>;
- if(route==='/sos')return <section className="sos-screen"><PageHead title="Мне сейчас плохо" description="Сигнал уйдёт вашему врачу. Если опасно, звоните 112."/><SosButton userId={user.id} hasDoctor={!!data.doctor}/></section>;
+ if(route==='/sos')return <section className="sos-screen"><PageHead title="Мне сейчас плохо" description="Сигнал уйдёт вашему врачу. Если опасно, звоните 112."/><SosButton userId={user.id} hasDoctor={!!data.doctor} lastSosAt={data.lastSosAt??null}/></section>;
  const marked=data.entries.find(e=>e.date===today());
  const firstName=firstNameOf(user.name);
  const invitation=new URLSearchParams(window.location.search).get('invite');
@@ -56,24 +56,26 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
     <p className="muted">{formatDate(today(),true)}</p>
    </header>
    {invitation?<div className="inline-notice"><IconLink size={20}/><span>У вас есть приглашение от врача</span><Button size="xs" variant="subtle" onClick={()=>navigate('/settings/connect')}>Посмотреть</Button></div>:null}
-   {marked?<section className="today-simple-card today-done">
+   {data.plan.reviewNote?.trim()?<p className="checkin-plan-note">{data.plan.reviewNote.trim()}</p>:null}
+  {marked?<section className="today-simple-card today-done">
     <div className="today-done-main"><Face value={marked.mood} size={40}/><div><strong>{moods[marked.mood-1]}</strong><span className="muted small">Отметка за сегодня есть</span></div></div>
     <Button size="md" rightSection={<IconCheck size={19}/>} onClick={()=>navigate('/history')}>Открыть историю</Button>
    </section>:<Checkin data={data} onSaved={async()=>{await reload();navigate('/saved');}}/>}
-   <div className="today-side"><SosButton userId={user.id} hasDoctor={!!data.doctor}/>
+   <div className="today-side"><SosButton userId={user.id} hasDoctor={!!data.doctor} lastSosAt={data.lastSosAt??null}/>
 </div>
   </div>
  </>;
 }
-function SosButton({userId,hasDoctor}:{userId:string;hasDoctor:boolean}){
- const key='ryadom-sos-sent:'+userId;
- const readSent=():number|null=>{try{const t=Number(sessionStorage.getItem(key));return t&&Date.now()-t<30*60000?t:null;}catch{return null;}};
- const [sentAt,setSentAt]=useState<number|null>(readSent),[offline,setOffline]=useState(false);
- const [state,setState]=useState<'idle'|'confirm'|'busy'|'sent'|'error'>(()=>readSent()?'sent':'idle');
+function SosButton({userId,hasDoctor,lastSosAt}:{userId:string;hasDoctor:boolean;lastSosAt:number|null}){
+ // The server is the source of truth: sessionStorage lost the state on every new tab,
+ // so the button offered to send the same signal twice.
+ const recent=():number|null=>lastSosAt&&Date.now()-lastSosAt<30*60000?lastSosAt:null;
+ const [sentAt,setSentAt]=useState<number|null>(recent),[offline,setOffline]=useState(false);
+ const [state,setState]=useState<'idle'|'confirm'|'busy'|'sent'|'error'>(()=>recent()?'sent':'idle');
  async function send(){
   if(typeof navigator!=='undefined'&&navigator.onLine===false){setOffline(true);setState('error');return;}
   setOffline(false);setState('busy');
-  try{await api('/patient/sos',{});const t=Date.now();setSentAt(t);try{sessionStorage.setItem(key,String(t));}catch{/* Storage is optional. */}setState('sent');}catch{setState('error');}
+  try{await api('/patient/sos',{});const t=Date.now();setSentAt(t);setState('sent');}catch{setState('error');}
  }
  if(!hasDoctor)return <section className="sos-block"><p className="sos-confirm">Врач не подключён, поэтому сигнал некому отправить.</p><div className="sos-confirm-actions"><a className="sos-call" href="tel:112">Позвонить 112</a><Button variant="subtle" onClick={()=>navigate('/settings/connect')}>Подключить врача</Button></div></section>;
  if(state==='confirm'||state==='busy')return <section className="sos-block"><p className="sos-confirm">Отправить врачу сигнал «Мне сейчас плохо»?</p><div className="sos-confirm-actions"><Button className="sos-button" size="lg" onClick={send} loading={state==='busy'}>Да, отправить</Button><Button variant="default" size="lg" onClick={()=>setState('idle')} disabled={state==='busy'}>Отмена</Button></div><p className="small">Если опасно прямо сейчас, звоните <a href="tel:112">112</a>.</p></section>;
@@ -97,7 +99,7 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
   if(patch.sleep!==undefined&&(patch.sleep===null||Number(patch.sleep)>=6))next.sleepContext=null;
   return next;
  });
- async function save(){setBusy(true);setError('');try{await draft.drain();await api('/patient/checkins',entry);await onSaved();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ async function save(skip=false){setBusy(true);setError('');try{await draft.drain();await api('/patient/checkins',skip?{...entry,sleep:null,sleepContext:null}:entry);await onSaved();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
  const compact=typeof window!=='undefined'&&window.matchMedia('(max-width:700px)').matches;
  const sleepChips=[4,5,6,7,8,9];
  const [sleepOther,setSleepOther]=useState(entry.sleep!==null&&!sleepChips.includes(entry.sleep));
@@ -120,7 +122,6 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
  const detailsStep=cur.key==='habit'||cur.key==='note';
  return <form className="checkin-form" onSubmit={e=>{e.preventDefault();if(entry.mood>0)void save();}}>
   <h2>Отметка за сегодня</h2>
-  {plan.reviewNote?.trim()?<p className="checkin-plan-note">{plan.reviewNote.trim()}</p>:null}
   <div className="checkin-progress" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step+1} aria-label={`Вопрос ${step+1} из ${total}`}>{steps.map((_,i)=><span key={i} className={i<=step?'done':''}/>)}</div>
   <p className="checkin-count">Вопрос {step+1} из {total}{last?' · последний':''}</p>
   <fieldset key={cur.key}>
@@ -172,7 +173,7 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
     :<Button type="button" size="lg" onClick={()=>setStep(step+1)} rightSection={<IconArrowRight size={18}/>}>Дальше</Button>}
   </div>
   {step===0&&entry.mood<1?<p className="checkin-hint">Выберите самочувствие, чтобы сохранить отметку</p>:null}
-  {!last&&entry.mood>0?<p className="checkin-skip"><button type="button" onClick={()=>void save()}>Сохранить и пропустить остальное</button></p>:null}
+  {!last&&entry.mood>0?<p className="checkin-skip"><button type="button" onClick={()=>void save(true)}>Сохранить и пропустить остальное</button></p>:null}
  </form>;
 }
 function PracticeFlow({practice,allowed,onSaved}:{practice:typeof practiceContent[number];allowed:boolean;onSaved:()=>Promise<void>}){

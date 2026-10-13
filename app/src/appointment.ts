@@ -43,7 +43,8 @@ export function appointmentOverview(data:PatientData,end:string,period?:Overview
  const previousEnd=new Date(Date.parse(start)-86400000).toISOString().slice(0,10);
  const previousStart=reportPeriod(previousEnd,length).start;
  const current=summarize(data.entries,data.practices,start,end),previous=summarize(data.entries,[],previousStart,previousEnd);
- const pendingReports:never[]=[];
+ // was a hardcoded empty list: the count reached the badge but nothing could be confirmed
+ const pendingReports=(data.reports??[]).filter(r=>!r.reviewed_at);
  const pendingAssessments=data.assessments.filter(a=>a.doctor_id===data.doctor?.id&&a.completed_at&&!a.reviewed_at);
  const pendingPractices=data.practices.filter(p=>!p.reviewed_at||p.reviewer_id!==data.doctor?.id);
  const pendingGoals=(data.goalLogs??[]).filter(g=>!g.reviewed_at||g.reviewer_id!==data.doctor?.id);

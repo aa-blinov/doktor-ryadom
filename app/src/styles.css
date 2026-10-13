@@ -777,3 +777,6 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* The emergency number must survive a dead connection */
 .auth-emergency{margin:20px 0 0;font-size:15px;font-weight:600}
 .auth-emergency a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+/* Reports waiting for the doctor's acknowledgement, next to the signals block */
+.attention-pending{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.attention-pending h3{font-size:15px;font-weight:650;margin:0 0 10px}

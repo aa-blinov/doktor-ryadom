@@ -1,17 +1,20 @@
 import {useState} from 'react';
 import {Button,SegmentedControl} from '@mantine/core';
 import {formatDate,Face,HistoryChart} from './ui';
+import {api} from './api';
 import {appointmentOverview,defaultOverviewPeriod,type OverviewPeriod} from './appointment';
 import {todayInTimezone,type PatientData} from './shared';
 
 const plural=(n:number,forms:[string,string,string])=>{const a=Math.abs(n)%100,b=a%10;return a>10&&a<20?forms[2]:b>1&&b<5?forms[1]:b===1?forms[0]:forms[2];};
 const dayWord=(n:number)=>`${n} ${plural(n,['день','дня','дней'])}`;
 
-export function AppointmentOverview({data,onOpen}:{data:PatientData;onOpen:(tab:string)=>void}){
+export function AppointmentOverview({data,onOpen,patientId,onSaved}:{data:PatientData;onOpen:(tab:string)=>void;patientId?:string;onSaved?:()=>Promise<void>}){
  const end=todayInTimezone(data.settings.timezone);
  const hasVisit=!!data.followups?.length;
  const [period,setPeriod]=useState<OverviewPeriod>(()=>defaultOverviewPeriod(data,end));
  const summary=appointmentOverview(data,end,period);
+ const [reviewing,setReviewing]=useState<string|null>(null);
+ async function reviewReport(id:string){if(!patientId)return;setReviewing(id);try{await api(`/doctor/patients/${patientId}/reports/${id}/review`,{});await onSaved?.();}finally{setReviewing(null);}}
  const {current,previous,attention,dynamics,discussionNotes,lastEntry,moodWord,chartEntries,days}=summary;
  const sinceLast=lastEntry?Math.round((Date.parse(summary.end)-Date.parse(lastEntry.date))/86400000):null;
  const signalCount=attention.filter(x=>x.kind!=='pending').length;
@@ -45,6 +48,13 @@ export function AppointmentOverview({data,onOpen}:{data:PatientData;onOpen:(tab:
      {item.tab?<Button size="xs" variant="subtle" onClick={()=>onOpen(item.tab!)}>{item.actionLabel??'Открыть'}</Button>:null}
     </div>)}
    </div>:<p className="muted">Явных сигналов нет. Ждут просмотра появятся здесь.</p>}
+   {summary.pendingReports.length?<div className="attention-pending">
+    <h3>Ждут просмотра: сводки</h3>
+    {summary.pendingReports.map(r=><div className="attention-row" key={r.id}>
+     <p>Сводка за период {formatDate(r.from_date,true)} — {formatDate(r.to_date,true)}</p>
+     <Button size="xs" variant="outline" loading={reviewing===r.id} onClick={()=>void reviewReport(r.id)}>Подтвердить просмотр</Button>
+    </div>)}
+   </div>:null}
    {attention.some(a=>a.kind==='signal')?<p className="muted small attention-note">Наблюдаемые ответы. Клиническую значимость оценивает врач.</p>:null}
   </section>
 
