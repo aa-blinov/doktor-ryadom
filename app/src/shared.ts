@@ -2,8 +2,12 @@ import type {SurveySnapshot,SurveyAnswer} from './surveys';
 import { z } from 'zod';
 export const practiceIds = ['ground', 'notice', 'action', 'senses', 'sounds', 'observe', 'walk', 'breath', 'unhook', 'kind', 'values', 'space'] as const;
 export type PracticeId = typeof practiceIds[number];
-export const planSchema = z.object({ frequency: z.enum(['daily', 'three', 'weekly']), sleep: z.boolean(), anxiety: z.boolean(), energy: z.boolean(), functioning: z.boolean(), practices: z.array(z.enum(practiceIds)).max(practiceIds.length), habit: z.string().trim().max(180), reviewNote: z.string().trim().min(5).max(500) });
-export const defaultPlan = { frequency: 'daily' as const, sleep: true, anxiety: true, energy: false, functioning: true, practices: [] as PracticeId[], habit: '', reviewNote: 'Режим просмотра записей согласуйте с врачом на приёме. Приложение не гарантирует немедленный ответ.' };
+// Порядок просмотра записей из плана убран: на главной пациента он читался как текст
+// приложения без подписи, а содержание расходилось с тем, что врач писал на самом деле.
+// Способ связи и время ответа врач указывает в записи приёма, а режим просмотра —
+// в рекомендациях пациенту; оба места пациент читает осознанно.
+export const planSchema = z.object({ frequency: z.enum(['daily', 'three', 'weekly']), sleep: z.boolean(), anxiety: z.boolean(), energy: z.boolean(), functioning: z.boolean(), practices: z.array(z.enum(practiceIds)).max(practiceIds.length), habit: z.string().trim().max(180) });
+export const defaultPlan = { frequency: 'daily' as const, sleep: true, anxiety: true, energy: false, functioning: true, practices: [] as PracticeId[], habit: '' };
 export type Plan = z.infer<typeof planSchema>;
 export const settingsSchema = z.object({ reminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), paused: z.boolean(), blockedPractices: z.array(z.enum(practiceIds)).max(practiceIds.length), timezone:z.string().max(80).refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true;}catch{return false;}},'Проверьте часовой пояс').default('Asia/Almaty'), reminderEmail:z.boolean().default(false), reminderPush:z.boolean().default(false), reportNotifications:z.boolean().default(false) });
 export const defaultSettings = { reminderTime: '20:00', paused: false, blockedPractices: [] as PracticeId[], timezone:'Asia/Almaty',reminderEmail:false,reminderPush:false,reportNotifications:false };

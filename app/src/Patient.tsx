@@ -56,7 +56,6 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
     <p className="muted">{formatDate(today(),true)}</p>
    </header>
    {invitation?<div className="inline-notice"><IconLink size={20}/><span>У вас есть приглашение от врача</span><Button size="xs" variant="subtle" onClick={()=>navigate('/settings/connect')}>Посмотреть</Button></div>:null}
-   {data.plan.reviewNote?.trim()?<p className="checkin-plan-note">{data.plan.reviewNote.trim()}</p>:null}
   {marked?<section className="today-simple-card today-done">
     <div className="today-done-main"><Face value={marked.mood} size={40}/><div><strong>{moods[marked.mood-1]}</strong><span className="muted small">Отметка за сегодня есть</span></div></div>
     <Button size="md" rightSection={<IconCheck size={19}/>} onClick={()=>navigate('/history')}>Открыть историю</Button>
