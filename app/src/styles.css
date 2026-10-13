@@ -572,7 +572,6 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .sos-call{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 20px;border:1px solid var(--sos);border-radius:12px;background:var(--surface);color:var(--sos);font-weight:700;text-decoration:none}
 .sos-call:hover{background:var(--sos-soft)}
 .sos-call:focus-visible{outline:2px solid var(--sos);outline-offset:2px}
-.sos-screen{max-width:560px}
 /* «Мне плохо» живёт в топбаре на любой ширине: до сигнала нужно дотянуться в любой момент,
    а не искать его под отметкой. Карточка-дубликат на главной убрана. */
 .topbar-sos{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;margin-left:auto;border:1px solid var(--sos);border-radius:var(--mantine-radius-md);background:var(--surface);color:var(--sos);font-size:14px;font-weight:700;text-decoration:none}

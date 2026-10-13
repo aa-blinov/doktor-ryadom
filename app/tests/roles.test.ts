@@ -59,6 +59,8 @@ it('patient, doctor and administrator complete their core flows without page err
   await p.goto(origin+'/#/sos');
   await p.getByText('Врач не подключён, поэтому сигнал некому отправить.').waitFor();
   await p.goto(origin+'/#/practices');
+  // Walking to another screen puts the distress dialog away instead of leaving it on top.
+  await p.getByRole('dialog').waitFor({state:'hidden'});
   await p.getByRole('button',{name:'Подключить врача'}).waitFor();
   await p.goto(origin+'/#/settings');
   await p.getByRole('button',{name:'Выйти из аккаунта'}).waitFor();
