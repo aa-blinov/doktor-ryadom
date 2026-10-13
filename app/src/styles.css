@@ -439,6 +439,8 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .today-quiet-links a{display:flex;align-items:center;min-height:48px;padding:12px 0;border-bottom:1px solid var(--line);color:var(--ink);font-size:17px;font-weight:550;text-decoration:none}
 .today-quiet-links a:hover{color:var(--accent);text-decoration:none}
 @media(max-width:700px){.today-simple{gap:20px}.today-simple-head h1{font-size:24px}.today-simple-card{padding:24px 16px}}
+/* On a phone "Мне плохо" already sits in the top bar, so the card below the check-in repeats it */
+@media(max-width:700px){.today-side{display:none}}
 
 /* Inline full check-in on Today */
 .checkin-form{border:1px solid var(--line);border-radius:20px;background:var(--surface);padding:24px 20px;display:flex;flex-direction:column;gap:20px}
