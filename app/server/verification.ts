@@ -56,7 +56,10 @@ export function verificationRoutes(app:App){
   const noteOut=decision==='approve'&&!cleanNote?req.admin_note??'':cleanNote;
   await run(db,'UPDATE specialist_requests SET status=?,admin_note=?,reviewer_id=?,updated_at=? WHERE id=?',status,noteOut,admin,now,c.req.param('id'));
   if(decision==='approve')await run(db,'UPDATE users SET specialist_verified_at=?,specialty_kind=? WHERE id=?',now,req.kind,req.doctor_id);
-  await logAction(db,admin,'review_specialist_request',c.req.param('id'));
+  // The decision itself is the event, and the subject is the doctor, not the request row:
+  // the audit join looks users up by subject id, so a request id showed no name at all.
+  const decisionAction={approve:'approve_specialist',needs_info:'request_specialist_info',reject:'reject_specialist'}[decision]!;
+  await logAction(db,admin,decisionAction,req.doctor_id);
   const doctor=await one<{email:string;email_verified_at:number|null}>(db,'SELECT email,email_verified_at FROM users WHERE id=?',req.doctor_id);
   const mail=c.env.MAIL;
   if(mail&&doctor?.email_verified_at){

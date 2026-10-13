@@ -21,17 +21,17 @@ function BlockButton({blocked,busy,onClick}:{blocked:boolean;busy:boolean;onClic
  return <Button className={blocked?undefined:'danger-button'} variant={blocked?'outline':'subtle'} color={blocked?undefined:'red'} loading={busy} onClick={onClick}>{blocked?'Разблокировать':'Заблокировать'}</Button>;
 }
 function AdminDoctors(){
- const [doctors,setDoctors]=useState<Doctor[]>([]),[q,setQ]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[undone,setUndone]=useState<string|null>(null);
+ const [doctors,setDoctors]=useState<Doctor[]>([]),[q,setQ]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[undone,setUndone]=useState<{id:string;who:string}|null>(null);
  const load=useCallback(async()=>{setError('');try{const r=await api<{doctors:Doctor[]}>(`/admin/doctors${q.trim()?`?q=${encodeURIComponent(q.trim())}`:''}`);setDoctors(r.doctors);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[q]);
  useEffect(()=>{void load();},[load]);
- async function toggle(d:Doctor){if(!d.blocked_at&&!window.confirm(`Заблокировать ${d.name}? Вход закроется, сеансы завершатся.`))return;setBusy(d.id);setError('');try{await api(`/admin/accounts/${d.id}/block`,{blocked:!d.blocked_at});setUndone(d.blocked_at?null:`Врач ${d.name} заблокирован`);await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
+ async function toggle(d:Doctor){if(!d.blocked_at&&!window.confirm(`Заблокировать ${d.name}? Вход закроется, сеансы завершатся.`))return;setBusy(d.id);setError('');try{await api(`/admin/accounts/${d.id}/block`,{blocked:!d.blocked_at});setUndone(d.blocked_at?null:{id:d.id,who:`Врач ${d.name}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  async function setKind(d:Doctor,kind:SpecialtyKind|''){setBusy(d.id);setError('');try{await api(`/admin/doctors/${d.id}/kind`,{kind:kind||null});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход и завершает сессии"/>
   <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="md"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!doctors.length?<p className="muted">{q.trim()?'Поиск ничего не нашёл':'Врачей пока нет'}</p>:null}
-  {undone?<div className="admin-undo" role="status"><span>{undone}. Это было сделано только что.</span><Button variant="subtle" size="xs" onClick={async()=>{const id=doctors.find(x=>x.blocked_at)?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
+  {undone?<div className="admin-undo" role="status"><span>{undone.who} заблокирован. Это было сделано только что.</span><Button variant="subtle" size="xs" onClick={async()=>{const id=undone?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
   <div className="admin-list">{doctors.map(d=><article className="care-record admin-card" key={d.id}>
    <h2>{d.name}{d.blocked_at?' · заблокирован':''}</h2>
    <p className="muted small">{d.email} · создан {formatDate(new Date(d.created_at).toISOString().slice(0,10))}</p>
@@ -45,15 +45,15 @@ function AdminDoctors(){
  </>;
 }
 function AdminPatients(){
- const [patients,setPatients]=useState<Patient[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[undone,setUndone]=useState<string|null>(null);
+ const [patients,setPatients]=useState<Patient[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[undone,setUndone]=useState<{id:string;who:string}|null>(null);
  const load=useCallback(async()=>{setError('');try{const r=await api<{patients:Patient[]}>('/admin/patients');setPatients(r.patients);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
  useEffect(()=>{void load();},[load]);
- async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm(`Заблокировать пациента №${patients.length-patients.indexOf(p)}? Вход закроется, сеансы завершатся. Действие обратимо только вручную в списке.`))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});setUndone(p.blocked_at?null:`Пациент №${patients.length-patients.indexOf(p)} заблокирован`);await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
+ async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm(`Заблокировать пациента №${patients.indexOf(p)+1}? Вход закроется, сеансы завершатся. Действие обратимо только вручную в списке.`))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});setUndone(p.blocked_at?null:{id:p.id,who:`Пациент №${patients.indexOf(p)+1}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!patients.length?<p className="muted">Пациентов пока нет</p>:null}
-  {undone?<div className="admin-undo" role="status"><span>{undone}. Это было сделано только что.</span><Button variant="subtle" size="xs" onClick={async()=>{const id=patients.find(x=>x.blocked_at)?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
+  {undone?<div className="admin-undo" role="status"><span>{undone.who} заблокирован. Это было сделано только что.</span><Button variant="subtle" size="xs" onClick={async()=>{const id=undone?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
   <div className="admin-list">{patients.map((p,i)=><article className="care-record admin-card" key={p.id}>
    <h2>Пациент {i+1}{p.blocked_at?' · заблокирован':''}</h2>
    <p className="muted small">Аккаунт создан {formatDate(new Date(p.created_at).toISOString().slice(0,10))}</p>
@@ -75,7 +75,7 @@ function AdminAudit(){
   {!loading&&!error&&!events.length?<p className="muted">{actionFilter?'Событий такого типа пока нет':'Событий пока нет'}</p>:null}
    <div className="admin-list">{events.map((e,i)=><article className="care-record" key={`${e.created_at}-${i}`}>
    <p><strong>{e.action_label??e.action}</strong>{e.subject_name?<span className="muted"> · {e.subject_name}</span>:null}</p>
-   <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??(e.actor_role==='patient'?'Пациент':'Система')}{e.actor_role&&e.actor_role!=='patient'?` (${e.actor_role==='admin'?'администратор':e.actor_role==='doctor'?'врач':e.actor_role})`:''}</p>
+   <p className="muted small">{new Date(e.created_at).toLocaleString('ru-RU')} · {e.actor_name??(e.actor_role==='patient'||e.actor_role==='пациент'?'Пациент':'Система')}{e.actor_role&&e.actor_role!=='patient'&&e.actor_role!=='пациент'?` (${e.actor_role==='admin'?'администратор':e.actor_role==='doctor'?'врач':e.actor_role})`:''}</p>
   </article>)}</div>
   {hasMore&&!loading&&!error?<Button mt="md" variant="outline" loading={busy} onClick={()=>void load(events.length)}>Показать ещё</Button>:null}
  </>;

@@ -772,3 +772,8 @@ body:has(.pwa-notice) #root{padding-top:72px}
   .plan-sections .mantine-SegmentedControl-control{flex:1 1 0;min-width:0;min-height:52px;padding:6px 6px;overflow:visible}
   .plan-sections .mantine-SegmentedControl-label{font-size:13px;line-height:1.15;white-space:normal;overflow-wrap:normal;hyphens:none}
 }
+/* The doctor's own words about reviewing the diary, shown where the patient marks the day */
+.checkin-plan-note{margin:0 0 16px;padding:12px 14px;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;background:var(--soft);color:var(--ink);font-size:15px;line-height:1.55}
+/* The emergency number must survive a dead connection */
+.auth-emergency{margin:20px 0 0;font-size:15px;font-weight:600}
+.auth-emergency a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}

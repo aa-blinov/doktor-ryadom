@@ -52,6 +52,8 @@ it('patient, doctor and administrator complete their core flows without page err
    await p.getByText(/Вопрос \d+ из/).first().waitFor();
   }
   await p.waitForSelector('.checkin-nav',{timeout:15000});
+  // the save button stays disabled briefly so a press carried over from "Дальше" cannot submit
+  await p.waitForFunction(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent?.includes('Сохранить отметку'));return !!b&&!b.disabled;},undefined,{timeout:15000});
   await p.evaluate(()=>{const b=[...document.querySelectorAll<HTMLButtonElement>('.checkin-nav button')].find(x=>x.textContent?.includes('Сохранить отметку')&&!x.disabled);b?.click();});
   await p.getByRole('heading',{name:'Отметка сохранена'}).waitFor();
   await p.goto(origin+'/#/sos');

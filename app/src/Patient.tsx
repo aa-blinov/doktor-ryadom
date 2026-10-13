@@ -86,7 +86,11 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
  const plan=data.draft?.entry.date===today()?data.draft.plan:data.plan;
  const [entry,setEntry]=useState<EntryInput>(data.draft?.entry.date===today()?data.draft.entry:{date:today(),mood:0,sleep:plan.sleep?8:null,anxiety:null,energy:null,functioning:null,sleepContext:null,note:'',habit:null});
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
- const [step,setStep]=useState(()=>data.draft?.entry.date===today()?Math.min(data.draft.step,4):0);
+ const [step,setStep]=useState(()=>data.draft?.entry.date===today()?Math.min(data.draft.step,4):0); const [saveReady,setSaveReady]=useState(false);
+ useEffect(()=>{// настроение, [тревога], [энергия], [обычные дела], сон и действие, заметка
+  const lastStep=2+(plan.anxiety?1:0)+(plan.energy?1:0)+(plan.functioning?1:0);
+  if(step!==lastStep){setSaveReady(false);return;}
+  const timer=setTimeout(()=>setSaveReady(true),450);return()=>clearTimeout(timer);},[step,plan.anxiety,plan.energy,plan.functioning]);
  const draft=useDraft({entry,plan,step},busy);
  const set=(patch:Partial<EntryInput>)=>setEntry(e=>{
   const next={...e,...patch};
@@ -97,8 +101,8 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
  const compact=typeof window!=='undefined'&&window.matchMedia('(max-width:700px)').matches;
  const sleepChips=[4,5,6,7,8,9];
  const [sleepOther,setSleepOther]=useState(entry.sleep!==null&&!sleepChips.includes(entry.sleep));
- const detailsFilled=[plan.sleep&&entry.sleep!==null,entry.note.trim().length>0].filter(Boolean).length;
- const detailsTotal=[plan.sleep].filter(Boolean).length+1;
+ const detailsFilled=[plan.sleep&&entry.sleep!==null,entry.habit!==null,entry.note.trim().length>0].filter(Boolean).length;
+ const detailsTotal=[plan.sleep].filter(Boolean).length+(plan.habit?1:0)+1;
  const [detailsOpen,setDetailsOpen]=useState(!compact||detailsFilled>0);
  // One question per screen. Someone filling this in is often not in a good state, and a wall of
  // five scales with three save-shaped buttons is a lot to hold in the head at once.
@@ -116,6 +120,7 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
  const detailsStep=cur.key==='habit'||cur.key==='note';
  return <form className="checkin-form" onSubmit={e=>{e.preventDefault();if(entry.mood>0)void save();}}>
   <h2>Отметка за сегодня</h2>
+  {plan.reviewNote?.trim()?<p className="checkin-plan-note">{plan.reviewNote.trim()}</p>:null}
   <div className="checkin-progress" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step+1} aria-label={`Вопрос ${step+1} из ${total}`}>{steps.map((_,i)=><span key={i} className={i<=step?'done':''}/>)}</div>
   <p className="checkin-count">Вопрос {step+1} из {total}{last?' · последний':''}</p>
   <fieldset key={cur.key}>
@@ -163,7 +168,7 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
   {draft.status?<p className="muted small">{draft.status}</p>:null}
   <div className="checkin-nav">
    {step>0?<Button type="button" size="lg" variant="default" onClick={()=>setStep(step-1)} leftSection={<IconArrowLeft size={18}/>}>Назад</Button>:null}
-   {last?<Button type="submit" size="lg" loading={busy} disabled={entry.mood<1} rightSection={<IconCheck size={19}/>}>Сохранить отметку</Button>
+   {last?<Button type="submit" size="lg" loading={busy} disabled={!saveReady||entry.mood<1} title={saveReady?undefined:'Подождите, пока появится кнопка сохранения'} rightSection={<IconCheck size={19}/>}>Сохранить отметку</Button>
     :<Button type="button" size="lg" onClick={()=>setStep(step+1)} rightSection={<IconArrowRight size={18}/>}>Дальше</Button>}
   </div>
   {step===0&&entry.mood<1?<p className="checkin-hint">Выберите самочувствие, чтобы сохранить отметку</p>:null}
