@@ -21,15 +21,31 @@ import {EditEntry} from './EditEntry';
 import {History} from './History';
 import {useDraft} from './useDraft';
 
-export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:{user:User;route:string;onLogout:()=>void;themeLabel:string;onToggleTheme:()=>void}){
+export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme,sosRequest=0}:{user:User;route:string;onLogout:()=>void;themeLabel:string;onToggleTheme:()=>void;sosRequest?:number}){
  useSectionScroll(`${user.id}:${route}`);
  const [data,setData]=useState<PatientData|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(true);
+ const [sosOpen,setSosOpen]=useState(false);
  const reload=useCallback(async()=>{setError('');try{setData(await api<PatientData>('/patient/data'));}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
  useEffect(()=>{reload();},[reload,route]);
  useRefreshOnReturn(reload);
+ // The top bar opens the distress dialog straight away. The separate screen made the patient
+ // press the same action twice to get anywhere. An old #/sos link still lands in the dialog.
+ useEffect(()=>{if(sosRequest>0)setSosOpen(true);},[sosRequest]);
+ // Walking away from the dialog means the person changed their mind: close it instead of
+ // leaving it on top of the next screen.
+ useEffect(()=>{setSosOpen(route==='/sos');},[route]);
  if(loading)return <div className="section-loading"><Loader/><p>Загружаем ваши записи…</p></div>;
  if(!data)return <ErrorBox message={error} retry={reload}/>;
- const available=practiceContent.filter(p=>data.plan.practices.includes(p.id)&&!data.settings.blockedPractices.includes(p.id));
+ return <>
+  <SosDialog opened={sosOpen} onClose={()=>setSosOpen(false)} hasDoctor={!!data.doctor} lastSosAt={data.lastSosAt??null} onSent={reload}/>
+  {patientScreen({route,data,user,reload,onLogout,themeLabel,onToggleTheme,error,
+   available:practiceContent.filter(p=>data.plan.practices.includes(p.id)&&!data.settings.blockedPractices.includes(p.id)),
+   marked:data.entries.find(e=>e.date===today()),firstName:firstNameOf(user.name),
+   invitation:new URLSearchParams(window.location.search).get('invite')})}
+ </>;
+}
+type ScreenProps={route:string;data:PatientData;user:User;reload:()=>Promise<void>;onLogout:()=>void;themeLabel:string;onToggleTheme:()=>void;error:string;available:typeof practiceContent;marked:Entry|undefined;firstName:string;invitation:string|null};
+function patientScreen({route,data,user,reload,onLogout,themeLabel,onToggleTheme,error,available,marked,firstName,invitation}:ScreenProps){
  if(route==='/checkin'&&data.entries.some(e=>e.date===today()))return <Empty title="Сегодняшняя отметка уже сохранена" description="Она доступна в истории" icon={<IconCheck size={28}/>} action="Посмотреть историю" onAction={()=>navigate('/history')}/>;
  if(route.startsWith('/edit/')){const entry=data.entries.find(e=>e.id===route.split('/')[2]);return entry?<EditEntry key={entry.id} entry={entry} onSaved={reload}/>:<ErrorBox message="Запись не найдена. Откройте историю заново."/>;}
  if(route.startsWith('/assessment/')){const a=data.assessments.find(a=>a.id===route.split('/')[2]);return a?<AssessmentFlow key={a.id} assessment={a} onSaved={reload}/>:<ErrorBox message="Опросник недоступен. Откройте план врача."/>;}
@@ -45,10 +61,6 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
  if(route==='/doctor')return <section className="care-section doctor-page"><h1>Ваш врач</h1>{data.doctor?<><p><strong>{data.doctor.name}</strong></p><DoctorProfileDetails name={data.doctor.name} profile={data.doctor.profile}/><div className="doctor-page-actions"><Button variant="outline" onClick={()=>navigate('/plan')}>План врача</Button><Button variant="subtle" onClick={()=>navigate('/doctors')}>Каталог врачей</Button></div></>:<><p className="muted">Врач не подключён. Выберите специалиста в каталоге или подключитесь по приглашению.</p><div className="doctor-page-actions"><Button size="lg" onClick={()=>navigate('/doctors')}>Найти врача</Button><Button variant="outline" onClick={()=>navigate('/settings/connect')}>У меня есть приглашение</Button></div><Button variant="subtle" mt="md" onClick={()=>navigate('/plan')}>План врача</Button></>}</section>;
  if(route==='/settings'||route==='/settings/connect')return <PatientSettings data={data} user={user} focusConnect={route==='/settings/connect'} onSaved={reload} onLogout={onLogout} themeLabel={themeLabel} onToggleTheme={onToggleTheme}/>;
  if(route==='/saved')return <div className="success-panel"><div className="success-icon"><IconCheck size={34}/></div><h1>Отметка сохранена</h1><p>Она появилась в вашей истории. Врач увидит её у себя в кабинете.</p><div className="success-actions"><Button onClick={()=>navigate('/history')}>Посмотреть историю</Button><Button variant="outline" onClick={()=>{const e=data.entries.find(x=>x.date===today());navigate(e?`/edit/${e.id}`:'/history');}}>Исправить отметку</Button><Button variant="subtle" onClick={()=>navigate('/today')}>На сегодня</Button></div>{data.doctor?<p className="muted small">Ваш лечащий врач: {data.doctor.name}</p>:<p className="muted small">Врач пока не подключён. История останется в вашем аккаунте.</p>}</div>;
- if(route==='/sos')return <section className="sos-screen"><PageHead title="Мне сейчас плохо" description="Сигнал уйдёт вашему врачу. Если опасно, звоните 112."/><SosButton hasDoctor={!!data.doctor} lastSosAt={data.lastSosAt??null}/></section>;
- const marked=data.entries.find(e=>e.date===today());
- const firstName=firstNameOf(user.name);
- const invitation=new URLSearchParams(window.location.search).get('invite');
  return <>{error?<ErrorBox message={error} retry={reload}/>:null}
   <div className="today-simple">
    <header className="today-simple-head">
@@ -63,22 +75,28 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme}:
  </div>
  </>;
 }
-function SosButton({hasDoctor,lastSosAt}:{hasDoctor:boolean;lastSosAt:number|null}){
+function SosDialog({opened,onClose,hasDoctor,lastSosAt,onSent}:{opened:boolean;onClose:()=>void;hasDoctor:boolean;lastSosAt:number|null;onSent:()=>void}){
  // The server is the source of truth: sessionStorage lost the state on every new tab,
- // so the button offered to send the same signal twice.
- const recent=():number|null=>lastSosAt&&Date.now()-lastSosAt<30*60000?lastSosAt:null;
- const [sentAt,setSentAt]=useState<number|null>(recent),[offline,setOffline]=useState(false);
- const [state,setState]=useState<'idle'|'confirm'|'busy'|'sent'|'error'>(()=>recent()?'sent':'idle');
+ // so the dialog offered to send the same signal twice.
+ const [sentAt,setSentAt]=useState<number|null>(lastSosAt),[offline,setOffline]=useState(false);
+ const [state,setState]=useState<'confirm'|'busy'|'sent'|'error'>('confirm');
+ const freshest=Math.max(sentAt??0,lastSosAt??0);
+ const recent=()=>!!freshest&&Date.now()-freshest<30*60000;
+ // Opening the dialog lands straight on the question. Someone in a bad state should not
+ // have to press the same action twice before anything happens.
+ useEffect(()=>{if(opened){setOffline(false);setState(recent()?'sent':'confirm');}},[opened]);
  async function send(){
   if(typeof navigator!=='undefined'&&navigator.onLine===false){setOffline(true);setState('error');return;}
   setOffline(false);setState('busy');
-  try{await api('/patient/sos',{});const t=Date.now();setSentAt(t);setState('sent');}catch{setState('error');}
+  try{await api('/patient/sos',{});setSentAt(Date.now());setState('sent');onSent();}catch{setState('error');}
  }
- if(!hasDoctor)return <section className="sos-block"><p className="sos-confirm">Врач не подключён, поэтому сигнал некому отправить.</p><div className="sos-confirm-actions"><a className="sos-call" href="tel:112">Позвонить 112</a><Button variant="subtle" onClick={()=>navigate('/settings/connect')}>Подключить врача</Button></div></section>;
- if(state==='confirm'||state==='busy')return <section className="sos-block"><p className="sos-confirm">Отправить врачу сигнал «Мне сейчас плохо»?</p><div className="sos-confirm-actions"><Button className="sos-button" size="lg" onClick={send} loading={state==='busy'}>Да, отправить</Button><Button variant="default" size="lg" onClick={()=>setState('idle')} disabled={state==='busy'}>Отмена</Button></div><p className="small">Если опасно прямо сейчас, звоните <a href="tel:112">112</a>.</p></section>;
- if(state==='sent')return <section className="sos-block sos-sent" role="status"><p className="sos-sent-title">Сигнал отправлен{sentAt?` в ${new Date(sentAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`:''}</p><p className="small">Врач получит его на почту и в уведомления. Если нужна помощь прямо сейчас, не ждите ответа: звоните <a href="tel:112">112</a>.</p><div className="sos-confirm-actions"><a className="sos-call" href="tel:112">Позвонить 112</a><Button variant="subtle" onClick={()=>setState('confirm')}>Отправить ещё раз</Button></div></section>;
- if(state==='error')return <section className="sos-block" role="alert"><p className="sos-confirm">{offline?'Нет подключения к интернету. Сигнал не отправлен.':'Не получилось отправить сигнал.'}</p><div className="sos-confirm-actions"><Button className="sos-button" size="lg" onClick={send}>Попробовать ещё раз</Button><a className="sos-call" href="tel:112">Позвонить 112</a></div></section>;
- return <section className="sos-block"><Button className="sos-button sos-trigger" size="lg" fullWidth onClick={()=>setState('confirm')}>Мне сейчас плохо</Button><p className="small">Врач получит сигнал на почту и в уведомления. Если нужна помощь прямо сейчас, звоните <a href="tel:112">112</a>.</p></section>;
+ const busy=state==='busy';
+ const content=!hasDoctor
+  ?<section className="sos-block"><p className="sos-confirm">Врач не подключён, поэтому сигнал некому отправить.</p><div className="sos-confirm-actions"><a className="sos-call" href="tel:112">Позвонить 112</a><Button variant="subtle" onClick={()=>{onClose();navigate('/settings/connect');}}>Подключить врача</Button></div></section>
+  :state==='sent'?<section className="sos-block sos-sent" role="status"><p className="sos-sent-title">Сигнал отправлен{sentAt?` в ${new Date(sentAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`:''}</p><p className="small">Врач получит его на почту и в уведомления. Если нужна помощь прямо сейчас, не ждите ответа: звоните <a href="tel:112">112</a>.</p><div className="sos-confirm-actions"><a className="sos-call" href="tel:112">Позвонить 112</a><Button variant="subtle" onClick={()=>setState('confirm')}>Отправить ещё раз</Button></div></section>
+  :state==='error'?<section className="sos-block" role="alert"><p className="sos-confirm">{offline?'Нет подключения к интернету. Сигнал не отправлен.':'Не получилось отправить сигнал.'}</p><div className="sos-confirm-actions"><Button className="sos-button" size="lg" onClick={send}>Попробовать ещё раз</Button><a className="sos-call" href="tel:112">Позвонить 112</a></div></section>
+  :<section className="sos-block"><p className="sos-confirm">Отправить врачу сигнал «Мне сейчас плохо»?</p><div className="sos-confirm-actions"><Button className="sos-button" size="lg" onClick={send} loading={busy}>Да, отправить</Button><Button variant="default" size="lg" onClick={onClose} disabled={busy}>Отмена</Button></div><p className="small">Если опасно прямо сейчас, звоните <a href="tel:112">112</a>.</p></section>;
+ return <Modal opened={opened} onClose={onClose} title="Мне сейчас плохо" centered closeOnClickOutside={!busy} closeOnEscape={!busy} withCloseButton={!busy}>{content}</Modal>;
 }
 type Step={key:keyof EntryInput;title:string;description:string;type:'mood'|'choices'|'sleep'|'note';choices?:{value:number|string|boolean;label:string}[]};
 function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
