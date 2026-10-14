@@ -847,3 +847,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .overview-metrics dd{min-width:0;max-width:55%}
 /* Shared page loader: centred spinner and label in the content area, the same on every screen. */
 .page-loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-3);min-height:200px;color:var(--muted);font-size:15px;text-align:center}
+/* On tablet and phone widths each dynamics label sits above its value, so a long label never runs into the number beside it. */
+@media(max-width:1150px){.overview-metrics>div{grid-template-columns:minmax(0,1fr)}.overview-metrics dd{max-width:none;text-align:left}}
