@@ -59,7 +59,7 @@ it('pilot: patient goals and practice notes reach the clinician queue and can be
   await d.goto(origin+'/#/patients');await d.getByRole('link',{name:/Александр Тестовый/}).waitFor();await d.getByText('Новых материалов: 2',{exact:true}).waitFor();await capture(d,'pilot-doctor-queue');
   await d.getByRole('link',{name:/Александр Тестовый/}).click();await openDoctorSection(d,'Обзор');await d.getByRole('heading',{name:'Перед приёмом',exact:true}).waitFor();await capture(d,'pilot-doctor-overview');
   await d.locator('.attention-row',{hasText:'Отметки по целям к просмотру: 1'}).getByRole('button',{name:'К целям',exact:true}).click();await d.getByRole('heading',{name:'Личные цели пациента',exact:true}).waitFor();await capture(d,'pilot-doctor-goals');
-  await d.getByRole('button',{name:'Подтвердить просмотр отметки',exact:true}).click();await d.getByText('Врач подтвердил просмотр',{exact:true}).waitFor();
+  await d.getByRole('button',{name:'Подтвердить просмотр отметки',exact:true}).click();await d.getByText('Вы подтвердили просмотр',{exact:true}).waitFor();
   await openDoctorSection(d,'История');await d.locator('details.review-fold>summary').click();await d.getByText('Было трудно сосредоточиться, остановился',{exact:true}).waitFor();await capture(d,'pilot-doctor-practices');
   await d.getByRole('button',{name:'Подтвердить просмотр отзыва',exact:true}).click();await d.getByText('Просмотр подтверждён',{exact:true}).waitFor();
   await p.goto(origin+'/#/history/practices');await p.getByText('Врач подтвердил просмотр',{exact:true}).waitFor();
