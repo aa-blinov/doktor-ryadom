@@ -813,3 +813,14 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .verification-notice .mantine-Alert-title,.verification-notice .mantine-Alert-message{color:var(--ink)}
 /* On a 320 px phone the six 13 px labels need every pixel: no side padding, a 4 px gap and slightly tighter tracking keep them apart without changing the copy. */
 @media(max-width:380px){.bottom-nav{padding-inline:0;gap:var(--sp-1)}.bottom-nav>a span{letter-spacing:-.02em}}
+/* Check-in navigation wraps on a 320 px phone instead of cutting "Дальше" short. */
+.checkin-nav{flex-wrap:wrap}
+.checkin-nav .mantine-Button-root{flex:1 1 40%;height:auto;min-height:44px;white-space:normal}
+/* Success screen buttons size to their labels, so "Посмотреть историю" stays whole. */
+.success-panel .mantine-Button-root{width:auto;max-width:100%;height:auto;min-height:44px;white-space:normal;padding-inline:var(--sp-4)}
+/* The "open my doctor" button in the connection card wraps inside the card on phones. */
+.connect-panel .mantine-Button-root{max-width:100%;height:auto;min-height:44px;white-space:normal}
+/* Dark theme: the SOS pill, checkboxes and switch tracks keep a visible edge against the dark bar and surfaces. */
+:root[data-mantine-color-scheme="dark"] .topbar-sos{background:rgba(168,84,36,.22);color:#f3c9b0;border-color:#a85424}
+:root[data-mantine-color-scheme="dark"] .mantine-Checkbox-input{border-color:var(--muted)}
+:root[data-mantine-color-scheme="dark"] .mantine-Switch-track{border:1px solid var(--muted)}
