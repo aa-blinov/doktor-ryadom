@@ -30,6 +30,9 @@ it('doctor applies for verification, admin decides, only admin can see the queue
  expect((await request(`/admin/accounts/${blockedDoctor.data.user.id}/block`,{blocked:true},admin.cookie)).status).toBe(200);
  expect((await request('/auth/login',{email:'verify-blocked@example.com',password},undefined)).status).toBe(403);
  const blockedMe=await request('/me',undefined,blockedDoctor.cookie);expect(blockedMe.status).toBe(403);expect(blockedMe.data.error).toMatch(/заблокирован/);
+  expect((await request(`/admin/accounts/${blockedDoctor.data.user.id}/block`,{blocked:false},admin.cookie)).status).toBe(200);
+  // The old cookie must not resume after unblock: the person signs in again.
+  expect((await request('/me',undefined,blockedDoctor.cookie)).status).toBe(401);
  expect((await request('/admin/audit',undefined,admin.cookie)).status).toBe(200);
  expect((await request('/admin/accounts',undefined,doctor.cookie)).status).toBe(403);
  expect((await request('/doctor/verification',undefined,doctor.cookie)).data.request.admin_note).toBe('Приложите номер лицензии');

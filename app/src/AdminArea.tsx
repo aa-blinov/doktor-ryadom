@@ -26,7 +26,7 @@ function AdminDoctors(){
  useEffect(()=>{void load();},[load]);
  async function toggle(d:Doctor){if(!d.blocked_at&&!window.confirm(`Заблокировать ${d.name}? Вход закроется, и при следующем открытии пользователь увидит, что аккаунт заблокирован.`))return;setBusy(d.id);setError('');try{await api(`/admin/accounts/${d.id}/block`,{blocked:!d.blocked_at});setUndone(d.blocked_at?null:{id:d.id,who:`Врач ${d.name}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  async function setKind(d:Doctor,kind:SpecialtyKind|''){setBusy(d.id);setError('');try{await api(`/admin/doctors/${d.id}/kind`,{kind:kind||null});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
- return <><PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход и завершает сессии"/>
+ return <><PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход. При разблокировке пользователь входит заново"/>
   <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="var(--sp-4)"/>
   {doctors.length>=300?<p className="muted small list-cap">Показаны первые 300 врачей. Для остальных пользуйтесь поиском.</p>:null}
   {loading?<Loader/>:null}

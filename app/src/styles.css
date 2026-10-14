@@ -791,7 +791,7 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* The doctor screen opens with its own heading, so the section rule above it is dropped. */
 .doctor-page{margin-top:0;padding-top:0;border-top:0}
 /* Five tabs must fit 320 px: size each tab to its label and spread them, instead of splitting the width evenly. */
-@media(max-width:380px){.bottom-nav{justify-content:space-between}.bottom-nav>a{flex:0 1 auto;padding-inline:0}.bottom-nav>a span{white-space:nowrap;hyphens:none;overflow-wrap:normal}}
+@media(max-width:430px){.bottom-nav{justify-content:space-between;gap:var(--sp-1)}.bottom-nav>a{flex:0 1 auto;padding-inline:0}.bottom-nav>a span{white-space:nowrap;hyphens:none;overflow-wrap:normal}}
 /* Tab labels stay whole on every phone width, where the bottom bar is shown. */
 @media(max-width:700px){.bottom-nav>a span{white-space:nowrap;hyphens:none;overflow-wrap:normal}}
 /* Period switch in the doctor overview wraps under the title and keeps every label whole. */
@@ -807,3 +807,7 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:700px){.patient-table-row>*{min-width:0;overflow-wrap:break-word}}
 /* Phone patient rows stack into one column: each cell gets the full card width and words never split. */
 @media(max-width:700px){#main-content a.patient-table-row[href]{display:grid;grid-template-columns:minmax(0,1fr)}.patient-table-row>*{min-width:0;hyphens:none;overflow-wrap:break-word}}
+/* Practice step buttons stack full width on phones so every label stays whole. */
+@media(max-width:430px){.practice-step-actions{flex-direction:column}.practice-step-actions .mantine-Button-root{width:100%;min-width:0}}
+/* The "Нужны уточнения" notice keeps dark ink on its pale yellow fill in both themes. */
+.verification-notice .mantine-Alert-title,.verification-notice .mantine-Alert-message{color:var(--ink)}
