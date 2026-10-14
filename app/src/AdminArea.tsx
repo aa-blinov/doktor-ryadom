@@ -8,7 +8,7 @@ import {specialtyKinds,specialtyLabels,type SpecialtyKind,type User} from './sha
 import {Stars} from './DoctorDirectory';
 type Doctor={id:string;name:string;email:string;created_at:number;blocked_at:number|null;specialist_verified_at:number|null;specialty_kind:SpecialtyKind|null;request_status:string|null;request_specialty:string|null;request_kind:SpecialtyKind|null;profile_specialty:string|null};
 type Patient={id:string;created_at:number;blocked_at:number|null};
-const requestText:Record<string,string>={pending:'заявка на проверке',needs_info:'нужны уточнения',rejected:'заявка отклонена',approved:'подтверждён'};
+const requestText:Record<string,string>={pending:'Заявка на проверке',needs_info:'Нужны уточнения',rejected:'Заявка отклонена',approved:'Подтверждён'};
 export function AdminArea({route,user}:{route:string;user:User}){
  if(route==='/settings')return <><PageHead title="Аккаунт администратора" description="Пароль и доступ к кабинету"/><AccountSettings user={user}/></>;
  if(route==='/admin/doctors')return <AdminDoctors/>;
@@ -36,7 +36,7 @@ function AdminDoctors(){
   <div className="admin-list">{doctors.map(d=><article className="care-record admin-card" key={d.id}>
    <h2>{d.name}{d.blocked_at?' · заблокирован':''}</h2>
    <p className="muted small">{d.email} · создан {formatDate(new Date(d.created_at).toISOString().slice(0,10))}</p>
-   <p className="small">{d.specialist_verified_at?'Подтверждён':d.request_status?requestText[d.request_status]??'не подтверждён':'не подтверждён, заявки нет'}</p>
+   <p className="small">{d.specialist_verified_at?'Подтверждён':d.request_status?requestText[d.request_status]??'Не подтверждён':'Не подтверждён, заявки нет'}</p>
    <>
     <p className="small admin-specialty"><span className={`pill kind-${d.specialty_kind??'none'}`}>{d.specialty_kind?specialtyLabels[d.specialty_kind]:'Тип не указан'}</span>{d.profile_specialty||d.request_specialty?<span className="muted">{d.profile_specialty||d.request_specialty}</span>:null}</p>
     <NativeSelect label="Тип специалиста" description={d.specialist_verified_at?'Исправьте по диплому. Подтверждение врача от этого не снимается':'Проверьте по специальности в дипломе'} value={d.specialty_kind??''} onChange={e=>void setKind(d,e.currentTarget.value as SpecialtyKind|'')} data={d.specialist_verified_at?specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]})):[{value:'',label:'Тип не указан'},...specialtyKinds.map(k=>({value:k,label:specialtyLabels[k]}))]}/>
