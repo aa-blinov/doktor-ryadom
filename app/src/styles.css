@@ -853,3 +853,10 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:1150px){.history-charts .chart-grid{grid-template-columns:minmax(0,1fr)}.history-charts .chart-panel{min-width:0}}
 /* The PHQ-9 safety block takes a dark warm fill in the dark theme; the cream fill made its light text unreadable. */
 :root[data-mantine-color-scheme="dark"] .assessment-safety.mantine-Alert-root{background:rgba(168,84,36,.22)!important;border-color:#a85424!important}
+/* Practice library filters: on tablet the search takes the first row and the two selects share the second, so their labels are never cut. */
+@media(max-width:1150px){.library-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.library-filters>*:first-child{grid-column:1/-1}.library-filters .mantine-Select-root,.library-filters .mantine-InputWrapper-root{min-width:0}}
+/* The success screen keeps each button label on one line and lets the row wrap as a whole. */
+.success-actions{flex-wrap:wrap}
+.success-actions .mantine-Button-root{white-space:nowrap;width:auto}
+/* A history chart on a 320 px phone scrolls inside its own card and never spills past the screen. */
+@media(max-width:480px){.chart-panel{min-width:0;max-width:100%;overflow:hidden}.history-charts{max-width:100%}}

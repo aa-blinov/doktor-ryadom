@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import {Button,Loader,NativeSelect,TextInput} from '@mantine/core';
 import {api,errorText} from './api';
-import {ErrorBox,PageHead,formatDate, PageLoader} from './ui';
+import {ErrorBox,PageHead,formatDate, PageLoader, useConfirm} from './ui';
 import {AdminVerifications} from './AdminVerifications';
 import {AccountSettings} from './AccountSettings';
 import {specialtyKinds,specialtyLabels,type SpecialtyKind,type User} from './shared';
@@ -21,12 +21,13 @@ function BlockButton({blocked,busy,onClick}:{blocked:boolean;busy:boolean;onClic
  return <Button className={blocked?undefined:'danger-button'} variant={blocked?'outline':'subtle'} color={blocked?undefined:'red'} loading={busy} onClick={onClick}>{blocked?'Разблокировать':'Заблокировать'}</Button>;
 }
 function AdminDoctors(){
+ const {ask,dialog}=useConfirm();
  const [doctors,setDoctors]=useState<Doctor[]>([]),[q,setQ]=useState(''),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[undone,setUndone]=useState<{id:string;who:string}|null>(null);
  const load=useCallback(async()=>{setError('');try{const r=await api<{doctors:Doctor[]}>(`/admin/doctors${q.trim()?`?q=${encodeURIComponent(q.trim())}`:''}`);setDoctors(r.doctors);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[q]);
  useEffect(()=>{void load();},[load]);
- async function toggle(d:Doctor){if(!d.blocked_at&&!window.confirm(`Заблокировать ${d.name}? Вход закроется, и при следующем открытии пользователь увидит, что аккаунт заблокирован.`))return;setBusy(d.id);setError('');try{await api(`/admin/accounts/${d.id}/block`,{blocked:!d.blocked_at});setUndone(d.blocked_at?null:{id:d.id,who:`Врач ${d.name}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
+ async function toggle(d:Doctor){if(!d.blocked_at&&!(await ask(`Заблокировать ${d.name}? Вход закроется, и при следующем открытии пользователь увидит, что аккаунт заблокирован.`,'Заблокировать')))return;setBusy(d.id);setError('');try{await api(`/admin/accounts/${d.id}/block`,{blocked:!d.blocked_at});setUndone(d.blocked_at?null:{id:d.id,who:`Врач ${d.name}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  async function setKind(d:Doctor,kind:SpecialtyKind|''){setBusy(d.id);setError('');try{await api(`/admin/doctors/${d.id}/kind`,{kind:kind||null});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
- return <><PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход. При разблокировке пользователь входит заново"/>
+ return <>{dialog}<PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход. При разблокировке пользователь входит заново"/>
   <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="var(--sp-4)"/>
   {doctors.length>=300?<p className="muted small list-cap">Показаны первые 300 врачей. Для остальных пользуйтесь поиском.</p>:null}
   {loading?<PageLoader/>:null}
@@ -46,11 +47,12 @@ function AdminDoctors(){
  </>;
 }
 function AdminPatients(){
+ const {ask,dialog}=useConfirm();
  const [patients,setPatients]=useState<Patient[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[undone,setUndone]=useState<{id:string;who:string}|null>(null);
  const load=useCallback(async()=>{setError('');try{const r=await api<{patients:Patient[]}>('/admin/patients');setPatients(r.patients);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
  useEffect(()=>{void load();},[load]);
- async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm(`Заблокировать пациента №${patients.indexOf(p)+1}? Вход закроется, и при следующем открытии пользователь увидит, что аккаунт заблокирован. Разблокировать можно кнопкой в списке или сразу после блокировки.`))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});setUndone(p.blocked_at?null:{id:p.id,who:`Пациент №${patients.indexOf(p)+1}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
- return <><PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
+ async function toggle(p:Patient){if(!p.blocked_at&&!(await ask(`Заблокировать пациента №${patients.indexOf(p)+1}? Вход закроется, и при следующем открытии пользователь увидит, что аккаунт заблокирован. Разблокировать можно кнопкой в списке или сразу после блокировки.`,'Заблокировать')))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});setUndone(p.blocked_at?null:{id:p.id,who:`Пациент №${patients.indexOf(p)+1}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
+ return <>{dialog}<PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
   {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {patients.length>=200?<p className="muted small list-cap">Показаны первые 200 пациентов.</p>:null}
