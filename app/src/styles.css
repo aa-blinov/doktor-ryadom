@@ -888,3 +888,7 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .account-row .account-meta strong{white-space:normal;overflow-wrap:break-word;text-overflow:clip;overflow:visible;max-width:100%}
 /* On a 320 px phone the overview mini-charts keep a readable width and scroll sideways inside their own card, like the history charts. */
 @media(max-width:480px){.overview-charts .history-chart{min-width:480px}.overview-charts .chart-panel{overflow-x:auto;min-width:0}}
+/* Long names in the admin sidebar wrap by word on tablets and never split inside a word. */
+.sidebar .account-meta strong{hyphens:none;word-break:normal}
+/* The archive follows the last goal card, which already draws the rule above it, so the archive draws no second one. */
+.goal-card+.goal-archive{border-top:0}
