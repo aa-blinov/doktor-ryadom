@@ -831,3 +831,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:380px){.plan-sections .mantine-SegmentedControl-root{width:100%;max-width:100%}.plan-sections .mantine-SegmentedControl-label{white-space:normal;padding-inline:var(--sp-2)}}
 /* Plan switch items size to their own labels on a phone, so the longest word ("Отслеживаем") is never cut. */
 @media(max-width:380px){.plan-sections .mantine-SegmentedControl-control{flex:1 1 auto;min-width:0}}
+/* Plan switch labels are never clipped on a phone: the item, its label and inner text all size to the word. */
+@media(max-width:380px){.plan-sections .mantine-SegmentedControl-control,.plan-sections .mantine-SegmentedControl-label,.plan-sections .mantine-SegmentedControl-innerLabel{overflow:visible;text-overflow:clip;min-width:max-content}}
