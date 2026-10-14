@@ -872,3 +872,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:700px){.patient-table>a.patient-table-row:first-of-type{border-top:0}}
 /* The goals screen intro line keeps air above the rule under it, for patients and clinicians alike. */
 .goals-section>p.muted{margin-bottom:var(--sp-4)}
+/* The sidebar section label stays inside the sidebar on tablet widths and ends with an ellipsis instead of spilling over its edge. */
+.sidebar .workspace-label{max-width:calc(100% - var(--sp-7));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
