@@ -803,3 +803,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .goal-card-head .mantine-Button-root{flex-shrink:0}
 /* On a phone the three period options wrap by word, so the whole switch fits the screen. */
 @media(max-width:380px){.overview-toolbar .mantine-SegmentedControl-root{width:100%}.overview-toolbar .mantine-SegmentedControl-label{white-space:normal;padding-inline:var(--sp-2);line-height:1.2}}
+/* Phone rows: every cell may shrink to its column, so a long mood or record label stays inside the card. */
+@media(max-width:700px){.patient-table-row>*{min-width:0;overflow-wrap:break-word}}
