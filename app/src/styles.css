@@ -827,11 +827,3 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* Button labels inside check-in, the doctor card and the success screen are not clipped: the button grows to fit its text and wraps if it must. */
 .checkin-nav .mantine-Button-label,.connect-panel .mantine-Button-label,.success-panel .mantine-Button-label{overflow:visible;text-overflow:clip;white-space:normal}
 .checkin-nav .mantine-Button-root{flex:1 1 auto}
-/* On a 320 px phone the plan's section switch takes the full width, and its labels wrap by word instead of clipping. */
-@media(max-width:380px){.plan-sections .mantine-SegmentedControl-root{width:100%;max-width:100%}.plan-sections .mantine-SegmentedControl-label{white-space:normal;padding-inline:var(--sp-2)}}
-/* Plan switch items size to their own labels on a phone, so the longest word ("Отслеживаем") is never cut. */
-@media(max-width:380px){.plan-sections .mantine-SegmentedControl-control{flex:1 1 auto;min-width:0}}
-/* Plan switch labels are never clipped on a phone: the item, its label and inner text all size to the word. */
-@media(max-width:380px){.plan-sections .mantine-SegmentedControl-control,.plan-sections .mantine-SegmentedControl-label,.plan-sections .mantine-SegmentedControl-innerLabel{overflow:visible;text-overflow:clip;min-width:max-content}}
-/* On a 320 px phone the plan switch wraps its longest label by word and keeps the items inside the screen; no label is cut. */
-@media(max-width:380px){.plan-sections .mantine-SegmentedControl-control{flex:1 1 auto;min-width:0;overflow:visible}.plan-sections .mantine-SegmentedControl-label,.plan-sections .mantine-SegmentedControl-innerLabel{white-space:normal;overflow:visible;min-width:0;padding-inline:var(--sp-1)}}
