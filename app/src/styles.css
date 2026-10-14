@@ -860,3 +860,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .success-actions .mantine-Button-root{white-space:nowrap;width:auto}
 /* A history chart on a 320 px phone scrolls sideways inside its own card, so its labels stay reachable and never spill past the screen. */
 @media(max-width:480px){.chart-panel{min-width:0;max-width:100%;overflow-x:auto}.history-charts{max-width:100%}}
+/* On desktop the metric values stay on one line: "14 из 30" never breaks into separate words. */
+@media(min-width:1151px){.overview-metrics dd{white-space:nowrap;max-width:none}}
