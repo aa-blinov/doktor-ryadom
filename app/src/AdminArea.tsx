@@ -70,10 +70,9 @@ function AdminAudit(){
  // The filter goes to the server so that "показать ещё" keeps paging through the same action.
  const load=useCallback(async(offset:number)=>{setBusy(true);setError('');try{const r=await api<{events:Event[];limit:number}>(`/admin/audit?limit=200&offset=${offset}${actionFilter?`&action=${encodeURIComponent(actionFilter)}`:''}`);setEvents(prev=>offset?[...prev,...r.events]:r.events);setHasMore(r.events.length>=200);setKnown(prev=>{const next={...prev};for(const e of r.events)next[e.action]=e.action_label??e.action;return next;});}catch(e){setError(errorText(e));}finally{setLoading(false);setBusy(false);}},[actionFilter]);
  useEffect(()=>{void load(0);},[load]);
- return <><PageHead title="Журнал действий" description="Кто и что сделал в портале. Содержимое записей здесь не показывается"/>
+ return <><div className="audit-head"><PageHead title="Журнал действий" description="Кто и что сделал в портале. Содержимое записей здесь не показывается" action={Object.keys(known).length?<NativeSelect className="audit-filter" label="Тип события" value={actionFilter} onChange={e=>setActionFilter(e.currentTarget.value)} data={[{value:'',label:'Все события'},...Object.entries(known).map(([value,label])=>({value,label}))]}/>:undefined}/></div>
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error}/>:null}
-  {Object.keys(known).length?<NativeSelect mb="var(--sp-4)" label="Тип события" value={actionFilter} onChange={e=>setActionFilter(e.currentTarget.value)} data={[{value:'',label:'Все события'},...Object.entries(known).map(([value,label])=>({value,label}))]}/>:null}
   {!loading&&!error&&!events.length?<p className="muted">{actionFilter?'Событий такого типа пока нет':'Событий пока нет'}</p>:null}
    <div className="admin-list">{events.map((e,i)=><article className="care-record" key={`${e.created_at}-${i}`}>
    <p><strong>{e.action_label??e.action}</strong>{e.subject_name?<span className="muted"> · {e.subject_name}</span>:null}</p>
