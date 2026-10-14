@@ -48,9 +48,9 @@ it('pilot: patient goals and practice notes reach the clinician queue and can be
   expect((await request('/doctor/patients/'+patient.id+'/plan',{...defaultPlan,practices:['ground']},dc,'PUT')).status).toBe(200);
   await request('/patient/checkins',{date:today(),mood:3,sleep:6,anxiety:1,energy:null,functioning:2,sleepContext:null,note:'Для проверки: хочу обсудить, что помогает отдыхать',habit:null},pc);
   await p.goto(origin+'/#/goals');
-  await p.getByLabel(/^Новая цель/).fill('Снова встречаться с друзьями');await p.getByLabel('Почему это важно',{exact:true}).fill('Хочу поддерживать близкие отношения');
+  await p.getByLabel(/^Новая цель/).fill('Снова встречаться с друзьями');await p.getByLabel('Зачем мне это',{exact:true}).fill('Хочу поддерживать близкие отношения');
   await p.getByRole('button',{name:'Добавить цель',exact:true}).click();await p.getByText('Цель добавлена',{exact:true}).waitFor();
-  await p.getByRole('button',{name:'Шаг',exact:true}).click();await p.getByLabel('Что получилось или помешало',{exact:true}).fill('Написал другу, договорились созвониться');
+  await p.getByRole('button',{name:'Шаг сделан',exact:true}).click();await p.getByLabel('Что получилось или что помешало',{exact:true}).fill('Написал другу, договорились созвониться');
   await p.getByRole('button',{name:'Сохранить отметку',exact:true}).click();await p.getByText('Отметка сохранена',{exact:true}).waitFor();
   await capture(p,'pilot-patient-goals');
   await p.goto(origin+'/#/practice/ground');await p.getByRole('button',{name:'Начать',exact:true}).click();await p.getByRole('button',{name:'Остановить практику',exact:true}).click();await p.getByRole('button',{name:'Неприятно',exact:true}).click();

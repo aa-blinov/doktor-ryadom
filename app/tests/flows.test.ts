@@ -49,11 +49,11 @@ it('invitation links a patient to a doctor, the doctor reviews goals and the pat
   const p:Page=patient.page;
   await p.goto(origin+'/#/goals');
   await p.getByLabel(/^Новая цель/).fill('Гулять утром');
-  await p.getByLabel('Почему это важно',{exact:true}).fill('Чувствую себя бодрее');
+  await p.getByLabel('Зачем мне это',{exact:true}).fill('Чувствую себя бодрее');
   await p.getByRole('button',{name:'Добавить цель',exact:true}).click();
   await p.getByText('Цель добавлена',{exact:true}).waitFor();
-  await p.getByRole('button',{name:'Шаг',exact:true}).click();
-  await p.getByLabel('Что получилось или помешало',{exact:true}).fill('Прошёлся до парка');
+  await p.getByRole('button',{name:'Шаг сделан',exact:true}).click();
+  await p.getByLabel('Что получилось или что помешало',{exact:true}).fill('Прошёлся до парка');
   await p.getByRole('button',{name:'Сохранить отметку',exact:true}).click();
   await p.getByText('Отметка сохранена',{exact:true}).waitFor();
   await p.goto(origin+'/#/practices');
