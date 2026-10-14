@@ -790,3 +790,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .admin-card>.mantine-Button-root{margin-top:var(--sp-3)}
 /* The doctor screen opens with its own heading, so the section rule above it is dropped. */
 .doctor-page{margin-top:0;padding-top:0;border-top:0}
+/* Five tabs must fit 320 px: size each tab to its label and spread them, instead of splitting the width evenly. */
+@media(max-width:380px){.bottom-nav{justify-content:space-between}.bottom-nav>a{flex:0 1 auto;padding-inline:var(--sp-1)}}
