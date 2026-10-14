@@ -811,5 +811,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:430px){.practice-step-actions{flex-direction:column}.practice-step-actions .mantine-Button-root{width:100%;min-width:0}}
 /* The "Нужны уточнения" notice keeps dark ink on its pale yellow fill in both themes. */
 .verification-notice .mantine-Alert-title,.verification-notice .mantine-Alert-message{color:var(--ink)}
-/* On a 320 px phone the five tabs share the row equally with no inner padding, so centred labels keep visible gaps. */
-@media(max-width:380px){.bottom-nav{padding-inline:var(--sp-1);gap:0}.bottom-nav>a{flex:1 1 0;padding-inline:0}}
+/* On a 320 px phone the six labels need every pixel: narrower side padding and an 8 px gap keep them apart. */
+@media(max-width:380px){.bottom-nav{padding-inline:var(--sp-1);gap:var(--sp-2)}}
