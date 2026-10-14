@@ -52,6 +52,8 @@ export function adminRoutes(app:App){
   if(!row)return c.json({error:'Аккаунт не найден.'},404);
   if(row.role==='admin')return c.json({error:'Администратора блокирует другой администратор.'},403);
   await run(db,'UPDATE users SET blocked_at=? WHERE id=?',parsed.data.blocked?Date.now():null,target);
+  // Sessions survive a block so the next open can say why, and end on unblock so an old cookie cannot resume.
+  if(!parsed.data.blocked)await run(db,'DELETE FROM sessions WHERE user_id=?',target);
   await logAction(db,admin,parsed.data.blocked?'block_account':'unblock_account',target);
   return c.json({ok:true});
  });

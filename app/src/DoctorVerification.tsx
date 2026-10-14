@@ -17,7 +17,7 @@ export function DoctorVerification({user}:{user:User}){
   {loading?<Loader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {status==='pending'?<Alert color="forest" mb="var(--sp-4)" title="Заявка на проверке">Мы проверим данные и сообщим результат. Пока можно заполнить настройки аккаунта.</Alert>:null}
-  {status==='needs_info'?<Alert color="yellow" mb="var(--sp-4)" title="Нужны уточнения">{request?.admin_note||'Уточните данные и отправьте заявку снова.'}</Alert>:null}
+  {status==='needs_info'?<Alert className="verification-notice" color="yellow" mb="var(--sp-4)" title="Нужны уточнения">{request?.admin_note||'Уточните данные и отправьте заявку снова.'}</Alert>:null}
   {status==='rejected'?<Alert color="red" mb="var(--sp-4)" title="Заявка отклонена">{request?.admin_note||'Проверьте данные и отправьте заявку снова.'}</Alert>:null}
   {status==='approved'||user.specialist_verified_at?<Alert color="forest" mb="var(--sp-4)" title="Профиль подтверждён">Можно приглашать пациентов. Если пациентов не видно, обновите страницу.<div><Button mt="var(--sp-3)" onClick={()=>navigate('/patients')}>К пациентам</Button></div></Alert>:null}
   {canSubmit&&!loading?<form className="care-form" onSubmit={e=>{e.preventDefault();void submit();}}>

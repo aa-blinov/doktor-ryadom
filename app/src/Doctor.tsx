@@ -82,7 +82,7 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
  return <div className="plan-simple">
   <section>
    <h2>Вопросы дня</h2>
-   <Select label="Частота" value={plan.frequency} onChange={v=>setPlan({...plan,frequency:v as Plan['frequency']})} data={[{value:'daily',label:'Каждый день'},{value:'three',label:'Три раза в неделю'},{value:'weekly',label:'Раз в неделю'}]}/>
+   <Select label="Частота" allowDeselect={false} value={plan.frequency} onChange={v=>setPlan({...plan,frequency:v as Plan['frequency']})} data={[{value:'daily',label:'Каждый день'},{value:'three',label:'Три раза в неделю'},{value:'weekly',label:'Раз в неделю'}]}/>
    <div className="plan-checks">{([{key:'sleep',label:'Сон'},{key:'anxiety',label:'Тревога'},{key:'energy',label:'Энергия'},{key:'functioning',label:'Обычные дела'}] as const).map(p=><Checkbox key={p.key} label={p.label} checked={plan[p.key]} onChange={e=>setPlan({...plan,[p.key]:e.currentTarget.checked})}/>)}</div>
   </section>
   <section>
