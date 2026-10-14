@@ -851,3 +851,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:1150px){.overview-metrics>div{grid-template-columns:minmax(0,1fr)}.overview-metrics dd{max-width:none;text-align:left}}
 /* On tablet and phone widths each history chart takes the full row, so its labels never run into the neighbouring card. */
 @media(max-width:1150px){.history-charts .chart-grid{grid-template-columns:minmax(0,1fr)}.history-charts .chart-panel{min-width:0}}
+/* The PHQ-9 safety block takes a dark warm fill in the dark theme; the cream fill made its light text unreadable. */
+:root[data-mantine-color-scheme="dark"] .assessment-safety.mantine-Alert-root{background:rgba(168,84,36,.22)!important;border-color:#a85424!important}
