@@ -833,3 +833,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:380px){.plan-sections .mantine-SegmentedControl-control{flex:1 1 auto;min-width:0}}
 /* Plan switch labels are never clipped on a phone: the item, its label and inner text all size to the word. */
 @media(max-width:380px){.plan-sections .mantine-SegmentedControl-control,.plan-sections .mantine-SegmentedControl-label,.plan-sections .mantine-SegmentedControl-innerLabel{overflow:visible;text-overflow:clip;min-width:max-content}}
+/* On a 320 px phone the plan switch wraps its longest label by word and keeps the items inside the screen; no label is cut. */
+@media(max-width:380px){.plan-sections .mantine-SegmentedControl-control{flex:1 1 auto;min-width:0;overflow:visible}.plan-sections .mantine-SegmentedControl-label,.plan-sections .mantine-SegmentedControl-innerLabel{white-space:normal;overflow:visible;min-width:0;padding-inline:var(--sp-1)}}
