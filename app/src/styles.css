@@ -876,3 +876,7 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .sidebar .workspace-label{max-width:calc(100% - var(--sp-7));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* A review hidden by moderation is a neutral state, not an error: a quiet tone that reads in both themes. */
 .pill.status-hidden{background:var(--soft);color:var(--muted);border-color:var(--line)}
+/* On a 320 px phone the doctor overview charts stack one per row, each with its own readable labels. */
+@media(max-width:480px){.overview-charts{grid-template-columns:minmax(0,1fr)}}
+/* On tablet widths a section heading's action wraps under the title instead of cutting its label. */
+@media(max-width:1150px){.section-title{flex-wrap:wrap}.section-title>.mantine-Button-root{white-space:normal;height:auto;min-height:44px;max-width:100%}}
