@@ -870,3 +870,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:480px){.settings-account{border-bottom:0}}
 /* On a phone the first patient row sits right under the table's own border, so it draws no second rule. */
 @media(max-width:700px){.patient-table>a.patient-table-row:first-of-type{border-top:0}}
+/* The goals screen intro line keeps air above the rule under it, for patients and clinicians alike. */
+.goals-section>p.muted{margin-bottom:var(--sp-4)}
