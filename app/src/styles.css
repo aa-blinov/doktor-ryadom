@@ -801,3 +801,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* A goal's finish button keeps its full label on a phone and drops under the title if needed. */
 .goal-card-head{flex-wrap:wrap}
 .goal-card-head .mantine-Button-root{flex-shrink:0}
+/* On a phone the three period options wrap by word, so the whole switch fits the screen. */
+@media(max-width:380px){.overview-toolbar .mantine-SegmentedControl-root{width:100%}.overview-toolbar .mantine-SegmentedControl-label{white-space:normal;padding-inline:var(--sp-2);line-height:1.2}}
