@@ -892,3 +892,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .sidebar .account-meta strong{hyphens:none;word-break:normal}
 /* The archive follows the last goal card, which already draws the rule above it, so the archive draws no second one. */
 .goal-card+.goal-archive{border-top:0}
+/* On tablet widths the overview mini-charts keep a readable width and scroll sideways inside their card, as on phones. */
+@media(max-width:1150px){.overview-charts .history-chart{min-width:480px}.overview-charts .chart-panel{overflow-x:auto;min-width:0}}
