@@ -880,3 +880,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:480px){.overview-charts{grid-template-columns:minmax(0,1fr)}}
 /* On tablet widths a section heading's action wraps under the title instead of cutting its label. */
 @media(max-width:1150px){.section-title{flex-wrap:wrap}.section-title>.mantine-Button-root{white-space:normal;height:auto;min-height:44px;max-width:100%}}
+/* The new-goal form already draws the divider under it, so the first goal card does not draw a second one. */
+.goal-add-form+.goal-card,.goal-add-form+.goal-card:first-of-type{border-top:0}
