@@ -884,3 +884,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .goal-add-form+.goal-card,.goal-add-form+.goal-card:first-of-type{border-top:0}
 /* The goals block starts under the tab bar with one rule, not a second one from the section above it. */
 .goals-section{border-top:0}
+/* The account name in the sidebar wraps onto a second line when it needs room, instead of ending in an ellipsis on tablets. */
+.account-row .account-meta strong{white-space:normal;overflow-wrap:break-word;text-overflow:clip;overflow:visible;max-width:100%}
