@@ -824,3 +824,6 @@ body:has(.pwa-notice) #root{padding-top:72px}
 :root[data-mantine-color-scheme="dark"] .topbar-sos{background:rgba(168,84,36,.22);color:#f3c9b0;border-color:#a85424}
 :root[data-mantine-color-scheme="dark"] .mantine-Checkbox-input{border-color:var(--muted)}
 :root[data-mantine-color-scheme="dark"] .mantine-Switch-track{border:1px solid var(--muted)}
+/* Button labels inside check-in, the doctor card and the success screen are not clipped: the button grows to fit its text and wraps if it must. */
+.checkin-nav .mantine-Button-label,.connect-panel .mantine-Button-label,.success-panel .mantine-Button-label{overflow:visible;text-overflow:clip;white-space:normal}
+.checkin-nav .mantine-Button-root{flex:1 1 auto}
