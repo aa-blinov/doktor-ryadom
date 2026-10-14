@@ -862,3 +862,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:480px){.chart-panel{min-width:0;max-width:100%;overflow-x:auto}.history-charts{max-width:100%}}
 /* On desktop the metric values stay on one line: "14 из 30" never breaks into separate words. */
 @media(min-width:1151px){.overview-metrics dd{white-space:nowrap;max-width:none}}
+/* A review button inside a record card fits the card on a 320 px phone: it can wrap its label instead of pushing the page wider. */
+@media(max-width:480px){.care-record>.mantine-Button-root{max-width:100%;height:auto;min-height:44px;white-space:normal}}
