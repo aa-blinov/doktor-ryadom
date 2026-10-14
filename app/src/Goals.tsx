@@ -4,7 +4,7 @@ import {api,errorText} from './api';
 import {ErrorBox,formatDate} from './ui';
 import type {Goal,GoalLog,PatientData} from './shared';
 
-export const goalStatus={step:'Шаг',difficult:'Трудность',reached:'Цель достигнута'};
+export const goalStatus={step:'Шаг сделан',difficult:'Было трудно',reached:'Цель достигнута'};
 const goalStatusFull={step:'Шаг сделан',difficult:'Возникла трудность',reached:'Цель достигнута'};
 
 export function GoalRecords({goals,logs}:{goals:Goal[];logs:GoalLog[]}){
@@ -36,12 +36,12 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
  async function restoreGoal(goalId:string){setError('');setRestoring(goalId);try{await api(`/patient/goals/${goalId}/restore`,{},'PUT');await onSaved();setMessage('Цель снова активна');}catch(e){setError(errorText(e));}finally{setRestoring(null);}}
  return <section className="care-section goals-section">
   {doctor?<div className="section-title"><h2>Личные цели пациента</h2>{pending.length?<Button variant="subtle" size="sm" loading={bulk} disabled={bulk} onClick={()=>void reviewAll()}>Подтвердить все непрочитанные</Button>:null}</div>:null}
-  <p className="muted">{doctor?'Цели формулирует пациент. Обсудите посильный следующий шаг.':'До трёх целей. Отмечайте шаг — это не оценка и не соревнование.'}</p>
+  <p className="muted">{doctor?'Пациент сам формулирует цели и отмечает шаги. Подтвердите просмотр, когда прочитали, и обсудите следующий шаг на приёме.':'Цель — то, что вы хотите изменить в ближайшее время. Можно вести до трёх. Отмечайте, что получилось: это не оценка и не соревнование.'}</p>
   {!doctor?<form className="goal-add-form" onSubmit={addGoal}>
-   <TextInput label="Новая цель" placeholder="Например: снова встречаться с друзьями" value={title} onChange={e=>setTitle(e.currentTarget.value)} required minLength={3} maxLength={180}/>
-   <TextInput label="Почему это важно" description="Необязательно" value={reason} onChange={e=>setReason(e.currentTarget.value)} maxLength={500}/>
+   <TextInput label="Новая цель" description="Одна понятная формулировка, например «Раз в неделю встречаться с друзьями»" placeholder="Например: снова встречаться с друзьями" value={title} onChange={e=>setTitle(e.currentTarget.value)} required minLength={3} maxLength={180}/>
+   <TextInput label="Зачем мне это" description="Необязательно: что изменится, если получится" value={reason} onChange={e=>setReason(e.currentTarget.value)} maxLength={500}/>
    <Button type="submit" loading={busy} disabled={active.length>=3||title.trim().length<3}>Добавить цель</Button>
-   {active.length>=3?<p className="muted small">Сначала завершите одну из текущих целей</p>:null}
+   {active.length>=3?<p className="muted small">Сразу можно вести три цели. Чтобы добавить новую, завершите одну из текущих.</p>:null}
   </form>:null}
   {active.length?active.map(goal=><article className="goal-card" key={goal.id}>
    <div className="goal-card-head">
@@ -55,25 +55,25 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
     catch(e){setError(errorText(e));return false;}
    }}/>:null}
    {logs.filter(l=>l.goal_id===goal.id).slice(0,5).map(log=><div className="goal-log" key={log.id}>
-    <p><strong>{goalStatusFull[log.status]}</strong><span className="muted small"> · {new Date(log.created_at).toLocaleDateString('ru-RU')}</span></p>
+    <p><strong>{goalStatusFull[log.status]}</strong><span className="muted small"> · {formatDate(new Date(log.created_at).toISOString().slice(0,10),true)}</span></p>
     {log.note?<p className="care-prose">{log.note}</p>:null}
-    {log.reviewed_at?<p className="muted small">{log.reviewer_id===data.doctor?.id?'Врач подтвердил просмотр':'Просмотрено предыдущим врачом'}</p>:doctor?<p className="muted small">Ожидает просмотра</p>:null}
+    {log.reviewed_at?<p className="muted small">{log.reviewer_id===data.doctor?.id?'Вы подтвердили просмотр':'Просмотрено предыдущим врачом'}</p>:doctor?<p className="muted small">Новая отметка: вы её ещё не просмотрели</p>:null}
      {doctor&&(!log.reviewed_at||log.reviewer_id!==data.doctor?.id)?<Button variant="outline" size="xs" mt="var(--sp-3)" onClick={async()=>{setError('');setMessage('');try{await api(`/doctor/patients/${id}/goal-logs/${log.id}/review`,{});await onSaved();setMessage('Просмотр отметки подтверждён');}catch(e){setError(errorText(e));}}}>Подтвердить просмотр отметки</Button>:null}
    </div>)}
-  </article>):<p className="muted">Активных целей нет</p>}
+  </article>):<p className="muted">{doctor?'Пациент пока не добавил цели.':'Активных целей нет. Добавьте одну, когда будет готовность заняться ею.'}</p>}
   {!doctor&&closed.length?<section className="goal-archive">
    <Heading>Архив</Heading>
-   <p className="muted small">Завершённые цели можно вернуть в список.</p>
+   <p className="muted small">Здесь цели, которые вы завершили. Их отметки сохранены, а цель можно вернуть в список.</p>
    {closed.map(goal=><article className="goal-card closed" key={goal.id}>
     <div className="goal-card-head">
      <ArchivedHeading>{goal.title}</ArchivedHeading>
      <Button variant="subtle" size="xs" loading={restoring===goal.id} disabled={busy||restoring!==null} onClick={()=>void restoreGoal(goal.id)}>Вернуть в список</Button>
     </div>
-    {goal.closed_at?<p className="muted small">Завершена {new Date(goal.closed_at).toLocaleDateString('ru-RU')}</p>:null}
+    {goal.closed_at?<p className="muted small">Завершена {formatDate(new Date(goal.closed_at).toISOString().slice(0,10),true)}</p>:null}
    </article>)}
   </section>:null}
   <Modal opened={!!closing} onClose={()=>setClosing(null)} title="Завершить цель" centered>
-   <p>Цель «{closing?.title}» перестанет предлагаться. Отметки останутся в истории, а саму цель можно вернуть из архива.</p>
+   <p>Цель «{closing?.title}» уйдёт из списка активных. Отметки останутся в истории, а саму цель можно вернуть из архива.</p>
    <Group justify="flex-end">
     <Button variant="default" onClick={()=>setClosing(null)}>Отмена</Button>
     <Button color="red" loading={busy} onClick={()=>closing&&void closeGoal(closing.id)}>Завершить</Button>
@@ -100,7 +100,7 @@ function GoalProgress({goal,busy,save}:{goal:Goal;busy:boolean;save:(status:Goal
    )}
   </div>
   {status?<>
-   <Textarea label="Что получилось или помешало" description="Необязательно" value={note} onChange={e=>setNote(e.currentTarget.value)} minRows={2} maxLength={1000}/>
+   <Textarea label="Что получилось или что помешало" description="Необязательно, одной фразой" value={note} onChange={e=>setNote(e.currentTarget.value)} minRows={2} maxLength={1000}/>
    <Group>
     <Button size="sm" loading={saving||busy} onClick={()=>void submit()}>Сохранить отметку</Button>
     <Button size="sm" variant="subtle" onClick={()=>{setStatus(null);setNote('');}}>Отмена</Button>
