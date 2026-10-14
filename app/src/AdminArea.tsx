@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import {Button,Loader,NativeSelect,TextInput} from '@mantine/core';
 import {api,errorText} from './api';
-import {ErrorBox,PageHead,formatDate} from './ui';
+import {ErrorBox,PageHead,formatDate, PageLoader} from './ui';
 import {AdminVerifications} from './AdminVerifications';
 import {AccountSettings} from './AccountSettings';
 import {specialtyKinds,specialtyLabels,type SpecialtyKind,type User} from './shared';
@@ -29,7 +29,7 @@ function AdminDoctors(){
  return <><PageHead title="Врачи" description="Все врачи портала, тип специальности и статус проверки. Блокировка закрывает вход. При разблокировке пользователь входит заново"/>
   <TextInput label="Поиск по имени или почте" value={q} onChange={e=>setQ(e.currentTarget.value)} mb="var(--sp-4)"/>
   {doctors.length>=300?<p className="muted small list-cap">Показаны первые 300 врачей. Для остальных пользуйтесь поиском.</p>:null}
-  {loading?<Loader/>:null}
+  {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!doctors.length?<p className="muted">{q.trim()?'Поиск ничего не нашёл':'Врачей пока нет'}</p>:null}
   {undone?<div className="admin-undo" role="status"><span>{undone.who} заблокирован. Это было сделано только что.</span><Button variant="subtle" size="xs" onClick={async()=>{const id=undone?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
@@ -51,7 +51,7 @@ function AdminPatients(){
  useEffect(()=>{void load();},[load]);
  async function toggle(p:Patient){if(!p.blocked_at&&!window.confirm(`Заблокировать пациента №${patients.indexOf(p)+1}? Вход закроется, и при следующем открытии пользователь увидит, что аккаунт заблокирован. Разблокировать можно кнопкой в списке или сразу после блокировки.`))return;setBusy(p.id);setError('');try{await api(`/admin/accounts/${p.id}/block`,{blocked:!p.blocked_at});setUndone(p.blocked_at?null:{id:p.id,who:`Пациент №${patients.indexOf(p)+1}`});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Пациенты" description="Имена и почты пациентов администратору не показываются. Видны только даты и статус аккаунта"/>
-  {loading?<Loader/>:null}
+  {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {patients.length>=200?<p className="muted small list-cap">Показаны первые 200 пациентов.</p>:null}
   {!loading&&!error&&!patients.length?<p className="muted">Пациентов пока нет</p>:null}
@@ -71,7 +71,7 @@ function AdminAudit(){
  const load=useCallback(async(offset:number)=>{setBusy(true);setError('');try{const r=await api<{events:Event[];limit:number}>(`/admin/audit?limit=200&offset=${offset}${actionFilter?`&action=${encodeURIComponent(actionFilter)}`:''}`);setEvents(prev=>offset?[...prev,...r.events]:r.events);setHasMore(r.events.length>=200);setKnown(prev=>{const next={...prev};for(const e of r.events)next[e.action]=e.action_label??e.action;return next;});}catch(e){setError(errorText(e));}finally{setLoading(false);setBusy(false);}},[actionFilter]);
  useEffect(()=>{void load(0);},[load]);
  return <><div className="audit-head"><PageHead title="Журнал действий" description="Кто и что сделал в портале. Содержимое записей здесь не показывается" action={Object.keys(known).length?<NativeSelect className="audit-filter" label="Тип события" value={actionFilter} onChange={e=>setActionFilter(e.currentTarget.value)} data={[{value:'',label:'Все события'},...Object.entries(known).map(([value,label])=>({value,label}))]}/>:undefined}/></div>
-  {loading?<Loader/>:null}
+  {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error}/>:null}
   {!loading&&!error&&!events.length?<p className="muted">{actionFilter?'Событий такого типа пока нет':'Событий пока нет'}</p>:null}
    <div className="admin-list">{events.map((e,i)=><article className="care-record" key={`${e.created_at}-${i}`}>
@@ -89,7 +89,7 @@ function AdminReviews(){
  useEffect(()=>{void load();},[load]);
  async function toggle(r:Row){setBusy(r.id);setError('');try{await api(`/admin/reviews/${r.id}/hide`,{hidden:!r.hidden});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Отзывы о врачах" description="Отзывы публикуются сразу. Скрытый отзыв пропадает из каталога и из рейтинга"/>
-  {loading?<Loader/>:null}
+  {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!rows.length?<p className="muted">Отзывов пока нет</p>:null}
   <div className="admin-list">{rows.map(r=><article className={`care-record admin-card${r.hidden?' resolved':''}`} key={r.id}>

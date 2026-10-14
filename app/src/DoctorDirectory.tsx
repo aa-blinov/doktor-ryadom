@@ -3,7 +3,7 @@ import {Avatar,Button,Checkbox,Loader,NativeSelect,TextInput,Textarea} from '@ma
 import {IconArrowLeft,IconStar,IconStarFilled} from '@tabler/icons-react';
 import {api,errorText} from './api';
 import {navigate} from './App';
-import {Empty,ErrorBox,PageHead,formatDate} from './ui';
+import {Empty,ErrorBox,PageHead,formatDate, PageLoader} from './ui';
 import {specialtyLabels,type SpecialtyKind} from './shared';
 
 const kindFilters=[{label:'Все',value:'all'},{label:'Психологи',value:'psychologist'},{label:'Психотерапевты',value:'psychotherapist'},{label:'Психиатры',value:'psychiatrist'}] as const;
@@ -50,7 +50,7 @@ export function DoctorDirectory(){
    </div>
   </div>
   <p className="muted small directory-note">Препараты назначает только психиатр. Психологи и психотерапевты работают разговором и практиками.</p>
-  {loading?<Loader/>:null}
+  {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!shown.length?<Empty title="Врачей не найдено" description="Измените фильтры или поиск" icon={<IconStar/>} action="Сбросить" onAction={()=>{setKind('all');setQuery('');setCity('');}}/>:null}
   <div className="doctor-list">{shown.map(d=><a key={d.id} className="doctor-card" href={`#/doctors/${d.id}`}>
@@ -70,7 +70,7 @@ export function DoctorPage({id,onChanged}:{id:string;onChanged:()=>Promise<void>
  const [data,setData]=useState<Detail|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const load=useCallback(async()=>{setError('');try{setData(await api<Detail>(`/directory/${id}`));}catch(e){setError(errorText(e));}finally{setLoading(false);}},[id]);
  useEffect(()=>{void load();},[load]);
- if(loading)return <Loader/>;
+ if(loading)return <PageLoader label="Загружаем карточку врача…"/>;
  if(!data)return <section className="directory"><button className="back-link" onClick={()=>navigate('/doctors')}><IconArrowLeft size={18}/>Все врачи</button>{error?<ErrorBox message={error} retry={load}/>:null}</section>;
  const d=data.doctor;
  const sections=[{title:'Направления консультаций',text:d.focusAreas},{title:'Образование',text:d.education},{title:'Курсы',text:d.courses},{title:'Опыт работы',text:d.workHistory},{title:'Адрес приёма',text:d.address}].filter(s=>s.text);

@@ -845,3 +845,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* Dynamics rows: the label wraps inside its own column, so a long label never runs into the value. */
 .overview-metrics dt{min-width:0;white-space:normal;overflow-wrap:break-word}
 .overview-metrics dd{min-width:0}
+/* Shared page loader: centred spinner and label in the content area, the same on every screen. */
+.page-loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-3);min-height:200px;color:var(--muted);font-size:15px;text-align:center}

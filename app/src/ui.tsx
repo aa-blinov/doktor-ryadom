@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Alert } from '@mantine/core';
+import { Button, Alert, Loader } from '@mantine/core';
 import { IconArrowRight, IconAlertCircle } from '@tabler/icons-react';
 import { moods, type Entry } from './shared';
 export function Brand(){return <div className="brand"><svg width="35" height="35" viewBox="0 0 36 36" aria-hidden="true"><path fill="currentColor" d="M5 6c13 0 20 9 20 24C12 30 5 21 5 6Z"/><path fill="#a9c3a0" d="M30 4c-11 2-16 10-15 22C27 25 32 16 30 4Z"/></svg><span>рядом<span className="brand-dot" aria-hidden="true">.</span></span></div>}
@@ -80,4 +80,7 @@ export function ScaleRow({label,options,value,onChange,ends}:{label:string;optio
   <div className="scale-ends"><span>{ends[0]}</span><span>{ends[1]}</span></div>
  </div>;
 }
-
+/* One loader for every page that waits for data: the same spinner, the same wording slot, the same space. */
+export function PageLoader({label='Загружаем…'}:{label?:string}){
+ return <div className="page-loader" role="status" aria-live="polite"><Loader size="sm" aria-hidden="true"/><p>{label}</p></div>;
+}
