@@ -835,3 +835,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .audit-head .page-head{flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--sp-5)}
 .audit-filter{width:260px;max-width:100%}
 @media(max-width:700px){.audit-filter{width:100%}}
+/* Section headings wrap and their action buttons stay whole on a 320 px phone, instead of squeezing the title to a sliver. */
+@media(max-width:380px){.section-title{flex-wrap:wrap;align-items:flex-start}.section-title>.mantine-Button-root{max-width:100%;height:auto;min-height:44px;white-space:normal}}
