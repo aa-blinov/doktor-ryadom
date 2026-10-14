@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import {Alert,Button,Loader,NativeSelect,TextInput,Textarea} from '@mantine/core';
 import {api,errorText} from './api';
-import {ErrorBox,PageHead} from './ui';
+import {ErrorBox,PageHead, PageLoader} from './ui';
 import {navigate} from './App';
 import {specialtyKinds,specialtyLabels,type SpecialtyKind,type User} from './shared';
 type Request={id:string;kind:SpecialtyKind|null;specialty:string;license:string;city:string;note:string;status:'pending'|'needs_info'|'approved'|'rejected';admin_note:string;created_at:number;updated_at:number};
@@ -14,7 +14,7 @@ export function DoctorVerification({user}:{user:User}){
  const status=request?.status;
  const canSubmit=!status||status==='needs_info'||status==='rejected';
  return <><PageHead title="Подключение врача" description="Проверим квалификацию, после этого откроются пациенты и приглашения"/>
-  {loading?<Loader/>:null}
+  {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {status==='pending'?<Alert color="forest" mb="var(--sp-4)" title="Заявка на проверке">Мы проверим данные и сообщим результат. Пока можно заполнить настройки аккаунта.</Alert>:null}
   {status==='needs_info'?<Alert className="verification-notice" color="yellow" mb="var(--sp-4)" title="Нужны уточнения">{request?.admin_note||'Уточните данные и отправьте заявку снова.'}</Alert>:null}

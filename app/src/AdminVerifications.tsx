@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import {Button,Loader,Textarea} from '@mantine/core';
 import {api,errorText} from './api';
-import {ErrorBox,PageHead,formatDate} from './ui';
+import {ErrorBox,PageHead,formatDate, PageLoader} from './ui';
 import {specialtyLabels,type SpecialtyKind} from './shared';
 type Item={id:string;kind:SpecialtyKind|null;specialty:string;license:string;city:string;note:string;status:'pending'|'needs_info'|'approved'|'rejected';admin_note:string;created_at:number;name:string;email:string;specialist_verified_at:number|null};
 const statusText={pending:'На проверке',needs_info:'Нужны уточнения',approved:'Подтверждён',rejected:'Отклонён'};
@@ -12,7 +12,7 @@ export function AdminVerifications(){
  useEffect(()=>{void load();},[load]);
  async function decide(id:string,decision:'approve'|'needs_info'|'reject'){setBusy(id);setError('');try{await api(`/admin/verifications/${id}/decision`,{decision,note:notes[id]??''});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}
  return <><PageHead title="Заявки врачей" description="Проверка квалификации перед подключением к порталу"/>
-  {loading?<Loader/>:null}
+  {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!items.length?<p className="muted">Заявок пока нет</p>:null}
   <div className="admin-list">{items.map(r=><article className={`care-record admin-card${r.status==='pending'||r.status==='needs_info'?'':' resolved'}`} key={r.id}>

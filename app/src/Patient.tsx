@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Group, Loader, Modal, SegmentedControl, Switch, Textarea, TextInput } from '@mantine/core';
 import { IconArrowLeft, IconArrowRight, IconCheck, IconFileText, IconLeaf, IconLink, IconMoon, IconShieldCheck } from '@tabler/icons-react';
 import { api, errorText } from './api';
-import { Empty, ErrorBox, Face, formatDate, HistoryChart, PageHead, ScaleRow, SleepInput} from './ui';
+import { Empty, ErrorBox, Face, formatDate, HistoryChart, PageHead, ScaleRow, SleepInput, PageLoader} from './ui';
 import { navigate } from './App';
 import { plural, moods, today, todayInTimezone, firstNameOf, type Entry, type EntryInput, type PatientData, type Settings, type DoctorProfile, type User } from './shared';
 import { practiceContent } from './practices';
@@ -34,7 +34,7 @@ export function PatientWorkspace({user,route,onLogout,themeLabel,onToggleTheme,s
  // Walking away from the dialog means the person changed their mind: close it instead of
  // leaving it on top of the next screen.
  useEffect(()=>{setSosOpen(route==='/sos');},[route]);
- if(loading)return <div className="section-loading"><Loader/><p>Загружаем ваши записи…</p></div>;
+ if(loading)return <PageLoader label="Загружаем ваши записи…"/>;
  if(!data)return <ErrorBox message={error} retry={reload}/>;
  return <>
   <SosDialog opened={sosOpen} onClose={()=>setSosOpen(false)} hasDoctor={!!data.doctor} lastSosAt={data.lastSosAt??null} onSent={reload}/>
