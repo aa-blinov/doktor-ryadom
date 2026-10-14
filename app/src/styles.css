@@ -866,3 +866,7 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:480px){.care-record>.mantine-Button-root{max-width:100%;height:auto;min-height:44px;white-space:normal}}
 /* On a 320 px phone the review button's label wraps by word instead of being cut at the edge. */
 @media(max-width:480px){.care-record>.mantine-Button-root .mantine-Button-label{white-space:normal;overflow:visible;text-overflow:clip}}
+/* On a 320 px phone the account block and the next settings block share one rule, not two. */
+@media(max-width:480px){.settings-account{border-bottom:0}}
+/* On a phone the first patient row sits right under the table's own border, so it draws no second rule. */
+@media(max-width:700px){.patient-table>a.patient-table-row:first-of-type{border-top:0}}
