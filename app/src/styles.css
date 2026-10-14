@@ -812,7 +812,7 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* The "Нужны уточнения" notice keeps dark ink on its pale yellow fill in both themes. */
 .verification-notice .mantine-Alert-title,.verification-notice .mantine-Alert-message{color:var(--ink)}
 /* On a 320 px phone the six 13 px labels need every pixel: no side padding, a 4 px gap and slightly tighter tracking keep them apart without changing the copy. */
-@media(max-width:380px){.bottom-nav{padding-inline:0;gap:var(--sp-1)}.bottom-nav>a span{letter-spacing:-.02em}}
+@media(max-width:380px){.bottom-nav{padding-inline:var(--sp-1);gap:0}.bottom-nav>a span{letter-spacing:-.03em}}
 /* Check-in navigation wraps on a 320 px phone instead of cutting "Дальше" short. */
 .checkin-nav{flex-wrap:wrap}
 .checkin-nav .mantine-Button-root{flex:1 1 40%;height:auto;min-height:44px;white-space:normal}
