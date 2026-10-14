@@ -38,7 +38,7 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
   {doctor?<div className="section-title"><h2>Личные цели пациента</h2>{pending.length?<Button variant="subtle" size="sm" loading={bulk} disabled={bulk} onClick={()=>void reviewAll()}>Подтвердить все непрочитанные</Button>:null}</div>:null}
   <p className="muted">{doctor?'Пациент сам формулирует цели и отмечает шаги. Подтвердите просмотр, когда прочитали, и обсудите следующий шаг на приёме.':'Цель — то, что вы хотите изменить в ближайшее время. Можно вести до трёх. Отмечайте, что получилось: это не оценка и не соревнование.'}</p>
   {!doctor?<form className="goal-add-form" onSubmit={addGoal}>
-   <TextInput label="Новая цель" description="Одна понятная формулировка, например «Раз в неделю встречаться с друзьями»" placeholder="Например: снова встречаться с друзьями" value={title} onChange={e=>setTitle(e.currentTarget.value)} required minLength={3} maxLength={180}/>
+   <TextInput label="Новая цель" description="Одна понятная формулировка, например «Раз в неделю встречаться с друзьями»" placeholder="Например: гулять утром" value={title} onChange={e=>setTitle(e.currentTarget.value)} required minLength={3} maxLength={180}/>
    <TextInput label="Зачем мне это" description="Необязательно: что изменится, если получится" value={reason} onChange={e=>setReason(e.currentTarget.value)} maxLength={500}/>
    <Button type="submit" loading={busy} disabled={active.length>=3||title.trim().length<3}>Добавить цель</Button>
    {active.length>=3?<p className="muted small">Сразу можно вести три цели. Чтобы добавить новую, завершите одну из текущих.</p>:null}
