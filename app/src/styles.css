@@ -792,3 +792,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .doctor-page{margin-top:0;padding-top:0;border-top:0}
 /* Five tabs must fit 320 px: size each tab to its label and spread them, instead of splitting the width evenly. */
 @media(max-width:380px){.bottom-nav{justify-content:space-between}.bottom-nav>a{flex:0 1 auto;padding-inline:0}.bottom-nav>a span{white-space:nowrap;hyphens:none;overflow-wrap:normal}}
+/* Tab labels stay whole on every phone width, where the bottom bar is shown. */
+@media(max-width:700px){.bottom-nav>a span{white-space:nowrap;hyphens:none;overflow-wrap:normal}}
