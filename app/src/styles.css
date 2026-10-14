@@ -806,4 +806,4 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* Phone rows: every cell may shrink to its column, so a long mood or record label stays inside the card. */
 @media(max-width:700px){.patient-table-row>*{min-width:0;overflow-wrap:break-word}}
 /* Phone patient rows stack into one column: each cell gets the full card width and words never split. */
-@media(max-width:700px){.patient-table-row{grid-template-columns:minmax(0,1fr)}.patient-table-row>*{min-width:0;hyphens:none;overflow-wrap:break-word}}
+@media(max-width:700px){#main-content a.patient-table-row[href]{display:grid;grid-template-columns:minmax(0,1fr)}.patient-table-row>*{min-width:0;hyphens:none;overflow-wrap:break-word}}
