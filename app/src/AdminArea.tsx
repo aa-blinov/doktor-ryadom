@@ -95,7 +95,7 @@ function AdminReviews(){
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!rows.length?<p className="muted">Отзывов пока нет</p>:null}
   <div className="admin-list">{rows.map(r=><article className={`care-record admin-card${r.hidden?' resolved':''}`} key={r.id}>
-   <div className="admin-card-head"><h3>{r.doctor}</h3><span className={r.hidden?'pill status-rejected':'pill status-approved'}>{r.hidden?'Скрыт':'Опубликован'}</span></div>
+   <div className="admin-card-head"><h3>{r.doctor}</h3><span className={r.hidden?'pill status-hidden':'pill status-approved'}>{r.hidden?'Скрыт':'Опубликован'}</span></div>
    <p className="muted small">{r.author} · {formatDate(new Date(r.createdAt).toISOString().slice(0,10))}</p>
    <Stars value={r.rating} size={16}/>
    {r.body?<p className="care-prose">{r.body}</p>:null}

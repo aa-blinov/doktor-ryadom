@@ -874,3 +874,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .goals-section>p.muted{margin-bottom:var(--sp-4)}
 /* The sidebar section label stays inside the sidebar on tablet widths and ends with an ellipsis instead of spilling over its edge. */
 .sidebar .workspace-label{max-width:calc(100% - var(--sp-7));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* A review hidden by moderation is a neutral state, not an error: a quiet tone that reads in both themes. */
+.pill.status-hidden{background:var(--soft);color:var(--muted);border-color:var(--line)}
