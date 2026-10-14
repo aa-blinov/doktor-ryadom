@@ -842,8 +842,8 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .history-charts .history-chart{min-width:480px}
 /* The account name in the sidebar ends with an ellipsis instead of splitting a word. */
 .account-row .account-meta strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;max-width:100%}
-/* Dynamics rows: the label wraps inside its own column, so a long label never runs into the value. */
-.overview-metrics dt{min-width:0;white-space:normal;overflow-wrap:break-word}
-.overview-metrics dd{min-width:0}
+/* Dynamics rows: labels wrap by word and the value keeps at most 55% of the row, so no label breaks inside a word. */
+.overview-metrics dt{min-width:0;white-space:normal;overflow-wrap:normal;hyphens:none}
+.overview-metrics dd{min-width:0;max-width:55%}
 /* Shared page loader: centred spinner and label in the content area, the same on every screen. */
 .page-loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-3);min-height:200px;color:var(--muted);font-size:15px;text-align:center}
