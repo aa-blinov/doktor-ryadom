@@ -837,3 +837,6 @@ body:has(.pwa-notice) #root{padding-top:72px}
 @media(max-width:700px){.audit-filter{width:100%}}
 /* Section headings wrap and their action buttons stay whole on a 320 px phone, instead of squeezing the title to a sliver. */
 @media(max-width:380px){.section-title{flex-wrap:wrap;align-items:flex-start}.section-title>.mantine-Button-root{max-width:100%;height:auto;min-height:44px;white-space:normal}}
+/* Charts in narrow columns keep their labels readable: the chart keeps a 480 px floor and scrolls inside its own column, never the page. */
+.history-charts{overflow-x:auto}
+.history-charts .history-chart{min-width:480px}

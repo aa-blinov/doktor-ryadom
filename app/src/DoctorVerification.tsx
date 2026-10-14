@@ -25,7 +25,7 @@ export function DoctorVerification({user}:{user:User}){
    <TextInput label="Специальность" placeholder="Как указано в дипломе, например: врач-психиатр" value={form.specialty} onChange={e=>setForm({...form,specialty:e.currentTarget.value})} required minLength={2} maxLength={80}/>
    <TextInput label="Номер лицензии или диплома" value={form.license} onChange={e=>setForm({...form,license:e.currentTarget.value})} required minLength={3} maxLength={60}/>
    <TextInput label="Город" value={form.city} onChange={e=>setForm({...form,city:e.currentTarget.value})} required minLength={2} maxLength={80}/>
-   <Textarea label="Комментарий администратору" description="Необязательно" value={form.note} onChange={e=>setForm({...form,note:e.currentTarget.value})} maxLength={500} minRows={3}/>
+   <Textarea label="Комментарий администратору" description="Необязательно" value={form.note} onChange={e=>setForm({...form,note:e.currentTarget.value})} maxLength={500} autosize minRows={3}/>
    {done?<p className="muted small" role="status">Заявка отправлена</p>:null}
    <Button type="submit" loading={busy}>{status?'Отправить заявку снова':'Отправить заявку'}</Button>
   </form>:null}
