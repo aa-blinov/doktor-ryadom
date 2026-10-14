@@ -842,3 +842,6 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .history-charts .history-chart{min-width:480px}
 /* The account name in the sidebar ends with an ellipsis instead of splitting a word. */
 .account-row .account-meta strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;max-width:100%}
+/* Dynamics rows: the label wraps inside its own column, so a long label never runs into the value. */
+.overview-metrics dt{min-width:0;white-space:normal;overflow-wrap:break-word}
+.overview-metrics dd{min-width:0}
