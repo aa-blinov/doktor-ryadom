@@ -827,3 +827,7 @@ body:has(.pwa-notice) #root{padding-top:72px}
 /* Button labels inside check-in, the doctor card and the success screen are not clipped: the button grows to fit its text and wraps if it must. */
 .checkin-nav .mantine-Button-label,.connect-panel .mantine-Button-label,.success-panel .mantine-Button-label{overflow:visible;text-overflow:clip;white-space:normal}
 .checkin-nav .mantine-Button-root{flex:1 1 auto}
+/* The "Тип не указан" chip has an edge that reads against the dark list: the outline uses the muted tone, not the faint line. */
+.pill.kind-none{border-color:var(--muted)}
+/* An empty custom-surveys block inside a care section repeated its top rule; the section already draws it. */
+.care-section .custom-surveys{border-top:0;padding-top:0;margin-top:0}
