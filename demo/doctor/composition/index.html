@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<script src="assets/vendor/gsap.min.js"></script>
+<style>
+@font-face { font-family: "Golos Text"; src: url("assets/fonts/golos-text-cyrillic-400-normal.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Golos Text"; src: url("assets/fonts/golos-text-cyrillic-600-normal.woff2") format("woff2"); font-weight: 600; }
+@font-face { font-family: "Golos Text"; src: url("assets/fonts/golos-text-cyrillic-700-normal.woff2") format("woff2"); font-weight: 700; }
+@font-face { font-family: "Golos Text"; src: url("assets/fonts/golos-text-cyrillic-800-normal.woff2") format("woff2"); font-weight: 800; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: #f5f6f2; }
+#root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #f5f6f2; color: #23382f; font-family: "Golos Text", system-ui, sans-serif; }
+.scene, .inner { position: absolute; inset: 0; }
+.muted { color: #5a6860; }
+.h { position: absolute; font-weight: 750; letter-spacing: -1px; line-height: 1.2; }
+.t { position: absolute; line-height: 1.4; }
+.b { font-weight: 700; }
+.card { position: absolute; background: #ffffff; border: 1px solid #dce3db; border-radius: 16px; }
+.panel { position: absolute; left: 160px; top: 130px; width: 1600px; height: 690px; background: #ffffff; border: 1px solid #dce3db; border-radius: 20px; }
+.pill { position: absolute; width: 230px; height: 110px; display: flex; align-items: center; justify-content: center; background: #ffffff; border: 1px solid #dce3db; border-radius: 13px; font-size: 26px; font-weight: 600; }
+.ans { position: absolute; left: 200px; width: 900px; height: 76px; display: flex; align-items: center; padding-left: 32px; background: #ffffff; border: 1px solid #dce3db; border-radius: 12px; font-size: 30px; }
+.chip { position: absolute; padding: 8px 18px; border-radius: 8px; font-size: 24px; font-weight: 600; white-space: nowrap; }
+.soft { background: #e8efe7; color: #3c614a; }
+.accent { background: #326950; color: #ffffff; }
+.sos { background: #fbf3ee; color: #a85424; }
+.row { position: absolute; left: 160px; width: 1600px; height: 120px; background: #ffffff; border: 1px solid #dce3db; border-radius: 16px; }
+.row .t { left: 56px; top: 38px; font-size: 34px; font-weight: 600; }
+.box { position: absolute; width: 36px; height: 36px; border: 2px solid #326950; border-radius: 8px; background: #ffffff; }
+.seg { position: absolute; height: 10px; border-radius: 5px; background: #dce3db; }
+.day { position: absolute; top: 330px; width: 60px; height: 60px; border: 1px solid #dce3db; border-radius: 12px; background: #ffffff; }
+.btn { position: absolute; height: 84px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 30px; font-weight: 600; }
+.center { position: absolute; left: 0; right: 0; text-align: center; }
+.chap { position: absolute; top: 26px; text-align: center; font-size: 22px; font-weight: 600; color: #5a6860; }
+#capbar { position: absolute; left: 160px; top: 868px; width: 1600px; height: 160px; background: #ffffff; border: 1px solid #dce3db; border-radius: 20px; }
+.cap { position: absolute; left: 200px; top: 868px; width: 1520px; height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 36px; font-weight: 600; line-height: 1.35; opacity: 0; }
+.cap .l2 { font-weight: 400; color: #5a6860; font-size: 32px; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="77" data-width="1920" data-height="1080">
+<div id="d-bridge" class="scene clip" data-start="0" data-duration="10" data-track-index="0"><div class="inner" id="d-bridge-in">
+
+<div class="card" style="left:160px; top:300px; width:380px; height:200px;"></div>
+<div class="t b" style="left:160px; width:380px; top:350px; font-size:40px; text-align:center;">Приём</div>
+<div class="t muted" style="left:160px; width:380px; top:410px; font-size:26px; text-align:center;">сегодня</div>
+<div class="card" style="left:1380px; top:300px; width:380px; height:200px;"></div>
+<div class="t b" style="left:1380px; width:380px; top:350px; font-size:40px; text-align:center;">Приём</div>
+<div class="t muted" style="left:1380px; width:380px; top:410px; font-size:26px; text-align:center;">через 3 недели</div>
+<div style="position:absolute; left:560px; top:396px; width:800px; height:4px; background:#dce3db;"></div>
+<div class="t muted" id="d-q" style="left:930px; top:220px; font-size:80px; font-weight:700;">?</div>
+<div class="bd" style="position:absolute; left:606px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:684px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:762px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:840px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:918px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:996px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:1074px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:1152px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:1230px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div class="bd" style="position:absolute; left:1308px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950; opacity:0;"></div>
+<div id="d-brand0" style="position:absolute; left:0; right:0; top:580px; display:flex; justify-content:center;"><div style="display:flex; align-items:center; gap:19px; color:#326950; font-size:72px; font-weight:800; letter-spacing:-2.4px; line-height:1;"><svg width="84" height="84" viewBox="0 0 36 36" aria-hidden="true"><path fill="#326950" d="M5 6c13 0 20 9 20 24C12 30 5 21 5 6Z"/><path fill="#a9c3a0" d="M30 4c-11 2-16 10-15 22C27 25 32 16 30 4Z"/></svg><span>рядом<span style="color:#7c9573;">.</span></span></div></div>
+</div></div>
+<div id="d-invite" class="scene clip" data-start="10" data-duration="6" data-track-index="0"><div class="inner" id="d-invite-in">
+
+<div class="panel"></div>
+<div class="t b" style="left:220px; top:180px; font-size:48px;">Приглашение пациенту</div>
+<div class="t muted" style="left:220px; top:280px; font-size:26px;">Одноразовая ссылка</div>
+<div class="card" style="left:220px; top:325px; width:760px; height:90px; background:#f5f6f2;"></div>
+<div class="t" style="left:260px; top:349px; font-size:32px;">…/invite/7f3k9q2</div>
+<div class="btn accent" style="left:1010px; top:328px; width:320px; height:84px;">Скопировать</div>
+<div id="d-consent" style="opacity:0;">
+<div class="box" id="d-box" style="left:220px; top:500px;"></div>
+<div class="t" style="left:276px; top:494px; font-size:32px;">Разрешаю этому врачу доступ к моей истории</div>
+</div>
+</div></div>
+<div id="d-plan" class="scene clip" data-start="16" data-duration="6" data-track-index="0"><div class="inner" id="d-plan-in">
+
+<div class="panel"></div>
+<div class="t b" style="left:220px; top:180px; font-size:48px;">План наблюдения</div>
+<div class="t muted" style="left:220px; top:280px; font-size:26px;">Отслеживаем</div>
+<div class="box pb" style="left:220px; top:330px;"></div><div class="t" style="left:276px; top:324px; font-size:32px;">Сон</div>
+<div class="box pb" style="left:220px; top:400px;"></div><div class="t" style="left:276px; top:394px; font-size:32px;">Тревога</div>
+<div class="box pb" style="left:220px; top:470px;"></div><div class="t" style="left:276px; top:464px; font-size:32px;">Энергия</div>
+<div class="t muted" style="left:1000px; top:280px; font-size:26px;">Частота</div>
+<div style="position:absolute; left:1000px; top:326px; display:flex; gap:12px;"><div class="chip soft" id="d-f1" style="position:relative;">Каждый день</div><div class="chip soft" style="position:relative;">Три раза в неделю</div><div class="chip soft" style="position:relative;">Раз в неделю</div></div>
+<div class="t muted" style="left:220px; top:560px; font-size:26px;">Практики</div>
+<div id="d-pr" style="position:absolute; left:220px; top:606px; display:flex; gap:12px; opacity:0;"><div class="chip soft" style="position:relative;">Здесь и сейчас</div><div class="chip soft" style="position:relative;">Дыхание без спешки</div><div class="chip soft" style="position:relative;">Пять ориентиров</div></div>
+</div></div>
+<div id="d-quest" class="scene clip" data-start="22" data-duration="7" data-track-index="0"><div class="inner" id="d-quest-in">
+
+<div class="panel"></div>
+<div class="t b" style="left:220px; top:180px; font-size:48px;">Опросники</div>
+<div class="t b" style="left:220px; top:300px; font-size:34px;">Настроение, PHQ-9</div>
+<div class="chip soft" id="dq1b" style="left:1300px; top:302px; opacity:0;">Ожидает просмотра врачом</div>
+<div style="position:absolute; left:220px; top:376px; width:1480px; height:1px; background:#dce3db;"></div>
+<div class="t b" style="left:220px; top:404px; font-size:34px;">Тревога, GAD-7</div>
+<div class="chip soft" id="dq2b" style="left:1300px; top:406px; opacity:0;">Ожидает просмотра врачом</div>
+<div class="t muted" id="dq-note" style="left:220px; top:540px; font-size:28px; opacity:0;">Результат помогает обсуждать состояние и не устанавливает диагноз</div>
+</div></div>
+<div id="d-list" class="scene clip" data-start="29" data-duration="7" data-track-index="0"><div class="inner" id="d-list-in">
+
+<div class="h" style="left:160px; top:120px; font-size:52px;">Ваши пациенты</div>
+<div style="position:absolute; left:1240px; top:132px; display:flex; gap:12px;"><div class="chip soft" style="position:relative;">Все пациенты</div><div class="chip soft" id="d-att" style="position:relative;">Требуют внимания</div></div>
+<div class="row" id="dr1" style="top:230px;"><div class="t">Анна С.</div><div class="chip sos" id="df1" style="left:320px; top:38px; opacity:0;">Сигнал: «Мне сейчас плохо»</div></div>
+<div class="row" id="dr2" style="top:370px;"><div class="t">Игорь М.</div><div class="chip soft" id="df2" style="left:320px; top:38px; opacity:0;">Нет отметок 3 дн.</div></div>
+<div class="row" id="dr3" style="top:510px;"><div class="t">Ольга Н.</div><div class="chip soft" id="df3" style="left:320px; top:38px; opacity:0;">Низкое самочувствие</div></div>
+<div class="card" id="d-push" style="left:1020px; top:660px; width:740px; height:150px; opacity:0;"></div>
+<div class="t b" id="d-push-t" style="left:1056px; top:686px; font-size:26px; color:#a85424; opacity:0;">Рядом: сигнал от пациента</div>
+<div class="t muted" id="d-push-s" style="left:1056px; top:736px; font-size:26px; opacity:0;">Пациенту сейчас плохо. Откройте дашборд.</div>
+<div class="card" id="d-contact" style="left:160px; top:660px; width:840px; height:150px; opacity:0;"></div>
+<div id="d-contact-t" style="opacity:0;">
+<div class="t muted" style="left:196px; top:686px; font-size:24px;">Как связаться при необходимости</div>
+<div class="t b" style="left:196px; top:728px; font-size:30px;">Звонок, договорились на приёме</div>
+</div>
+</div></div>
+<div id="d-goals" class="scene clip" data-start="36" data-duration="7" data-track-index="0"><div class="inner" id="d-goals-in">
+
+<div class="h" style="left:160px; top:120px; font-size:52px;">Личные цели пациента</div>
+<div class="row" id="dg1" style="top:230px;"><div class="t">Раз в неделю встречаться с друзьями</div><div class="chip soft" id="dgc1" style="left:1260px; top:38px; opacity:0;">Шаг сделан</div></div>
+<div class="row" id="dg2" style="top:370px;"><div class="t">Гулять после работы хотя бы 15 минут</div><div class="chip soft" id="dgc2" style="left:1260px; top:38px; opacity:0;">Возникла трудность</div></div>
+<div class="row" id="dg3" style="top:510px;"><div class="t">Ложиться до полуночи три дня в неделю</div><div class="chip accent" id="dgc3" style="left:1260px; top:38px; opacity:0;">Цель достигнута</div></div>
+</div></div>
+<div id="d-course" class="scene clip" data-start="43" data-duration="7" data-track-index="0"><div class="inner" id="d-course-in">
+
+<div class="panel"></div>
+<div class="t b" style="left:220px; top:170px; font-size:44px;">Самочувствие по дням</div>
+<div class="t muted" style="left:1100px; top:182px; width:600px; text-align:right; white-space:nowrap; font-size:24px;">От «очень тяжело» до «очень хорошо»</div>
+<svg style="position:absolute; left:220px; top:250px;" width="1480" height="440" viewBox="0 0 1480 440" fill="none"><path d="M0 40H1480M0 220H1480M0 400H1480" stroke="#dce3db" stroke-width="2" /><polyline id="dc-line" points="60,370 185,350 310,360 435,320 560,330 685,290 810,270 935,280 1060,230 1185,210 1310,190 1435,160" stroke="#b8c7b9" stroke-width="2" fill="none" opacity="0" /><line id="dc-trend" x1="60" y1="384" x2="1435" y2="176" stroke="#326950" stroke-width="4" stroke-dasharray="10 10" opacity="0" />
+<circle class="pt" cx="60" cy="370" r="11" fill="#326950" />
+<circle class="pt" cx="185" cy="350" r="11" fill="#326950" />
+<circle class="pt" cx="310" cy="360" r="11" fill="#326950" />
+<circle class="pt" cx="435" cy="320" r="11" fill="#326950" />
+<circle class="pt" cx="560" cy="330" r="11" fill="#326950" />
+<circle class="pt" cx="685" cy="290" r="11" fill="#326950" />
+<circle class="pt" cx="810" cy="270" r="11" fill="#326950" />
+<circle class="pt" cx="935" cy="280" r="11" fill="#326950" />
+<circle class="pt" cx="1060" cy="230" r="11" fill="#326950" />
+<circle class="pt" cx="1185" cy="210" r="11" fill="#326950" />
+<circle class="pt" cx="1310" cy="190" r="11" fill="#326950" />
+<circle class="pt" cx="1435" cy="160" r="11" fill="#326950" />
+</svg>
+</div></div>
+<div id="d-over" class="scene clip" data-start="50" data-duration="6" data-track-index="0"><div class="inner" id="d-over-in">
+
+<div class="panel"></div>
+<div class="t b" style="left:220px; top:170px; font-size:44px;">Что хочет обсудить пациент</div>
+<div class="t" id="dw1" style="left:220px; top:270px; font-size:36px; opacity:0;">Хочу обсудить сон на этой неделе.</div>
+<div class="t" id="dw2" style="left:220px; top:340px; font-size:36px; opacity:0;">Тревога перед работой стала меньше.</div>
+<div class="t muted" id="dw3" style="left:220px; top:440px; font-size:28px; opacity:0;">Новые ответы PHQ-9, GAD-7 и заметки за неделю</div>
+<div class="btn" id="d-review" style="left:220px; top:540px; width:400px; border:2px solid #326950; color:#326950; background:#ffffff;">Подтвердить просмотр</div>
+</div></div>
+<div id="d-change" class="scene clip" data-start="56" data-duration="6" data-track-index="0"><div class="inner" id="d-change-in">
+
+<div class="panel"></div>
+<div class="t b" style="left:220px; top:180px; font-size:48px;">План наблюдения</div>
+<div class="t muted" style="left:220px; top:280px; font-size:26px;">Частота</div>
+<div style="position:absolute; left:220px; top:326px; display:flex; gap:12px;"><div class="chip accent" id="dc1" style="position:relative;">Каждый день</div><div class="chip soft" id="dc2" style="position:relative;">Три раза в неделю</div><div class="chip soft" style="position:relative;">Раз в неделю</div></div>
+<div class="t muted" style="left:220px; top:430px; font-size:26px;">Рекомендации пациенту</div>
+<div class="t" id="dc-rec" style="left:220px; top:474px; font-size:34px; opacity:0;">Прогулка 15 минут после работы, три раза в неделю.</div>
+</div></div>
+<div id="d-payoff" class="scene clip" data-start="62" data-duration="5" data-track-index="0"><div class="inner" id="d-payoff-in">
+
+<div class="card" style="left:160px; top:300px; width:380px; height:200px;"></div>
+<div class="t b" style="left:160px; width:380px; top:350px; font-size:40px; text-align:center;">Приём</div>
+<div class="card" style="left:1380px; top:300px; width:380px; height:200px;"></div>
+<div class="t b" style="left:1380px; width:380px; top:350px; font-size:40px; text-align:center;">Приём</div>
+<div style="position:absolute; left:560px; top:396px; width:800px; height:4px; background:#326950;"></div>
+<div style="position:absolute; left:606px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:684px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:762px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:840px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:918px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:996px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:1074px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:1152px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:1230px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+<div style="position:absolute; left:1308px; top:388px; width:20px; height:20px; border-radius:50%; background:#326950;"></div>
+</div></div>
+<div id="d-limits" class="scene clip" data-start="67" data-duration="5" data-track-index="0"><div class="inner" id="d-limits-in">
+
+<div class="panel"></div>
+<div class="t b" id="dl1" style="left:220px; top:420px; width:1480px; font-size:44px; opacity:0;">Назначать препараты в приложении может только подтверждённый врач-психиатр</div>
+</div></div>
+<div id="d-outro" class="scene clip" data-start="72" data-duration="5" data-track-index="0"><div class="inner" id="d-outro-in">
+
+<div id="brand" style="position:absolute; left:0; right:0; top:330px; display:flex; justify-content:center;"><div style="display:flex; align-items:center; gap:35px; color:#326950; font-size:128px; font-weight:800; letter-spacing:-4.3px; line-height:1;"><svg width="150" height="150" viewBox="0 0 36 36" aria-hidden="true"><path fill="#326950" d="M5 6c13 0 20 9 20 24C12 30 5 21 5 6Z"/><path fill="#a9c3a0" d="M30 4c-11 2-16 10-15 22C27 25 32 16 30 4Z"/></svg><span>рядом<span style="color:#7c9573;">.</span></span></div></div>
+<div class="center muted" id="brandsub" style="top:520px; font-size:40px;">Дневник состояния и связь с врачом</div>
+</div></div>
+<div id="brandmark" class="scene clip" data-start="10" data-duration="62" data-track-index="3"><div class="inner" id="brandmark-in"><div style="position:absolute; left:160px; top:24px;"><div style="display:flex; align-items:center; gap:8px; color:#326950; font-size:30px; font-weight:800; letter-spacing:-1.0px; line-height:1;"><svg width="35" height="35" viewBox="0 0 36 36" aria-hidden="true"><path fill="#326950" d="M5 6c13 0 20 9 20 24C12 30 5 21 5 6Z"/><path fill="#a9c3a0" d="M30 4c-11 2-16 10-15 22C27 25 32 16 30 4Z"/></svg><span>рядом<span style="color:#7c9573;">.</span></span></div></div></div></div>
+<div id="chapters" class="scene clip" data-start="10" data-duration="52" data-track-index="2"><div class="inner" id="chapters-in"><div style="position:absolute; left:480px; top:72px; width:1280px; height:4px; border-radius:2px; background:#dce3db;"></div><div id="chbar" style="position:absolute; left:480px; top:72px; width:256px; height:4px; border-radius:2px; background:#326950;"></div><div class="chap" id="ch0" style="left:480px; width:256px;">День 1</div><div class="chap" id="ch1" style="left:736px; width:256px;">Неделя 1</div><div class="chap" id="ch2" style="left:992px; width:256px;">Неделя 2</div><div class="chap" id="ch3" style="left:1248px; width:256px;">Неделя 3</div><div class="chap" id="ch4" style="left:1504px; width:256px;">Приём</div></div></div>
+<div id="captions" class="scene clip" data-start="0" data-duration="72" data-track-index="1">
+<div id="capbar"></div>
+<div class="cap" id="cap0"><div class="l1">Между приёмами три недели</div><div class="l2">Что с пациентом в это время, вы почти не знаете</div></div>
+<div class="cap" id="cap1"><div class="l1">Пациент отмечает состояние в Рядом</div></div>
+<div class="cap" id="cap2"><div class="l1">В конце приёма дайте вашему пациенту ссылку-приглашение</div><div class="l2">Доступ к своей истории он открывает сам</div></div>
+<div class="cap" id="cap3"><div class="l1">Вместе решите, что он отмечает, как часто и какие практики делает</div></div>
+<div class="cap" id="cap4"><div class="l1">Пациент проходит опросник дома</div><div class="l2">Ответы приходят вам</div></div>
+<div class="cap" id="cap5"><div class="l1">Пациенту стало плохо, он отправил сигнал</div><div class="l2">Вы видите его и связываетесь по согласованному каналу</div></div>
+<div class="cap" id="cap6"><div class="l1">Пациент сам ставит цели и отмечает шаги</div></div>
+<div class="cap" id="cap7"><div class="l1">Перед приёмом видно, как менялось самочувствие</div></div>
+<div class="cap" id="cap8"><div class="l1">К приёму вы уже знаете, что пациент хочет обсудить</div></div>
+<div class="cap" id="cap9"><div class="l1">После приёма поменяйте план</div><div class="l2">Пациент увидит новый план у себя</div></div>
+<div class="cap" id="cap10"><div class="l1">Три недели позади</div></div>
+<div class="cap" id="cap11"><div class="l1">Рядом не ставит диагноз</div><div class="l2">Медицинские решения принимает врач</div></div>
+</div>
+<audio id="music" data-start="0" data-duration="77" data-track-index="10" data-volume="0.28" src="assets/music/bed.mp3"></audio>
+<audio id="sfx-0" data-start="13.4" data-duration="0.1" data-track-index="11" data-volume="0.7" src="assets/sfx/interface/click_001.ogg"></audio>
+<audio id="sfx-1" data-start="31.2" data-duration="0.1" data-track-index="12" data-volume="0.7" src="assets/sfx/interface/click_001.ogg"></audio>
+<audio id="sfx-2" data-start="53.6" data-duration="0.1" data-track-index="13" data-volume="0.7" src="assets/sfx/interface/click_001.ogg"></audio>
+<audio id="sfx-3" data-start="57.4" data-duration="0.1" data-track-index="14" data-volume="0.7" src="assets/sfx/interface/click_001.ogg"></audio>
+<audio id="sfx-4" data-start="72.2" data-duration="0.12" data-track-index="15" data-volume="0.7" src="assets/sfx/interface/bong_001.ogg"></audio>
+</div>
+<script>
+const tl = gsap.timeline({ paused: true });
+const fade = (sel, t, d = 0.4) => tl.fromTo(sel, { opacity: 0 }, { opacity: 1, duration: d, ease: "power2.out" }, t);
+const out = (sel, t, d = 0.35) => tl.to(sel, { opacity: 0, duration: d }, t);
+const rise = (sel, t, d = 0.5) => tl.fromTo(sel, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: d, ease: "expo.out" }, t);
+const slide = (sel, t, d = 0.45) => tl.fromTo(sel, { opacity: 0, x: -18 }, { opacity: 1, x: 0, duration: d, ease: "expo.out" }, t);
+const fill = (sel, t, bg = "#326950") => tl.to(sel, { backgroundColor: bg, color: "#ffffff", borderColor: bg, duration: 0.22 }, t);
+const unfill = (sel, t) => tl.to(sel, { backgroundColor: "#e8efe7", color: "#3c614a", duration: 0.22 }, t);
+const cap = (sel, a, b) => { tl.fromTo(sel, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, a); tl.to(sel, { opacity: 0, duration: 0.3 }, b - 0.3); };
+fade("#d-q", 1.2); out("#d-q", 5.8);
+document.querySelectorAll(".bd").forEach((d, i) => fade(d, 6.2 + i * 0.12, 0.25));
+rise("#d-brand0", 7.0); out("#d-bridge-in", 9.6);
+fade("#d-invite-in", 10.0); fade("#d-consent", 12.0); fill("#d-box", 13.4); out("#d-invite-in", 15.65);
+fade("#d-plan-in", 16.0); document.querySelectorAll(".pb").forEach((b, i) => fill(b, 17.0 + i * 0.4)); fill("#d-f1", 18.6); fade("#d-pr", 19.4); out("#d-plan-in", 21.65);
+fade("#d-quest-in", 22.0); fade("#dq1b", 24.8, 0.3); fade("#dq2b", 26.0, 0.3); fade("#dq-note", 26.6); out("#d-quest-in", 28.65);
+fade("#d-list-in", 29.0); slide("#dr1", 29.4); slide("#dr2", 29.7); slide("#dr3", 30.0); fill("#d-att", 30.6);
+fade("#df1", 31.2); tl.to("#dr1", { borderColor: "#a85424", duration: 0.3 }, 31.2); fade("#df2", 31.9); fade("#df3", 32.4);
+rise("#d-push", 32.8); fade("#d-push-t", 33.0); fade("#d-push-s", 33.2); rise("#d-contact", 34.0); fade("#d-contact-t", 34.2); out("#d-list-in", 35.65);
+fade("#d-goals-in", 36.0); slide("#dg1", 36.4); slide("#dg2", 36.7); slide("#dg3", 37.0); fade("#dgc1", 38.2); fade("#dgc2", 39.2); fade("#dgc3", 40.2); out("#d-goals-in", 42.65);
+fade("#d-course-in", 43.0);
+document.querySelectorAll("#d-course .pt").forEach((p, i) => tl.fromTo(p, { opacity: 0, scale: 0.4, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.25, ease: "expo.out" }, 43.6 + i * 0.3));
+fade("#dc-line", 43.800000000000004, 0.6);
+tl.to("#dc-trend", { opacity: 1, duration: 0.6 }, 47.6);
+out("#d-course-in", 49.65);
+fade("#d-over-in", 50.0); fade("#dw1", 50.6); fade("#dw2", 51.2); fade("#dw3", 51.8); fill("#d-review", 53.6); out("#d-over-in", 55.65);
+fade("#d-change-in", 56.0); unfill("#dc1", 57.4); fill("#dc2", 57.4); fade("#dc-rec", 58.4); out("#d-change-in", 61.65);
+fade("#d-payoff-in", 62.0, 0.5); out("#d-payoff-in", 66.65);
+fade("#d-limits-in", 67.0); fade("#dl1", 67.3); out("#d-limits-in", 71.65);
+fade("#brandmark-in", 10.0, 0.4); out("#brandmark-in", 71.65);
+rise("#brand", 72.3, 0.6); fade("#brandsub", 73.0);
+fade("#chapters-in", 10, 0.4);
+tl.to("#ch0", { color: "#23382f", fontWeight: 700, duration: 0.2 }, 10);
+tl.to("#chbar", { x: 256, duration: 0.7, ease: "expo.out" }, 22);
+tl.to("#ch0", { color: "#5a6860", fontWeight: 600, duration: 0.2 }, 22);
+tl.to("#ch1", { color: "#23382f", fontWeight: 700, duration: 0.2 }, 22);
+tl.to("#chbar", { x: 512, duration: 0.7, ease: "expo.out" }, 29);
+tl.to("#ch1", { color: "#5a6860", fontWeight: 600, duration: 0.2 }, 29);
+tl.to("#ch2", { color: "#23382f", fontWeight: 700, duration: 0.2 }, 29);
+tl.to("#chbar", { x: 768, duration: 0.7, ease: "expo.out" }, 36);
+tl.to("#ch2", { color: "#5a6860", fontWeight: 600, duration: 0.2 }, 36);
+tl.to("#ch3", { color: "#23382f", fontWeight: 700, duration: 0.2 }, 36);
+tl.to("#chbar", { x: 1024, duration: 0.7, ease: "expo.out" }, 43);
+tl.to("#ch3", { color: "#5a6860", fontWeight: 600, duration: 0.2 }, 43);
+tl.to("#ch4", { color: "#23382f", fontWeight: 700, duration: 0.2 }, 43);
+out("#chapters-in", 61.65);
+cap("#cap0", 0.4, 5.9);
+cap("#cap1", 6.1, 9.9);
+cap("#cap2", 10.2, 15.9);
+cap("#cap3", 16.2, 21.9);
+cap("#cap4", 22.2, 28.9);
+cap("#cap5", 29.2, 35.9);
+cap("#cap6", 36.2, 42.9);
+cap("#cap7", 43.2, 49.9);
+cap("#cap8", 50.2, 55.9);
+cap("#cap9", 56.2, 61.9);
+cap("#cap10", 62.2, 66.9);
+cap("#cap11", 67.2, 71.9);
+fade("#capbar", 0.1, 0.4);
+out("#capbar", 71.65);
+
+window.__timelines["main"] = tl;
+tl.seek(0);
+</script>
+</body>
+</html>
