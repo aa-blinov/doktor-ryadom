@@ -5,6 +5,7 @@ import type {Env} from './env';
 import type {User} from '../src/shared';
 import {digest,randomToken,hashPassword,verifyPassword} from './auth';
 import {database,one,many,run,logAction} from './db';
+import {newTotpSecret,otpauthUri,verifyTotp} from './totp';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
 const email=z.string().trim().email().max(200).transform(v=>v.toLowerCase());
 const password=z.string().min(12).max(128);
@@ -47,8 +48,11 @@ export function publicAccountRoutes(app:App){
   if(!/^[a-f0-9]{32}$/.test(code))return c.json({error:'Email или код восстановления неверен.'},400);
   const key=await digest(code),record=await one<{user_id:string}>(db,'SELECT t.user_id FROM account_tokens t JOIN users u ON u.id=t.user_id WHERE t.token=? AND t.purpose=? AND t.expires>? AND u.email=?',key,'recovery',Date.now(),parsed.data.email);
   if(!record)return c.json({error:'Email или код восстановления неверен.'},400);
-  const result=await db.batch([db.prepare('UPDATE users SET password=? WHERE id=? AND EXISTS(SELECT 1 FROM account_tokens WHERE token=? AND purpose=? AND expires>?)').bind(await hashPassword(parsed.data.password),record.user_id,key,'recovery',Date.now()),db.prepare('DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM account_tokens WHERE token=? AND purpose=? AND expires>?)').bind(record.user_id,key,'recovery',Date.now()),db.prepare('DELETE FROM account_tokens WHERE user_id=? AND EXISTS(SELECT 1 FROM account_tokens WHERE token=? AND purpose=? AND expires>?)').bind(record.user_id,key,'recovery',Date.now())]);
-  return result[0].meta.changes?c.json({ok:true}):c.json({error:'Код уже использован.'},400);
+  // A recovery code is the lost-phone path, so it also turns the second factor off. An emailed reset link does not.
+  const result=await db.batch([db.prepare('UPDATE users SET password=? WHERE id=? AND EXISTS(SELECT 1 FROM account_tokens WHERE token=? AND purpose=? AND expires>?)').bind(await hashPassword(parsed.data.password),record.user_id,key,'recovery',Date.now()),db.prepare('UPDATE users SET totp_secret=NULL,totp_enabled_at=NULL,totp_last_step=NULL WHERE id=? AND EXISTS(SELECT 1 FROM account_tokens WHERE token=? AND purpose=? AND expires>?)').bind(record.user_id,key,'recovery',Date.now()),db.prepare('DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM account_tokens WHERE token=? AND purpose=? AND expires>?)').bind(record.user_id,key,'recovery',Date.now()),db.prepare('DELETE FROM account_tokens WHERE user_id=? AND EXISTS(SELECT 1 FROM account_tokens WHERE token=? AND purpose=? AND expires>?)').bind(record.user_id,key,'recovery',Date.now())]);
+  if(!result[0].meta.changes)return c.json({error:'Код уже использован.'},400);
+  if(result[1].meta.changes)await logAction(db,record.user_id,'totp_reset',record.user_id);
+  return c.json({ok:true});
  });
  app.post('/api/auth/verify',async c=>{
   const data=z.object({token}).safeParse(await c.req.json());if(!data.success)return c.json({error:'Проверьте ссылку.'},400);
@@ -76,6 +80,32 @@ export function accountRoutes(app:App){
   const codes=Array.from({length:5},()=>randomToken().slice(0,32));
   await db.batch([db.prepare('DELETE FROM account_tokens WHERE user_id=? AND purpose=?').bind(id,'recovery'),...await Promise.all(codes.map(async code=>db.prepare('INSERT INTO account_tokens VALUES (?,?,?,?)').bind(await digest(code),id,'recovery',Date.now()+365*86400000)))]);
   return c.json({codes:codes.map(code=>code.match(/.{8}/g)!.join('-'))});
+ });
+ app.get('/api/account/totp',async c=>{const row=await one<{totp_enabled_at:number|null}>(database(c.env),'SELECT totp_enabled_at FROM users WHERE id=?',c.get('user').id);return c.json({enabled:!!row?.totp_enabled_at});});
+ app.post('/api/account/totp/setup',async c=>{
+  const parsed=z.object({password:z.string().max(128)}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Введите текущий пароль.'},400);
+  const db=database(c.env),user=c.get('user');if(!await limited(db,'totp:'+user.id))return c.json({error:'Попробуйте снова через час.'},429);
+  const row=await one<{password:string;totp_enabled_at:number|null}>(db,'SELECT password,totp_enabled_at FROM users WHERE id=?',user.id);
+  if(!row||!await verifyPassword(parsed.data.password,row.password))return c.json({error:'Пароль неверен.'},403);
+  if(row.totp_enabled_at)return c.json({error:'Вход с кодом уже включён.'},409);
+  const secret=newTotpSecret();await run(db,'UPDATE users SET totp_secret=?,totp_last_step=NULL WHERE id=?',secret,user.id);
+  return c.json({secret,uri:otpauthUri(user.email,secret)});
+ });
+ app.post('/api/account/totp/enable',async c=>{
+  const parsed=z.object({code:z.string().trim().max(20)}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Введите код из приложения.'},400);
+  const db=database(c.env),id=c.get('user').id;if(!await limited(db,'totp:'+id))return c.json({error:'Попробуйте снова через час.'},429);
+  const row=await one<{totp_secret:string|null;totp_enabled_at:number|null}>(db,'SELECT totp_secret,totp_enabled_at FROM users WHERE id=?',id);
+  if(!row?.totp_secret||row.totp_enabled_at)return c.json({error:'Сначала получите новый ключ.'},409);
+  const step=await verifyTotp(row.totp_secret,parsed.data.code.replace(/\s/g,''),null);if(step===null)return c.json({error:'Код не подошёл. Проверьте время на телефоне и введите новый код.'},400);
+  await run(db,'UPDATE users SET totp_enabled_at=?,totp_last_step=? WHERE id=? AND totp_enabled_at IS NULL',Date.now(),step,id);await logAction(db,id,'totp_enable',id);return c.json({ok:true});
+ });
+ app.post('/api/account/totp/disable',async c=>{
+  const parsed=z.object({password:z.string().max(128),code:z.string().trim().max(20)}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Введите пароль и код.'},400);
+  const db=database(c.env),id=c.get('user').id;if(!await limited(db,'totp:'+id))return c.json({error:'Попробуйте снова через час.'},429);
+  const row=await one<{password:string;totp_secret:string|null;totp_enabled_at:number|null;totp_last_step:number|null}>(db,'SELECT password,totp_secret,totp_enabled_at,totp_last_step FROM users WHERE id=?',id);
+  if(!row?.totp_enabled_at||!row.totp_secret)return c.json({error:'Вход с кодом не включён.'},409);
+  if(!await verifyPassword(parsed.data.password,row.password)||await verifyTotp(row.totp_secret,parsed.data.code.replace(/\s/g,''),row.totp_last_step)===null)return c.json({error:'Пароль или код неверен.'},403);
+  await run(db,'UPDATE users SET totp_secret=NULL,totp_enabled_at=NULL,totp_last_step=NULL WHERE id=?',id);await logAction(db,id,'totp_disable',id);return c.json({ok:true});
  });
  app.post('/api/account/logout-others',async c=>{await run(database(c.env),'DELETE FROM sessions WHERE user_id=? AND token<>?',c.get('user').id,await digest(getCookie(c,'ryadom_session')||''));return c.json({ok:true});});
  app.get('/api/account/export',async c=>{

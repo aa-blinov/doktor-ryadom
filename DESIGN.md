@@ -276,6 +276,8 @@ The doctor's introduction uses a six-row, vertically resizable textarea with a 1
 
 The clinician code uses an existing settings panel with two labelled read-only fields, wrap-capable copy actions and explicit copy/activation status. The persistent twelve-character code is emphasised at 20px, weight 700 and 0.12em letter spacing. Patient connection becomes available only after clinician verification; the text explains that state without an urgency badge.
 
+The account screen offers sign-in with an authenticator code: password confirms setup, the key shows at 20px, weight 700 and 0.12em spacing in groups of four with an «Открыть в приложении» link, and a code confirms it. Doctors and administrators get a recommendation line, since they see patient records. With the code on, the login form adds a one-time-code field after a correct password and points a user without the phone to recovery codes.
+
 Registration uses a short labelled storage-consent checkbox. A separate helper explains permission to the doctor only for patient registration, keeping the consent control concise.
 
 ## Do's and Don'ts

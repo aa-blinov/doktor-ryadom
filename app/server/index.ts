@@ -10,6 +10,7 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { database, one, many, run, logAction } from './db';
 import { digest, randomToken, hashPassword, verifyPassword } from './auth';
+import { verifyTotp } from './totp';
 import { defaultPlan, defaultSettings, entrySchema, planSchema, settingsSchema, practiceIds, type User, type Entry, type PracticeLog, type Report } from '../src/shared';
 import type { Env } from './env';
 import {publicAccountRoutes,accountRoutes} from './account';
@@ -18,6 +19,7 @@ import {notificationRoutes} from './notifications';
 const app = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 const sessionName = 'ryadom_session';
 const authSchema = z.object({ email: z.string().trim().email().max(200).transform(v => v.toLowerCase()), password: z.string().min(12, 'Пароль должен содержать минимум 12 символов').max(128) });
+const loginSchema = authSchema.extend({ code: z.string().trim().max(20).optional() });
 const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor']), consent: z.literal(true) });
 const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 app.use('*', async (c,next) => { await next(); c.header('X-Content-Type-Options','nosniff'); c.header('Referrer-Policy','same-origin'); c.header('X-Frame-Options','DENY'); c.header('Content-Security-Policy',CSP); });
@@ -61,14 +63,21 @@ app.post('/api/auth/register', async c => {
   await logAction(db,user.id,'registration_consent',user.id); await newSession(c,user); return c.json({ user }, 201);
 });
 app.post('/api/auth/login', async c => {
-  const db = database(c.env); const data = authSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error: 'Проверьте email и пароль (минимум 12 символов).' }, 400);
+  const db = database(c.env); const data = loginSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error: 'Проверьте email и пароль (минимум 12 символов).' }, 400);
   const key = await digest(`login:${data.data.email}:${c.req.header('CF-Connecting-IP') || 'local'}`);
   if (!await limit(db,key) || !await limit(db,await digest(`login-ip:${c.req.header('CF-Connecting-IP') || 'local'}`)) || !await limit(db,await digest(`login-account:${data.data.email}`),30,3600000)) return c.json({ error: 'Слишком много попыток. Попробуйте через 10 минут.' }, 429);
-  const row = await one<User & { password: string; blocked_at?: number | null }>(db, 'SELECT id,email,name,role,password,email_verified_at,specialist_verified_at,specialty_kind,blocked_at FROM users WHERE email=?', data.data.email);
+  const row = await one<User & { password: string; blocked_at?: number | null; totp_secret: string | null; totp_enabled_at: number | null; totp_last_step: number | null }>(db, 'SELECT id,email,name,role,password,email_verified_at,specialist_verified_at,specialty_kind,blocked_at,totp_secret,totp_enabled_at,totp_last_step FROM users WHERE email=?', data.data.email);
   const ok=row?await verifyPassword(data.data.password,row.password):await verifyPassword(data.data.password,'scrypt:16384:8:5:'+('0'.repeat(64))+':'+'0'.repeat(64));
   if (!row || !ok) return c.json({ error: 'Неверный email или пароль.' }, 401);
   if (row.blocked_at) return c.json({ error: 'Аккаунт заблокирован. Обратитесь к администратору.' }, 403);
-  const { password: _, ...user } = row; await newSession(c,user); await logAction(db,user.id,'login',user.id); return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(db,user.id)).photoUrl}:user});
+  if (row.totp_enabled_at && row.totp_secret) {
+    // Second factor: 428 asks the client for the code; a used time step is rejected so a seen code cannot be replayed.
+    const code = (data.data.code || '').replace(/\s/g, '');
+    if (!code) return c.json({ error: 'Введите код из приложения-аутентификатора.' }, 428);
+    const step = await verifyTotp(row.totp_secret, code, row.totp_last_step);
+    if (step === null || !(await run(db, 'UPDATE users SET totp_last_step=? WHERE id=? AND (totp_last_step IS NULL OR totp_last_step<?)', step, row.id, step)).meta.changes) return c.json({ error: 'Код неверный или уже использован. Введите новый код.' }, 401);
+  }
+  const { password: _, totp_secret: _secret, totp_enabled_at: _enabled, totp_last_step: _step, ...user } = row; await newSession(c,user); await logAction(db,user.id,'login',user.id); return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(db,user.id)).photoUrl}:user});
 });
 publicAccountRoutes(app);
 app.use('/api/*', async (c,next) => {
