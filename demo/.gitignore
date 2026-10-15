@@ -1,0 +1,6 @@
+# Hyperframes check artifacts and Studio state
+*/composition/.hyperframes/
+# Raw renders before the title card; rebuild with npx hyperframes render, see README
+*/video.raw.mp4
+# Sound effects (CC0); the root .gitignore excludes *.ogg
+!*.ogg
