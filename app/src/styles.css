@@ -901,3 +901,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .terms-page{max-width:760px;margin:0 auto;padding:var(--sp-5) var(--sp-4)}
 .terms-body{display:grid;gap:var(--sp-4);margin-top:var(--sp-5);line-height:1.7}
 .terms-body h2{font-size:18px;margin-top:var(--sp-3)}
+/* A sidebar name that does not fit stays on one line and ends with an ellipsis; the full name is in the tooltip. */
+.sidebar .account-meta strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset;-webkit-box-orient:unset;max-width:100%}
