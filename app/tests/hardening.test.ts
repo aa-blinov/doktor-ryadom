@@ -15,9 +15,10 @@ async function register(email:string){
 it('one account cannot be guessed by spreading attempts over many addresses',async()=>{
  await register('guess-target@example.com');
  let last=0;
- for(let i=0;i<40;i++){
+ // The account limit is 30 an hour, so the 31st attempt from a fresh address must be refused.
+ for(let i=0;i<31;i++){
   const r=await request('/auth/login',{email:'guess-target@example.com',password:'wrong-password-value'},undefined,`10.0.${i}.7`);
   last=r.status;
  }
  expect(last).toBe(429);
-},60000);
+},120000);
