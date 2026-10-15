@@ -33,7 +33,7 @@ export async function deliverNotifications(db:D1Database,services:ReturnType<typ
  for(const eventId of sosEvents){
   for(const row of sos.filter(item=>item.id===eventId)){
    const subscriptions=await many<{endpoint:string;data:string}>(db,'SELECT endpoint,data FROM push_subscriptions WHERE user_id=?',row.doctor_id);
-   for(const sub of subscriptions){try{await services.push(JSON.parse(sub.data),'Пациенту сейчас плохо. Откройте дашборд.','/#/patients');}catch(e){const status=(e as {statusCode?:number}).statusCode;if(status===404||status===410)await run(db,'DELETE FROM push_subscriptions WHERE endpoint=?',sub.endpoint);}}
+   for(const sub of subscriptions){if(!allowedPushEndpoint(sub.endpoint))continue;try{await services.push(JSON.parse(sub.data),'Пациенту сейчас плохо. Откройте дашборд.','/#/patients');}catch(e){const status=(e as {statusCode?:number}).statusCode;if(status===404||status===410)await run(db,'DELETE FROM push_subscriptions WHERE endpoint=?',sub.endpoint);}}
    if(row.email_verified_at&&services.mail){try{await services.mail.send({to:row.email,subject:'Рядом: сигнал от пациента',text:`Пациенту сейчас плохо. Откройте дашборд, чтобы увидеть список и отреагировать.\n${process.env.PUBLIC_ORIGIN||'https://doktor-ryadom.duckdns.org'}/`});}catch{console.error('SOS email failed');}}
   }
   await run(db,'UPDATE sos_events SET notified_at=? WHERE id=?',now,eventId);

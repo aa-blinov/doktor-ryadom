@@ -41,10 +41,10 @@ app.get('/api/invites/:token', async c => {
   const row = await one<{ name: string;id:string }>(database(c.env), 'SELECT u.name,u.id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?', await digest(token), Date.now());
   return row ? c.json({doctorName:row.name,doctorProfile:{...await doctorProfile(database(c.env),row.id),photoUrl:null,documents:[]}}) : c.json({ error:'Приглашение уже использовано или срок истёк. Попросите врача создать новое.' }, 404);
 });
-async function limit(db: D1Database, key: string) {
+async function limit(db: D1Database, key: string, max = 12, windowMs = 600000) {
   const now = Date.now();
-  await run(db, 'INSERT INTO auth_attempts (key,count,window_start) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN window_start<? THEN 1 ELSE count+1 END, window_start=CASE WHEN window_start<? THEN excluded.window_start ELSE window_start END', key, now, now-600000, now-600000);
-  const row = await one<{ count: number }>(db, 'SELECT count FROM auth_attempts WHERE key=?', key); return (row?.count || 0) <= 12;
+  await run(db, 'INSERT INTO auth_attempts (key,count,window_start) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN window_start<? THEN 1 ELSE count+1 END, window_start=CASE WHEN window_start<? THEN excluded.window_start ELSE window_start END', key, now, now-windowMs, now-windowMs);
+  const row = await one<{ count: number }>(db, 'SELECT count FROM auth_attempts WHERE key=?', key); return (row?.count || 0) <= max;
 }
 async function newSession(c: Context<{ Bindings: Env; Variables: { user: User } }>, user: User) {
   const token = randomToken();
@@ -63,7 +63,7 @@ app.post('/api/auth/register', async c => {
 app.post('/api/auth/login', async c => {
   const db = database(c.env); const data = authSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error: 'Проверьте email и пароль (минимум 12 символов).' }, 400);
   const key = await digest(`login:${data.data.email}:${c.req.header('CF-Connecting-IP') || 'local'}`);
-  if (!await limit(db,key) || !await limit(db,await digest(`login-ip:${c.req.header('CF-Connecting-IP') || 'local'}`))) return c.json({ error: 'Слишком много попыток. Попробуйте через 10 минут.' }, 429);
+  if (!await limit(db,key) || !await limit(db,await digest(`login-ip:${c.req.header('CF-Connecting-IP') || 'local'}`)) || !await limit(db,await digest(`login-account:${data.data.email}`),30,3600000)) return c.json({ error: 'Слишком много попыток. Попробуйте через 10 минут.' }, 429);
   const row = await one<User & { password: string; blocked_at?: number | null }>(db, 'SELECT id,email,name,role,password,email_verified_at,specialist_verified_at,specialty_kind,blocked_at FROM users WHERE email=?', data.data.email);
   const ok=row?await verifyPassword(data.data.password,row.password):await verifyPassword(data.data.password,'scrypt:16384:8:5:'+('0'.repeat(64))+':'+'0'.repeat(64));
   if (!row || !ok) return c.json({ error: 'Неверный email или пароль.' }, 401);
