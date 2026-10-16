@@ -907,3 +907,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .account-block>p+form{margin-top:var(--sp-3)}
 @media(max-width:700px){.public-footer a,.footer-brand{display:inline-flex;align-items:center;min-height:44px}}
 @media(max-width:700px){.footer-brand a{display:inline-flex;align-items:center;min-height:44px}}
+.survey-question-editor{position:relative}.survey-drag-handle{position:absolute;left:var(--sp-2);top:var(--sp-2);width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--muted);cursor:grab;touch-action:none;border-radius:var(--sp-2)}.survey-drag-handle:focus-visible{outline:3px solid var(--tone-72947a);outline-offset:2px}
+.survey-question-editor{padding-left:56px}@media(max-width:700px){.survey-question-editor button{min-height:44px}.survey-question-editor label{min-height:44px;display:flex;align-items:center}.survey-drag-handle{width:44px;height:44px}}
