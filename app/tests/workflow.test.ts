@@ -72,7 +72,8 @@ it('does not assign practices automatically and prevents simultaneous replacemen
  const winner=accepted[0].status===200?d:other;expect((await request('/patient/data',undefined,p.cookie)).data.doctor.id).toBe(winner.data.user.id);
  expect((await request('/patient/data',undefined,p.cookie)).data.plan.practices).toEqual([]);
  await request('/patient/revoke',{},p.cookie);expect((await request('/patient/data',undefined,p.cookie)).data.plan.practices).toEqual([]);
- expect((await request('/patient/accept',{token:second,consent:true},p.cookie)).status).toBe(200);
+ // Either invite may win the race above; only the losing one is still unused.
+ expect((await request('/patient/accept',{token:winner===d?second:code,consent:true},p.cookie)).status).toBe(200);
  const q=await register('patient','qa-invite-one@example.com'),r=await register('patient','qa-invite-two@example.com');const invite=await request('/doctor/invites',{},d.cookie);
  const once=await Promise.all([request('/patient/accept',{token:invite.data.token,consent:true},q.cookie),request('/patient/accept',{token:invite.data.token,consent:true},r.cookie)]);
  expect(once.filter(x=>x.status===200)).toHaveLength(1);expect(once.filter(x=>x.status===409||x.status===404)).toHaveLength(1);
