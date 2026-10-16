@@ -106,8 +106,7 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
     </div>
     {(()=>{const q=practiceQuery.trim().toLocaleLowerCase('ru');const rest=practiceContent.filter(p=>!plan.practices.includes(p.id)&&(practiceCategory==='Все'||p.category===practiceCategory)&&(!q||p.title.toLocaleLowerCase('ru').includes(q)||p.subtitle.toLocaleLowerCase('ru').includes(q)));return <><p className="muted small" aria-live="polite">Найдено: {rest.length}</p><div className="plan-list">{rest.map(p=><label className="plan-row" key={p.id}>
      <Checkbox checked={false} onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?[...plan.practices,p.id]:plan.practices})}/>
-     <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time} · {p.category}</span></span>
-     <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
+     <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time} · {p.category}</span><span className="muted small">{p.basis}</span></span>
     </label>)}</div>{rest.length?null:<p className="muted">Ничего не найдено. Измените запрос или направление.</p>}</>;})()}
    </div>
   </section>
