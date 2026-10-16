@@ -55,6 +55,7 @@ function PatientDetail({id,doctorId,canRx}:{id:string;doctorId:string;canRx:bool
  return <><button className="back-link" onClick={()=>navigate('/patients')}><IconArrowLeft size={18}/>Все пациенты</button><PageHead title={data.patient.name} action={tab==='history'?<Button variant="outline" leftSection={<IconDownload size={18}/>} onClick={exportCsv} disabled={!data.entries.length}>Экспорт CSV</Button>:undefined}/>{tab==='history'&&facts.length?<div className="observations"><h3>Изменения для обсуждения</h3>{facts.map(f=><p key={f}>{f}</p>)}<small>Наблюдаемые ответы. Клиническую значимость оценивает врач.</small></div>:null}<PatientProfileDetails profile={data.patient.profile}/><Tabs value={tab} onChange={openTab}><div className="doctor-section-menu"><label htmlFor="doctor-section">Раздел карточки пациента</label><select id="doctor-section" value={tab??'overview'} onChange={e=>openTab(e.target.value)}>{[{value:'overview',label:'Обзор'},{value:'goals',label:'Цели'},{value:'history',label:'История'},{value:'plan',label:'План наблюдения'},].map(section=><option key={section.value} value={section.value}>{section.label}</option>)}</select></div><Tabs.List mb="var(--sp-6)" className="doctor-section-tabs"><Tabs.Tab value="overview">Обзор</Tabs.Tab><Tabs.Tab value="goals">Цели</Tabs.Tab><Tabs.Tab value="history">История</Tabs.Tab><Tabs.Tab value="plan">План наблюдения</Tabs.Tab></Tabs.List><Tabs.Panel value="overview">{visited.has('overview')?<AppointmentOverview data={data} onOpen={openTab} patientId={id} onSaved={reload}/>:null}</Tabs.Panel><Tabs.Panel value="goals">{visited.has('goals')?<Goals data={data} doctor id={id} onSaved={reload}/>:null}</Tabs.Panel><Tabs.Panel value="history">{visited.has('history')?<><History entries={data.entries} doctor/><AssessmentReview assessments={data.assessments.filter(a=>a.doctor_id===data.doctor?.id)} doctor id={id} onSaved={reload} currentDoctorId={data.doctor?.id}/><PracticeReview data={data} id={id} onSaved={reload}/></>:null}</Tabs.Panel><Tabs.Panel value="plan">{visited.has('plan')?((()=>{const mine=data.assessments.filter(a=>a.doctor_id===data.doctor?.id);const go=(v:string|null)=>{setPlanSection(v??'track');try{sessionStorage.setItem('ryadom-doctor-plan',v??'track');}catch{/* Storage is optional. */}};return <div className="plan-sections"><SegmentedControl fullWidth orientation={typeof window!=='undefined'&&window.matchMedia('(max-width:380px)').matches?'vertical':'horizontal'} mb="var(--sp-6)" value={planSection} onChange={go} data={[{value:'track',label:'Отслеживаем'},{value:'surveys',label:'Опросники'},{value:'visit',label:'Записи приёма'}]}/>{planSection==='track'?<><h2 className="plan-group-title">Что отслеживаем</h2><PlanForm initial={data.plan} id={id} onSaved={reload} assessments={mine}/></>:null}{planSection==='surveys'?<><AssessmentResults assessments={mine} doctor id={id} onSaved={reload}/></>:null}{planSection==='visit'?<><Treatment data={data} doctor id={id} onSaved={reload} canRx={canRx}/></>:null}</div>;})()):null}</Tabs.Panel></Tabs></>;
 }
 function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSaved:()=>Promise<void>;assessments:Assessment[]}){
+ const [practiceQuery,setPracticeQuery]=useState(''),[practiceCategory,setPracticeCategory]=useState('Все');
  const [plan,setPlan]=useState<Plan>(initial),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState(false);
  const assignedKinds=new Set(assessments.map(a=>a.kind));
  const [chosen,setChosen]=useState<Set<string>>(()=>new Set(assessments.filter(a=>!a.completed_at&&a.doctor_id).map(a=>a.kind)));
@@ -98,24 +99,17 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
      <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
     </label>;})}
    </div>:<p className="muted">В плане пока нет практик.</p>}
-   <details className="plan-more" open={!plan.practices.length}>
-    <summary>Добавить другие практики — ещё {practiceContent.length-plan.practices.length}</summary>
-    <div className="plan-list">
-     {practiceContent.filter(p=>!plan.practices.includes(p.id)).slice(0,5).map(p=><label className="plan-row" key={p.id}>
-      <Checkbox checked={false} onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?[...plan.practices,p.id]:plan.practices})}/>
-      <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time} · {p.category}</span></span>
-      <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
-     </label>)}
-     {practiceContent.filter(p=>!plan.practices.includes(p.id)).length>5?<details className="plan-more plan-more-rest">
-      <summary>Показать ещё {practiceContent.filter(p=>!plan.practices.includes(p.id)).length-5}</summary>
-      {practiceContent.filter(p=>!plan.practices.includes(p.id)).slice(5).map(p=><label className="plan-row" key={p.id}>
-       <Checkbox checked={false} onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?[...plan.practices,p.id]:plan.practices})}/>
-       <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time} · {p.category}</span></span>
-       <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
-      </label>)}
-     </details>:null}
+   <div className="plan-more">
+    <div className="library-filters">
+     <TextInput label="Найти практику" placeholder="Название или техника" value={practiceQuery} onChange={e=>setPracticeQuery(e.currentTarget.value)}/>
+     <Select label="Направление" value={practiceCategory} onChange={v=>setPracticeCategory(v||'Все')} data={['Все',...Array.from(new Set(practiceContent.map(p=>p.category)))]}/>
     </div>
-   </details>
+    {(()=>{const q=practiceQuery.trim().toLocaleLowerCase('ru');const rest=practiceContent.filter(p=>!plan.practices.includes(p.id)&&(practiceCategory==='Все'||p.category===practiceCategory)&&(!q||p.title.toLocaleLowerCase('ru').includes(q)||p.subtitle.toLocaleLowerCase('ru').includes(q)));return <><p className="muted small" aria-live="polite">Найдено: {rest.length}</p><div className="plan-list">{rest.map(p=><label className="plan-row" key={p.id}>
+     <Checkbox checked={false} onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?[...plan.practices,p.id]:plan.practices})}/>
+     <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time} · {p.category}</span></span>
+     <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
+    </label>)}</div>{rest.length?null:<p className="muted">Ничего не найдено. Измените запрос или направление.</p>}</>;})()}
+   </div>
   </section>
   <section>
    <h2>Опросники пациенту</h2>
