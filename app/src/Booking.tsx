@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
-import {Button,Checkbox,NativeSelect,Textarea,TextInput} from '@mantine/core';
+import {Button,NativeSelect,Textarea,TextInput} from '@mantine/core';
 import {IconCalendarEvent} from '@tabler/icons-react';
 import {api,errorText} from './api';
 import {Empty,ErrorBox,PageLoader} from './ui';
@@ -38,7 +38,7 @@ export function BookAppointment({doctorId,doctorName}:{doctorId:string;doctorNam
  }
  return <section className="doctor-section booking" aria-labelledby="booking-title">
   <h2 id="booking-title">Записаться на приём</h2>
-  <p className="muted small">Время показано по вашему поясу: {tzLabel(tz)}. Врач работает по времени {tzLabel(clinicTz)}.</p>
+  {tz===clinicTz?<p className="muted small">Время по часовому поясу клиники: {tzLabel(tz)}.</p>:<p className="muted small">Время показано по вашему поясу: {tzLabel(tz)}. Врач работает по времени {tzLabel(clinicTz)}.</p>}
   {slots===null&&!error?<PageLoader label="Загружаем расписание…"/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {slots&&!slots.length&&!error?<Empty icon={<IconCalendarEvent size={28}/>} title="Свободного времени пока нет" description="Врач добавит окна в расписание. Загляните позже"/>:null}
@@ -119,7 +119,7 @@ export function DoctorSchedule(){
     <TextInput type="date" label="С даты" value={dateFrom} onChange={e=>setDateFrom(e.currentTarget.value)}/>
     <TextInput type="date" label="По дату" value={dateTo} onChange={e=>setDateTo(e.currentTarget.value)}/>
    </div>
-   <div className="booking-days" role="group" aria-label="Дни недели">{WEEKDAYS.map(d=><Checkbox key={d.value} label={d.label} checked={weekdays.includes(d.value)} onChange={e=>setWeekdays(e.currentTarget.checked?[...weekdays,d.value].sort((a,b)=>a-b):weekdays.filter(x=>x!==d.value))}/>)}</div>
+   <div className="booking-days" role="group" aria-label="Дни недели">{WEEKDAYS.map(d=>{const on=weekdays.includes(d.value);return <button key={d.value} type="button" className={on?'kind-chip selected':'kind-chip'} aria-pressed={on} onClick={()=>setWeekdays(on?weekdays.filter(x=>x!==d.value):[...weekdays,d.value].sort((a,b)=>a-b))}>{d.label}</button>;})}</div>
    <div className="directory-search">
     <TextInput type="time" label="С" value={from} onChange={e=>setFrom(e.currentTarget.value)}/>
     <TextInput type="time" label="До" value={to} onChange={e=>setTo(e.currentTarget.value)}/>
