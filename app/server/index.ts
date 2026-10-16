@@ -4,6 +4,8 @@ import { directoryRoutes } from './directory';
 import { adminRoutes } from './admin';
 import {profileDocumentRoutes} from './profile-documents';
 import {profileRoutes,profileVideoRoutes,doctorProfile,patientProfile} from './profiles';
+import {practiceTemplateRoutes,customPracticesFor,foreignCustomRefs} from './practice-templates';
+import {binaryUploadLimit} from './upload-limits';
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
@@ -11,7 +13,7 @@ import { z } from 'zod';
 import { database, one, many, run, logAction } from './db';
 import { digest, randomToken, hashPassword, verifyPassword } from './auth';
 import { verifyTotp } from './totp';
-import { defaultPlan, defaultSettings, entrySchema, planSchema, settingsSchema, practiceIds, type User, type Entry, type PracticeLog, type Report } from '../src/shared';
+import { defaultPlan, defaultSettings, entrySchema, planSchema, settingsSchema, practiceRef, type User, type Entry, type PracticeLog, type Report } from '../src/shared';
 import type { Env } from './env';
 import {publicAccountRoutes,accountRoutes} from './account';
 import {careData,patientCareRoutes,doctorCareRoutes} from './care';
@@ -23,17 +25,17 @@ const loginSchema = authSchema.extend({ code: z.string().trim().max(20).optional
 const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor']), consent: z.literal(true) });
 const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 app.use('*', async (c,next) => { await next(); c.header('X-Content-Type-Options','nosniff'); c.header('Referrer-Policy','same-origin'); c.header('X-Frame-Options','DENY'); c.header('Content-Security-Policy',CSP); });
-app.use('/api/*', async(c,next)=>bodyLimit({maxSize:c.req.method==='PUT'&&c.req.path==='/api/profile/video'?52428800:c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000,onError:c=>c.json({error:'Слишком большой запрос'},413)})(c,next));
+app.use('/api/*', async(c,next)=>bodyLimit({maxSize:binaryUploadLimit(c.req.method,c.req.path,c.req.header('Content-Type')||'')||(c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000),onError:c=>c.json({error:'Слишком большой запрос'},413)})(c,next));
 app.use('/api/*', async (c, next) => {
   c.header('Cache-Control', 'no-store'); c.header('X-Content-Type-Options', 'nosniff'); c.header('Referrer-Policy', 'same-origin');
   if (['POST','PUT','PATCH','DELETE'].includes(c.req.method)) {
     const origin = c.req.header('Origin');
     if (!origin || origin !== new URL(c.req.url).origin) return c.json({ error: 'Запрос из другого источника отклонён. Обновите страницу.' }, 403);
-    // Video is the one binary upload: only the exact route and a video MIME type; Origin and session checks still apply.
+    // Binary uploads only on the routes listed in upload-limits; Origin and session checks still apply.
     const ct = c.req.header('Content-Type') || '';
-    const videoUpload = c.req.method === 'PUT' && c.req.path === '/api/profile/video' && /^video\/(mp4|webm)$/.test(ct);
-    if (!ct.includes('application/json') && !videoUpload) return c.json({ error: 'Ожидается JSON' }, 415);
-    const length = Number(c.req.header('Content-Length') || 0); if (length > (videoUpload ? 52428800 : c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000)) return c.json({ error: 'Слишком большой запрос' }, 413);
+    const binaryLimit = binaryUploadLimit(c.req.method, c.req.path, ct);
+    if (!ct.includes('application/json') && binaryLimit === null) return c.json({ error: 'Ожидается JSON' }, 415);
+    const length = Number(c.req.header('Content-Length') || 0); if (length > (binaryLimit ?? (c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000))) return c.json({ error: 'Слишком большой запрос' }, 413);
   }
   await next();
 });
@@ -95,7 +97,7 @@ app.get('/api/me',async c=>{const user=c.get('user');return c.json({user:user.ro
 app.post('/api/auth/logout', async c => { const body=await c.req.json().catch(()=>({}));if(typeof body.endpoint==='string')await run(database(c.env),'DELETE FROM push_subscriptions WHERE endpoint=? AND user_id=?',body.endpoint,c.get('user').id); await run(database(c.env),'DELETE FROM sessions WHERE token=?',await digest(getCookie(c,sessionName) || '')); deleteCookie(c,sessionName,{ path:'/' }); return c.json({ ok:true }); });
 accountRoutes(app);
 notificationRoutes(app);
-profileRoutes(app);profileVideoRoutes(app);profileDocumentRoutes(app);
+profileRoutes(app);profileVideoRoutes(app);practiceTemplateRoutes(app);profileDocumentRoutes(app);
 app.get('/api/settings', async c => { const row = await one<{ data: string }>(database(c.env),'SELECT data FROM settings WHERE user_id=?',c.get('user').id); return c.json({ settings: settingsSchema.parse(row ? JSON.parse(row.data) : defaultSettings) }); });
 app.put('/api/settings', async c => { const data = settingsSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error:'Проверьте настройки.' },400); const user=c.get('user'); const settings={...data.data,reminderEmail:data.data.reminderEmail&&!!user.email_verified_at}; await run(database(c.env),'INSERT INTO settings (user_id,data) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data',user.id,JSON.stringify(settings)); return c.json({ settings }); });
 app.use('/api/patient/*', async(c,next) => { if(c.get('user').role!=='patient') return c.json({ error:'Этот раздел доступен пациенту.' },403); await next(); });
@@ -107,7 +109,8 @@ async function patientData(db: D1Database, id: string) {
     // the list is capped; say so instead of pretending the older days do not exist
     one<{total:number}>(db,'SELECT count(*) AS total FROM checkins WHERE patient_id=?',id)
   ]);
-  return { ...await careData(db,id),reports:reports.map(({payload,...row})=>({...row,...JSON.parse(payload)})) as Report[], entries: entries.map(e=>({...e,sleepContext:(e as unknown as {sleep_context:string}).sleep_context,habit:e.habit===null?null:Boolean(e.habit)})),practices,plan:plan?JSON.parse(plan.data):defaultPlan,settings:settingsSchema.parse(settings?JSON.parse(settings.data):defaultSettings),doctor:doctor?{...doctor,profile:await doctorProfile(db,doctor.id)}:null,lastSosAt:lastSos?.created_at??null,entriesTruncated:(count?.total??0)>entries.length };
+  const customPractices=await customPracticesFor(db,plan?(JSON.parse(plan.data).practices as string[]):[]);
+  return { ...await careData(db,id),customPractices,reports:reports.map(({payload,...row})=>({...row,...JSON.parse(payload)})) as Report[], entries: entries.map(e=>({...e,sleepContext:(e as unknown as {sleep_context:string}).sleep_context,habit:e.habit===null?null:Boolean(e.habit)})),practices,plan:plan?JSON.parse(plan.data):defaultPlan,settings:settingsSchema.parse(settings?JSON.parse(settings.data):defaultSettings),doctor:doctor?{...doctor,profile:await doctorProfile(db,doctor.id)}:null,lastSosAt:lastSos?.created_at??null,entriesTruncated:(count?.total??0)>entries.length };
 }
 patientCareRoutes(app);
 app.get('/api/patient/data', async c => c.json(await patientData(database(c.env),c.get('user').id)));
@@ -124,7 +127,7 @@ app.post('/api/patient/sos', async c => { const db=database(c.env),id=c.get('use
   if(!await one(db,'SELECT id FROM sos_events WHERE patient_id=? AND created_at>?',id,Date.now()-60000)){await run(db,'INSERT INTO sos_events (id,patient_id,created_at) VALUES (?,?,?)',crypto.randomUUID(),id,Date.now());await logAction(db,id,'sos_alert',id);}
   return c.json({ ok:true }); });
 app.post('/api/patient/practices', async c => {
-  const data=z.object({ practiceId:z.enum(practiceIds),feedback:z.enum(['comfortable','same','unpleasant']),note:z.string().trim().max(1000).default('') }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Проверьте оценку практики.' },400);
+  const data=z.object({ practiceId:practiceRef,feedback:z.enum(['comfortable','same','unpleasant']),note:z.string().trim().max(1000).default('') }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Проверьте оценку практики.' },400);
   const db=database(c.env),id=c.get('user').id; const current=await patientData(db,id);
   if(!current.plan.practices.includes(data.data.practiceId)||current.settings.blockedPractices.includes(data.data.practiceId)) return c.json({ error:'Практика отключена в вашем плане.' },403);
   const statements=[db.prepare('INSERT INTO practices (id,patient_id,practice_id,feedback,completed_at,note) VALUES (?,?,?,?,?,?)').bind(crypto.randomUUID(),id,data.data.practiceId,data.data.feedback,Date.now(),data.data.note)];
@@ -199,7 +202,8 @@ app.post('/api/doctor/patients/:id/reports/:reportId/review', async c => {
  await logAction(db,c.get('user').id,'review_report',report.id);
  return c.json({ok:true});
 });
-app.put('/api/doctor/patients/:id/plan', async c => { const data=planSchema.safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Проверьте план наблюдения.' },400); await run(database(c.env),'INSERT INTO plans (patient_id,data,updated_at) VALUES (?,?,?) ON CONFLICT(patient_id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at',c.req.param('id'),JSON.stringify(data.data),Date.now()); await logAction(database(c.env),c.get('user').id,'update_plan',c.req.param('id')); return c.json({ plan:data.data }); });
+app.put('/api/doctor/patients/:id/plan', async c => { const data=planSchema.safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Проверьте план наблюдения.' },400);
+  const foreign=await foreignCustomRefs(database(c.env),c.get('user').id,data.data.practices); if(foreign.length) return c.json({ error:'В план можно поставить только действующие практики из вашей библиотеки. Уберите архивные.' },400); await run(database(c.env),'INSERT INTO plans (patient_id,data,updated_at) VALUES (?,?,?) ON CONFLICT(patient_id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at',c.req.param('id'),JSON.stringify(data.data),Date.now()); await logAction(database(c.env),c.get('user').id,'update_plan',c.req.param('id')); return c.json({ plan:data.data }); });
 app.all('/api/*', c=>c.json({ error:'Неизвестный запрос.' },404));
 app.get('*', c=>c.env.ASSETS.fetch(c.req.raw));
 export default app;

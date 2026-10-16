@@ -87,7 +87,7 @@ export function DoctorPage({id,onChanged}:{id:string;onChanged:()=>Promise<void>
   </header>
   {error?<ErrorBox message={error}/>:null}
   <ConnectPanel name={d.name} connection={data.connection}/>
-  {d.videoUrl?<section className="doctor-section"><h2>Видео о себе</h2><video className="profile-video-player" src={d.videoUrl} controls playsInline preload="metadata" aria-label={`Видео о ${d.name}`}/></section>:null}
+  {d.videoUrl?<section className="doctor-section"><h2>Видео-представление</h2><video className="profile-video-player" src={d.videoUrl} controls playsInline preload="metadata" aria-label={`Видео о ${d.name}`}/></section>:null}
   {d.about?<section className="doctor-section"><h2>О враче</h2><p className="profile-prose">{d.about}</p></section>:null}
   {sections.map(s=><section className="doctor-section" key={s.title}><h2>{s.title}</h2><p className="profile-prose">{s.text}</p></section>)}
   <Reviews doctorId={id} reviews={data.reviews} mine={data.mine} onChanged={load}/>

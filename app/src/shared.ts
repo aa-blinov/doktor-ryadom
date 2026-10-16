@@ -2,15 +2,19 @@ import type {SurveySnapshot,SurveyAnswer} from './surveys';
 import { z } from 'zod';
 export const practiceIds = ['ground', 'notice', 'action', 'senses', 'sounds', 'observe', 'walk', 'breath', 'unhook', 'kind', 'values', 'space'] as const;
 export type PracticeId = typeof practiceIds[number];
+// A plan or log refers to a stock practice by id, or to a practice a doctor wrote: custom:<uuid>.
+export const customPracticePrefix='custom:';
+export const isPracticeRef=(v:string)=>(practiceIds as readonly string[]).includes(v)||/^custom:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v);
+export const practiceRef=z.string().max(60).refine(isPracticeRef,'Неизвестная практика');
 // Порядок просмотра записей из плана убран: на главной пациента он читался как текст
 // приложения без подписи, а содержание расходилось с тем, что врач писал на самом деле.
 // Способ связи и время ответа врач указывает в записи приёма, а режим просмотра —
 // в рекомендациях пациенту; оба места пациент читает осознанно.
-export const planSchema = z.object({ frequency: z.enum(['daily', 'three', 'weekly']), sleep: z.boolean(), anxiety: z.boolean(), energy: z.boolean(), functioning: z.boolean(), practices: z.array(z.enum(practiceIds)).max(practiceIds.length), habit: z.string().trim().max(180) });
-export const defaultPlan = { frequency: 'daily' as const, sleep: true, anxiety: true, energy: false, functioning: true, practices: [] as PracticeId[], habit: '' };
+export const planSchema = z.object({ frequency: z.enum(['daily', 'three', 'weekly']), sleep: z.boolean(), anxiety: z.boolean(), energy: z.boolean(), functioning: z.boolean(), practices: z.array(practiceRef).max(40), habit: z.string().trim().max(180) });
+export const defaultPlan = { frequency: 'daily' as const, sleep: true, anxiety: true, energy: false, functioning: true, practices: [] as string[], habit: '' };
 export type Plan = z.infer<typeof planSchema>;
-export const settingsSchema = z.object({ reminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), paused: z.boolean(), blockedPractices: z.array(z.enum(practiceIds)).max(practiceIds.length), timezone:z.string().max(80).refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true;}catch{return false;}},'Проверьте часовой пояс').default('Asia/Almaty'), reminderEmail:z.boolean().default(false), reminderPush:z.boolean().default(false), reportNotifications:z.boolean().default(false) });
-export const defaultSettings = { reminderTime: '20:00', paused: false, blockedPractices: [] as PracticeId[], timezone:'Asia/Almaty',reminderEmail:false,reminderPush:false,reportNotifications:false };
+export const settingsSchema = z.object({ reminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), paused: z.boolean(), blockedPractices: z.array(practiceRef).max(40), timezone:z.string().max(80).refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v});return true;}catch{return false;}},'Проверьте часовой пояс').default('Asia/Almaty'), reminderEmail:z.boolean().default(false), reminderPush:z.boolean().default(false), reportNotifications:z.boolean().default(false) });
+export const defaultSettings = { reminderTime: '20:00', paused: false, blockedPractices: [] as string[], timezone:'Asia/Almaty',reminderEmail:false,reminderPush:false,reportNotifications:false };
 export type Settings = z.infer<typeof settingsSchema>;
 export const entrySchema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, 'Некорректная дата'), mood: z.number().int().min(1).max(5), sleep: z.number().min(0).max(24).nullable(), anxiety: z.number().int().min(0).max(4).nullable(), energy: z.number().int().min(1).max(5).nullable(), functioning: z.number().int().min(1).max(3).nullable(), sleepContext: z.enum(['tired', 'usual', 'active']).nullable(), note: z.string().trim().max(2000), habit: z.boolean().nullable() });
 export type EntryInput = z.infer<typeof entrySchema>;
@@ -27,7 +31,8 @@ export const goalLogSchema=z.object({status:z.enum(['step','difficult','reached'
 export type Goal={id:string;title:string;reason:string;created_at:number;closed_at:number|null};
 export type GoalLog={id:string;goal_id:string;status:'step'|'difficult'|'reached';note:string;created_at:number;reviewed_at:number|null;reviewer_id:string|null};
 export type Report = { id: string; doctor_id: string; from_date: string; to_date: string; created_at: number; reviewed_at: number | null; entries: Entry[]; practices: PracticeLog[]; plan: Plan;assessments?:Assessment[];medications?:Medication[];medicationLogs?:MedicationLog[];experiences?:Experience[];followups?:Followup[];goals?:Goal[];goalLogs?:GoalLog[] };
-export type PatientData = { lastSosAt?: number | null; entriesTruncated?: boolean; reports: Report[]; entries: Entry[]; practices: PracticeLog[]; plan: Plan; settings: Settings; doctor: { id: string; name: string;profile?:DoctorProfile } | null;draft:CheckinDraft|null;assessments:Assessment[];followups:Followup[];medications:Medication[];medicationLogs:MedicationLog[];experiences:Experience[];goals?:Goal[];goalLogs?:GoalLog[] };
+export type CustomPractice={id:string;title:string;subtitle:string;minutes:number;category:string;basis:string;description:string;steps:{title:string;text:string}[];archived:boolean;photoUrl:string|null;videoUrl:string|null};
+export type PatientData = { lastSosAt?: number | null; entriesTruncated?: boolean; customPractices?: CustomPractice[]; reports: Report[]; entries: Entry[]; practices: PracticeLog[]; plan: Plan; settings: Settings; doctor: { id: string; name: string;profile?:DoctorProfile } | null;draft:CheckinDraft|null;assessments:Assessment[];followups:Followup[];medications:Medication[];medicationLogs:MedicationLog[];experiences:Experience[];goals?:Goal[];goalLogs?:GoalLog[] };
 export type PatientRow = { id: string; name: string; last_date: string | null; last_mood: number | null; count: number; pending_reports: number;pending_assessments:number;pending_safety?:number;pending_practices?:number;pending_goals?:number;open_sos?:number };
 // ponytail: рабочие пороги, утверждает психиатр. Настроение 1-2 это «Очень тяжело» и «Тяжело».
 export const attentionRules={silentDays:3,lowMood:2};
