@@ -980,3 +980,9 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .directory-actions .filters-toggle{margin:0}
 .directory-actions{display:flex;flex-direction:row;align-items:center}
 .directory-actions .mantine-Button-root{flex:0 0 auto}
+/* Catalogue filter bar on desktop: search across the full row, the selects share the row below */
+@media (min-width:701px){
+ .directory-bar>:first-child{flex:1 1 100%}
+ .directory-bar>*{flex:1 1 200px}
+}
+.directory-bar .mantine-Checkbox-root{flex:0 0 auto;white-space:nowrap}
