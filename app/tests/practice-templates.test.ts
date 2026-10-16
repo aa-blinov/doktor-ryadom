@@ -5,13 +5,14 @@ const db=createDatabase(),origin='https://practice.test',password='practice-test
 const env={DB:db.binding,ASSETS:{} as Fetcher,PUSH_PUBLIC_KEY:'key',PUSH_SEND:async()=>{}};
 afterAll(()=>db.close());
 let ip=0;
-async function request(path:string,init:{method?:string;json?:unknown;body?:Uint8Array;type?:string;length?:number;cookie?:string}={}){
+async function request(path:string,init:{method?:string;json?:unknown;body?:Uint8Array;type?:string;length?:number;cookie?:string;range?:string}={}){
  const headers:Record<string,string>={Origin:origin,'CF-Connecting-IP':`10.8.${Math.floor(ip/200)}.${(++ip%200)+1}`};
  if(init.cookie)headers.Cookie=init.cookie;
  let body:any;
  if(init.json!==undefined){headers['Content-Type']='application/json';body=JSON.stringify(init.json);}
  if(init.body){headers['Content-Type']=init.type!;body=init.body;}
  if(init.length!==undefined)headers['Content-Length']=String(init.length);
+ if(init.range)headers.Range=init.range;
  const method=init.method||(init.json!==undefined||init.body?'POST':'GET');
  return app.request(origin+'/api'+path,{method,headers,body},env);
 }
@@ -83,3 +84,15 @@ it('a plan takes only own, unarchived practices; the patient sees and logs them'
  expect((await request(`/doctor/patients/${patient.id}/plan`,{method:'PUT',json:plan(['ground',mineRef]),cookie:doctor.cookie})).status).toBe(400);
  expect((await request(`/doctor/practices/${mine}`,{method:'PUT',json:good,cookie:doctor.cookie})).status).toBe(409);
 });
+
+it('a practice video can be sought with byte ranges',async()=>{
+ const doctor=await register('doctor','prac-range@example.com');
+ const {practice}=await (await request('/doctor/practices',{json:good,cookie:doctor.cookie})).json() as {practice:{id:string}};
+ const id=practice.id.slice(7);
+ const clip=new Uint8Array(64);clip.set([0x1a,0x45,0xdf,0xa3,0x9f,0x42,0x86,0x81,0x01]);
+ expect((await request(`/doctor/practices/${id}/media/video`,{method:'PUT',body:clip,type:'video/webm',length:64,cookie:doctor.cookie})).status).toBe(200);
+ const part=await request(`/practices/${id}/media/video`,{cookie:doctor.cookie,range:'bytes=0-7'});
+ expect(part.status).toBe(206);expect(part.headers.get('content-range')).toBe('bytes 0-7/64');
+ expect((await part.arrayBuffer()).byteLength).toBe(8);
+ expect((await request(`/practices/${id}/media/video`,{cookie:doctor.cookie,range:'bytes=500-600'})).status).toBe(416);
+},60000);

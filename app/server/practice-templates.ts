@@ -144,6 +144,15 @@ export function practiceTemplateRoutes(app:App){
   const row=await one<{mime:string;size:number;data:ArrayBuffer}>(db,'SELECT mime,size,data FROM practice_media WHERE practice_id=? AND kind=?',id,kind);
   if(!row)return c.notFound();
   const bytes=new Uint8Array(row.data);
-  return c.body(bytes,200,{'Content-Type':row.mime,'Content-Length':String(row.size),'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});
+  const headers={'Content-Type':row.mime,'Accept-Ranges':'bytes','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'};
+  // Byte ranges let a video seek; photos are small and simply come back whole.
+  const range=c.req.header('Range');const m=range&&/^bytes=(\d*)-(\d*)$/.exec(range);
+  if(m&&(m[1]!==''||m[2]!=='')){
+   const start=m[1]===''?Math.max(0,row.size-Number(m[2])):Number(m[1]);
+   const end=m[2]===''||m[1]===''?row.size-1:Math.min(Number(m[2]),row.size-1);
+   if(start>=row.size||start>end)return c.body(null,416,{'Content-Range':`bytes */${row.size}`});
+   return c.body(bytes.slice(start,end+1),206,{...headers,'Content-Range':`bytes ${start}-${end}/${row.size}`,'Content-Length':String(end-start+1)});
+  }
+  return c.body(bytes,200,{...headers,'Content-Length':String(row.size)});
  });
 }
