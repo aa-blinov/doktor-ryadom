@@ -69,6 +69,7 @@ app.post('/api/auth/register', async c => {
   if (await one(db, 'SELECT id FROM users WHERE email=?', email)) return c.json({ error: 'Не удалось создать аккаунт. Проверьте данные или войдите, если аккаунт уже есть.' }, 409);
   const user = { id: crypto.randomUUID(), email, name, role, terms_version: TERMS_VERSION };
   await db.batch([db.prepare('INSERT INTO users (id,email,name,role,password,created_at,terms_version) VALUES (?,?,?,?,?,?,?)').bind(user.id,email,name,role,await hashPassword(password),Date.now(),TERMS_VERSION), db.prepare('INSERT INTO settings (user_id,data) VALUES (?,?)').bind(user.id,JSON.stringify(defaultSettings))]);
+  if (role === 'patient') await run(db, 'INSERT OR IGNORE INTO patient_cards (patient_id,created_at) VALUES (?,?)', user.id, Date.now());
   await logAction(db,user.id,'registration_consent',user.id); await newSession(c,user); return c.json({ user }, 201);
 });
 app.post('/api/auth/login', async c => {
@@ -86,16 +87,22 @@ app.post('/api/auth/login', async c => {
     const step = await verifyTotp(row.totp_secret, code, row.totp_last_step);
     if (step === null || !(await run(db, 'UPDATE users SET totp_last_step=? WHERE id=? AND (totp_last_step IS NULL OR totp_last_step<?)', step, row.id, step)).meta.changes) return c.json({ error: 'Код неверный или уже использован. Введите новый код.' }, 401);
   }
-  const { password: _, totp_secret: _secret, totp_enabled_at: _enabled, totp_last_step: _step, ...user } = row; await newSession(c,user); await logAction(db,user.id,'login',user.id); return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(db,user.id)).photoUrl}:user});
+  const { password: _, totp_secret: _secret, totp_enabled_at: _enabled, totp_last_step: _step, ...rest } = row; const user = { ...rest, totp_enabled: !!_enabled }; await newSession(c,user); await logAction(db,user.id,'login',user.id); return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(db,user.id)).photoUrl}:user});
 });
 publicAccountRoutes(app);
 app.use('/api/*', async (c,next) => {
   const token = getCookie(c,sessionName); if (!token) return c.json({ error: 'Войдите, чтобы продолжить.' }, 401);
-  const row = await one<User & { blocked_at: number | null }>(database(c.env),'SELECT u.id,u.email,u.name,u.role,u.email_verified_at,u.specialist_verified_at,u.specialty_kind,u.blocked_at,u.terms_version FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?',await digest(token),Date.now());
+  const row = await one<User & { blocked_at: number | null; totp_enabled_at: number | null }>(database(c.env),'SELECT u.id,u.email,u.name,u.role,u.email_verified_at,u.specialist_verified_at,u.specialty_kind,u.blocked_at,u.terms_version,u.totp_enabled_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?',await digest(token),Date.now());
   if (!row) return c.json({ error: 'Сеанс завершён. Войдите снова.' }, 401);
   // A blocked account keeps its session row, so the next open says why it cannot enter instead of showing a silent login form.
   if (row.blocked_at) return c.json({ error: 'Аккаунт заблокирован. Обратитесь к администратору.' }, 403);
-  const { blocked_at: _blocked, ...user } = row; c.set('user',user as User); await next();
+  // Doctors and administrators need a second factor before anything else. Setting it up, signing out and reading the session stay open.
+  const { blocked_at: _blocked, totp_enabled_at, ...user } = row;
+  const staff = user.role === 'doctor' || user.role === 'admin';
+  const open = new URL(c.req.url).pathname;
+  const setupOnly = open === '/api/me' || open === '/api/auth/logout' || open.startsWith('/api/account/');
+  if (staff && !totp_enabled_at && !setupOnly) return c.json({ error: 'Включите вход с кодом, чтобы пользоваться кабинетом.', code: 'totp_required' }, 403);
+  c.set('user', { ...user, totp_enabled: !!totp_enabled_at } as User); await next();
 });
 app.post('/api/account/terms',async c=>{const db=database(c.env),user=c.get('user');await run(db,'UPDATE users SET terms_version=? WHERE id=?',TERMS_VERSION,user.id);await logAction(db,user.id,'terms_accept',user.id);return c.json({ok:true});});
 app.get('/api/me',async c=>{const user=c.get('user');return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(database(c.env),user.id)).photoUrl}:user});});

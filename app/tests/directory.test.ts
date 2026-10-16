@@ -10,7 +10,7 @@ async function request(path:string,body?:unknown,cookie?:string,method?:string){
 }
 const accounts=new Map<string,{cookie:string;id:string}>();
 async function register(role:string,tag:string){const known=accounts.get(tag);if(known)return known;const r=await request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true,adult:true});expect(r.status).toBe(201);const account={cookie:r.cookie!,id:r.data.user.id as string};accounts.set(tag,account);return account;}
-async function verify(id:string,kind:string|null){await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=? WHERE id=?').bind(Date.now(),kind,id).run();await db.binding.prepare('INSERT INTO specialist_requests (id,doctor_id,kind,specialty,license,city,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,kind,'Специалист','LIC-'+id.slice(0,4),'Алматы','approved',Date.now(),Date.now()).run();}
+async function verify(id:string,kind:string|null){await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=? WHERE id=?').bind(Date.now(),kind,id).run();await db.binding.prepare('INSERT INTO specialist_requests (id,doctor_id,kind,specialty,license,city,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,kind,'Специалист','LIC-'+id.slice(0,4),'Алматы','approved',Date.now(),Date.now()).run();}
 afterAll(()=>db.close());
 
 it('only a verified psychiatrist may prescribe medication',async()=>{
@@ -40,7 +40,7 @@ it('catalogue lists verified doctors with filters, rating and patient-only acces
  expect(detail.data.reviews).toHaveLength(2);expect(detail.data.doctor.rating).toBe(3.5);expect(detail.data.doctor.reviewCount).toBe(2);
  expect(detail.data.mine).toEqual({rating:4,body:'Обновил',hidden:false});expect(detail.data.reviews[0].author).toBe('Тест');
  // admin can hide a review; it disappears from patients and the average
- const admin=await register('doctor','dir-admin');await db.binding.prepare("UPDATE users SET role='admin' WHERE id=?").bind(admin.id).run();
+ const admin=await register('doctor','dir-admin');await db.binding.prepare("UPDATE users SET totp_enabled_at=1,role='admin' WHERE id=?").bind(admin.id).run();
  const rid=detail.data.reviews[0].id;expect((await request(`/admin/reviews/${rid}/hide`,{hidden:true},patient.cookie)).status).toBe(403);
  expect((await request(`/admin/reviews/${rid}/hide`,{hidden:true},admin.cookie)).status).toBe(200);
  const after=await request('/directory/'+a.id,undefined,patient.cookie);expect(after.data.reviews).toHaveLength(1);expect(after.data.doctor.reviewCount).toBe(1);

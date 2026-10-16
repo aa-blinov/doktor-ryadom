@@ -64,7 +64,7 @@ it('login returns the same error for unknown user and wrong password',async()=>{
 
 it('rate-limits invite preview against brute force',async()=>{
  const doctor=await request('/auth/register',{email:'invite-doc@security.test',name:'Врач Приглашения',password,role:'doctor',consent:true,adult:true});
- await db.binding.prepare('UPDATE users SET specialist_verified_at=?, specialty_kind=? WHERE id=?').bind(Date.now(),'psychiatrist',doctor.data.user.id).run();
+ await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?, specialty_kind=? WHERE id=?').bind(Date.now(),'psychiatrist',doctor.data.user.id).run();
  let limited=0;
  for(let i=0;i<20;i++){
   const r=await request('/invites/'+String(i).padStart(12,'A').slice(0,12));
