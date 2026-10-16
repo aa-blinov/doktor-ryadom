@@ -46,9 +46,9 @@ it('rejects cross-origin mutations and non-JSON bodies',async()=>{
 
 it('register does not confirm whether an email already exists',async()=>{
  const email='enum-probe@security.test';
- const first=await request('/auth/register',{email,name:'Проба Первая',password,role:'patient',consent:true});
+ const first=await request('/auth/register',{email,name:'Проба Первая',password,role:'patient',consent:true,adult:true});
  expect(first.status).toBe(201);
- const second=await request('/auth/register',{email,name:'Проба Вторая',password,role:'patient',consent:true});
+ const second=await request('/auth/register',{email,name:'Проба Вторая',password,role:'patient',consent:true,adult:true});
  expect(second.status).toBe(409);
  expect(String(second.data.error)).not.toMatch(/уже зарегистрирован/i);
  expect(String(second.data.error)).not.toMatch(/already/i);
@@ -63,7 +63,7 @@ it('login returns the same error for unknown user and wrong password',async()=>{
 });
 
 it('rate-limits invite preview against brute force',async()=>{
- const doctor=await request('/auth/register',{email:'invite-doc@security.test',name:'Врач Приглашения',password,role:'doctor',consent:true});
+ const doctor=await request('/auth/register',{email:'invite-doc@security.test',name:'Врач Приглашения',password,role:'doctor',consent:true,adult:true});
  await db.binding.prepare('UPDATE users SET specialist_verified_at=?, specialty_kind=? WHERE id=?').bind(Date.now(),'psychiatrist',doctor.data.user.id).run();
  let limited=0;
  for(let i=0;i<20;i++){

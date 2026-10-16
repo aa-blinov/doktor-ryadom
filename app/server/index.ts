@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { database, one, many, run, logAction } from './db';
 import { digest, randomToken, hashPassword, verifyPassword } from './auth';
 import { verifyTotp } from './totp';
-import { defaultPlan, defaultSettings, entrySchema, planSchema, settingsSchema, practiceRef, type User, type Entry, type PracticeLog, type Report } from '../src/shared';
+import { defaultPlan, defaultSettings, entrySchema, planSchema, settingsSchema, practiceRef, TERMS_VERSION, type User, type Entry, type PracticeLog, type Report } from '../src/shared';
 import type { Env } from './env';
 import {publicAccountRoutes,accountRoutes} from './account';
 import {careData,patientCareRoutes,doctorCareRoutes} from './care';
@@ -22,7 +22,7 @@ const app = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 const sessionName = 'ryadom_session';
 const authSchema = z.object({ email: z.string().trim().email().max(200).transform(v => v.toLowerCase()), password: z.string().min(12, 'Пароль должен содержать минимум 12 символов').max(128) });
 const loginSchema = authSchema.extend({ code: z.string().trim().max(20).optional() });
-const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor']), consent: z.literal(true) });
+const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor']), consent: z.literal(true), adult: z.literal(true, { message: 'Регистрация доступна с 18 лет' }) });
 const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 app.use('*', async (c,next) => { await next(); c.header('X-Content-Type-Options','nosniff'); c.header('Referrer-Policy','same-origin'); c.header('X-Frame-Options','DENY'); c.header('Content-Security-Policy',CSP); });
 app.use('/api/*', async(c,next)=>bodyLimit({maxSize:binaryUploadLimit(c.req.method,c.req.path,c.req.header('Content-Type')||'')||(c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000),onError:c=>c.json({error:'Слишком большой запрос'},413)})(c,next));
@@ -63,15 +63,15 @@ app.post('/api/auth/register', async c => {
   if (!await limit(db, await digest('register:'+(c.req.header('CF-Connecting-IP') || 'local')))) return c.json({ error: 'Слишком много попыток. Попробуйте через 10 минут.' }, 429);
   const { email, password, name, role } = data.data;
   if (await one(db, 'SELECT id FROM users WHERE email=?', email)) return c.json({ error: 'Не удалось создать аккаунт. Проверьте данные или войдите, если аккаунт уже есть.' }, 409);
-  const user = { id: crypto.randomUUID(), email, name, role };
-  await db.batch([db.prepare('INSERT INTO users (id,email,name,role,password,created_at) VALUES (?,?,?,?,?,?)').bind(user.id,email,name,role,await hashPassword(password),Date.now()), db.prepare('INSERT INTO settings (user_id,data) VALUES (?,?)').bind(user.id,JSON.stringify(defaultSettings))]);
+  const user = { id: crypto.randomUUID(), email, name, role, terms_version: TERMS_VERSION };
+  await db.batch([db.prepare('INSERT INTO users (id,email,name,role,password,created_at,terms_version) VALUES (?,?,?,?,?,?,?)').bind(user.id,email,name,role,await hashPassword(password),Date.now(),TERMS_VERSION), db.prepare('INSERT INTO settings (user_id,data) VALUES (?,?)').bind(user.id,JSON.stringify(defaultSettings))]);
   await logAction(db,user.id,'registration_consent',user.id); await newSession(c,user); return c.json({ user }, 201);
 });
 app.post('/api/auth/login', async c => {
   const db = database(c.env); const data = loginSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error: 'Проверьте email и пароль (минимум 12 символов).' }, 400);
   const key = await digest(`login:${data.data.email}:${c.req.header('CF-Connecting-IP') || 'local'}`);
   if (!await limit(db,key) || !await limit(db,await digest(`login-ip:${c.req.header('CF-Connecting-IP') || 'local'}`)) || !await limit(db,await digest(`login-account:${data.data.email}`),30,3600000)) return c.json({ error: 'Слишком много попыток. Попробуйте через 10 минут.' }, 429);
-  const row = await one<User & { password: string; blocked_at?: number | null; totp_secret: string | null; totp_enabled_at: number | null; totp_last_step: number | null }>(db, 'SELECT id,email,name,role,password,email_verified_at,specialist_verified_at,specialty_kind,blocked_at,totp_secret,totp_enabled_at,totp_last_step FROM users WHERE email=?', data.data.email);
+  const row = await one<User & { password: string; blocked_at?: number | null; totp_secret: string | null; totp_enabled_at: number | null; totp_last_step: number | null }>(db, 'SELECT id,email,name,role,password,email_verified_at,specialist_verified_at,specialty_kind,blocked_at,totp_secret,totp_enabled_at,totp_last_step,terms_version FROM users WHERE email=?', data.data.email);
   const ok=row?await verifyPassword(data.data.password,row.password):await verifyPassword(data.data.password,'scrypt:16384:8:5:'+('0'.repeat(64))+':'+'0'.repeat(64));
   if (!row || !ok) return c.json({ error: 'Неверный email или пароль.' }, 401);
   if (row.blocked_at) return c.json({ error: 'Аккаунт заблокирован. Обратитесь к администратору.' }, 403);
@@ -87,12 +87,13 @@ app.post('/api/auth/login', async c => {
 publicAccountRoutes(app);
 app.use('/api/*', async (c,next) => {
   const token = getCookie(c,sessionName); if (!token) return c.json({ error: 'Войдите, чтобы продолжить.' }, 401);
-  const row = await one<User & { blocked_at: number | null }>(database(c.env),'SELECT u.id,u.email,u.name,u.role,u.email_verified_at,u.specialist_verified_at,u.specialty_kind,u.blocked_at FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?',await digest(token),Date.now());
+  const row = await one<User & { blocked_at: number | null }>(database(c.env),'SELECT u.id,u.email,u.name,u.role,u.email_verified_at,u.specialist_verified_at,u.specialty_kind,u.blocked_at,u.terms_version FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?',await digest(token),Date.now());
   if (!row) return c.json({ error: 'Сеанс завершён. Войдите снова.' }, 401);
   // A blocked account keeps its session row, so the next open says why it cannot enter instead of showing a silent login form.
   if (row.blocked_at) return c.json({ error: 'Аккаунт заблокирован. Обратитесь к администратору.' }, 403);
   const { blocked_at: _blocked, ...user } = row; c.set('user',user as User); await next();
 });
+app.post('/api/account/terms',async c=>{const db=database(c.env),user=c.get('user');await run(db,'UPDATE users SET terms_version=? WHERE id=?',TERMS_VERSION,user.id);await logAction(db,user.id,'terms_accept',user.id);return c.json({ok:true});});
 app.get('/api/me',async c=>{const user=c.get('user');return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(database(c.env),user.id)).photoUrl}:user});});
 app.post('/api/auth/logout', async c => { const body=await c.req.json().catch(()=>({}));if(typeof body.endpoint==='string')await run(database(c.env),'DELETE FROM push_subscriptions WHERE endpoint=? AND user_id=?',body.endpoint,c.get('user').id); await run(database(c.env),'DELETE FROM sessions WHERE token=?',await digest(getCookie(c,sessionName) || '')); deleteCookie(c,sessionName,{ path:'/' }); return c.json({ ok:true }); });
 accountRoutes(app);

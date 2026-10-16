@@ -8,7 +8,7 @@ async function request(path:string,body?:unknown,cookie?:string,method?:string){
  const r=await app.request(origin+'/api'+path,{method:method??(body===undefined?'GET':'POST'),headers:{Origin:origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)},env);
  return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]};
 }
-async function register(role:string,tag:string){return request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true});}
+async function register(role:string,tag:string){return request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true,adult:true});}
 afterAll(()=>db.close());
 it('personal goals, practice feedback and review respect consent, keep snapshots and erase patient data',async()=>{
  const p=await register('patient','goals-patient'),q=await register('patient','goals-other'),d=await register('doctor','goals-doctor'),other=await register('doctor','goals-stranger'),id=p.data.user.id;
@@ -22,7 +22,7 @@ it('personal goals, practice feedback and review respect consent, keep snapshots
  expect((await request(`/doctor/patients/${id}/data`,undefined,d.cookie)).status).toBe(403);
  await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
  const invite=await request('/doctor/invites',{},d.cookie);
- expect((await request('/patient/accept',{token:invite.data.token,consent:true},p.cookie)).status).toBe(200);
+ expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},p.cookie)).status).toBe(200);
  await request(`/doctor/patients/${id}/plan`,{...defaultPlan,practices:['ground']},d.cookie,'PUT');
  expect((await request('/patient/practices',{practiceId:'ground',feedback:'unpleasant',note:'Стало некомфортно, остановился'},p.cookie)).status).toBe(201);
  let data=(await request('/patient/data',undefined,p.cookie)).data;

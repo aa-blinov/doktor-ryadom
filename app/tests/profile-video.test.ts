@@ -16,7 +16,7 @@ async function request(path:string,init:{method?:string;body?:BodyInit|null;json
  return app.request(origin+'/api'+path,{method:init.method||(body===undefined?'GET':init.body!==undefined&&init.json===undefined&&init.body!==null?'PUT':'POST'),headers,body},env);
 }
 async function register(role:'doctor'|'patient',email:string){
- const r=await request('/auth/register',{method:'POST',json:{name:'Видео Тест',email,password,role,consent:true}});
+ const r=await request('/auth/register',{method:'POST',json:{name:'Видео Тест',email,password,role,consent:true,adult:true}});
  expect(r.status).toBe(201);
  return {cookie:r.headers.get('set-cookie')!.split(';')[0],id:(await r.json() as {user:{id:string}}).user.id};
 }

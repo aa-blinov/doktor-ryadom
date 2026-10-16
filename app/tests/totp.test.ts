@@ -10,7 +10,7 @@ async function request(path:string,body?:unknown,cookie?:string){
  return app.request(origin+'/api'+path,{method:body?'POST':'GET',headers:{Origin:origin,'CF-Connecting-IP':`10.9.0.${++ip}`,...(cookie?{Cookie:cookie}:{}),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined},env);
 }
 async function register(email:string){
- const r=await request('/auth/register',{name:'Тест код',email,password,role:'doctor',consent:true});
+ const r=await request('/auth/register',{name:'Тест код',email,password,role:'doctor',consent:true,adult:true});
  expect(r.status).toBe(201);
  return r.headers.get('set-cookie')!.split(';')[0];
 }

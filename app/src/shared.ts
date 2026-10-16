@@ -22,7 +22,9 @@ export type Entry = EntryInput & { id: string; created_at: number; version?:numb
 export const specialtyKinds=['psychologist','psychotherapist','psychiatrist'] as const;
 export type SpecialtyKind=typeof specialtyKinds[number];
 export const specialtyLabels:Record<SpecialtyKind,string>={psychologist:'Психолог',psychotherapist:'Психотерапевт',psychiatrist:'Психиатр'};
-export type User = { id: string; name: string; email: string; role: 'patient' | 'doctor' | 'admin';email_verified_at?:number|null;specialist_verified_at?:number|null;specialty_kind?:SpecialtyKind|null;photoUrl?:string|null };
+// Version of the user agreement. Bump it when the text changes: users are asked to confirm the new one in the app.
+export const TERMS_VERSION='2026-10-16';
+export type User = { id: string; name: string; email: string; role: 'patient' | 'doctor' | 'admin';terms_version?:string|null;email_verified_at?:number|null;specialist_verified_at?:number|null;specialty_kind?:SpecialtyKind|null;photoUrl?:string|null };
 // Only a verified psychiatrist may prescribe medication.
 export const canPrescribe=(user:Pick<User,'role'|'specialist_verified_at'|'specialty_kind'>)=>user.role==='doctor'&&!!user.specialist_verified_at&&user.specialty_kind==='psychiatrist';
 export type PracticeLog = { id: string; practice_id: string; feedback: 'comfortable' | 'same' | 'unpleasant'; completed_at: number;note?:string;reviewed_at?:number|null;reviewer_id?:string|null };

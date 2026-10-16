@@ -8,7 +8,7 @@ async function request(path:string,body?:unknown,cookie?:string,ip='hardening-cl
  return app.request(origin+'/api'+path,{method:body?'POST':'GET',headers:{Origin:origin,'CF-Connecting-IP':ip,...(cookie?{Cookie:cookie}:{}),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined},env);
 }
 async function register(email:string){
- const r=await request('/auth/register',{name:'Тест защита',email,password,role:'patient',consent:true});
+ const r=await request('/auth/register',{name:'Тест защита',email,password,role:'patient',consent:true,adult:true});
  expect(r.status).toBe(201);
  return {cookie:r.headers.get('set-cookie')!.split(';')[0]};
 }

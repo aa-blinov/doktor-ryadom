@@ -6,7 +6,7 @@ import {digest} from '../server/auth';
 const db=createDatabase(),mail:{to:string;subject:string;text:string}[]=[],origin='https://care.test',password='sufficiently-long-test-password';
 const env={DB:db.binding,ASSETS:{} as Fetcher,MAIL:{send:async(message:typeof mail[number])=>{mail.push(message);}},PUSH_PUBLIC_KEY:'test-key'};
 async function request(path:string,body?:unknown,cookie?:string,method?:string){const r=await app.request(origin+'/api'+path,{method:method||(body===undefined?'GET':'POST'),headers:{Origin:origin,'CF-Connecting-IP':'test-client',...(body===undefined?{}:{'Content-Type':'application/json'}),...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)},env);return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]};}
-async function register(role:string,tag:string){const r=await request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true});expect(r.status).toBe(201);return r;}
+async function register(role:string,tag:string){const r=await request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true,adult:true});expect(r.status).toBe(201);return r;}
 afterAll(()=>db.close());
 it('one-use account tokens, password rotation and complete patient data deletion',async()=>{
  const p=await register('patient','accounts'),id=p.data.user.id;
@@ -35,7 +35,7 @@ it('draft, concurrent correction, assigned questionnaires, treatment and immutab
  const d=await register('doctor','care-doctor'),p=await register('patient','care-patient'),stranger=await register('doctor','care-stranger'),id=p.data.user.id;
  expect((await request('/doctor/invites',{},d.cookie)).status).toBe(403);
  await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
- const invite=await request('/doctor/invites',{},d.cookie);expect(invite.status).toBe(201);expect((await request('/patient/accept',{token:invite.data.token,consent:true},p.cookie)).status).toBe(200);
+ const invite=await request('/doctor/invites',{},d.cookie);expect(invite.status).toBe(201);expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},p.cookie)).status).toBe(200);
  const data=(await request('/patient/data',undefined,p.cookie)).data;
  const entry={date:today(),mood:2,sleep:5,anxiety:0,energy:null,functioning:3,sleepContext:'tired',note:'Original synthetic note',habit:null};
  expect((await request('/patient/draft',{entry,plan:data.plan,step:2},p.cookie,'PUT')).status).toBe(200);expect((await request('/patient/data',undefined,p.cookie)).data.draft.step).toBe(2);
@@ -95,7 +95,7 @@ it('recovery codes are hashed, tied to email, expire and revoke every active ses
 it('WHO-5 and PHQ-9 enforce scoring and agreed contact protocol',async()=>{
  const d=await register('doctor','standard-doctor'),p=await register('patient','standard-patient'),id=p.data.user.id;
  await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
- const invite=await request('/doctor/invites',{},d.cookie);expect((await request('/patient/accept',{token:invite.data.token,consent:true},p.cookie)).status).toBe(200);
+ const invite=await request('/doctor/invites',{},d.cookie);expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},p.cookie)).status).toBe(200);
  expect((await request(`/doctor/patients/${id}/assessments`,{kind:'phq9',dueDate:today()},d.cookie)).status).toBe(400);
  const safety={contact:'Звонок врачу в рабочие часы',reviewNote:'Просмотр в рабочий день; экстренная помощь 112',confirmed:true};
  for(const kind of ['who5','phq9']){
