@@ -39,6 +39,7 @@ function Rating({card}:{card:Pick<Card,'rating'|'reviewCount'>}){
 }
 
 export function DoctorDirectory(){
+ const [filtersOpen,setFiltersOpen]=useState(()=>typeof window==='undefined'||!window.matchMedia('(max-width:700px)').matches);
  const [items,setItems]=useState<Card[]>([]),[viewerTz,setViewerTz]=useState(DEFAULT_TIMEZONE),[total,setTotal]=useState(0),[page,setPage]=useState(1),[cities,setCities]=useState<string[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [kind,setKind]=useState('all'),[query,setQuery]=useState(''),[city,setCity]=useState(''),[sort,setSort]=useState(''),[format,setFormat]=useState('all'),[maxPrice,setMaxPrice]=useState('0'),[free,setFree]=useState(false);
  const qs=(p:number)=>{const s=new URLSearchParams({page:String(p)});if(kind!=='all')s.set('kind',kind);if(query.trim())s.set('q',query.trim());if(city)s.set('city',city);if(sort)s.set('sort',sort);if(format!=='all')s.set('format',format);if(maxPrice!=='0')s.set('maxPrice',maxPrice);if(free)s.set('free','1');return s.toString();};
@@ -56,7 +57,8 @@ export function DoctorDirectory(){
   <PageHead title="Найти врача" description="Психологи, психотерапевты и психиатры, чью квалификацию проверил администратор"/>
   <MyAppointments/>
   <div className="connect-actions"><Button variant="default" onClick={()=>navigate('/card')}>Моя карточка и история лечения</Button></div>
-  <div className="directory-filters">
+  <button type="button" className="filters-toggle" aria-expanded={filtersOpen} aria-controls="directory-filters" onClick={()=>setFiltersOpen(o=>!o)}>{filtersOpen?'Скрыть фильтры':'Фильтры и сортировка'}</button>
+  <div id="directory-filters" className={filtersOpen?'directory-filters':'directory-filters is-collapsed'}>
    <div className="kind-filter" role="group" aria-label="Специальность">
     {kindFilters.map(option=><button key={option.value} type="button" className={kind===option.value?'kind-chip selected':'kind-chip'} aria-pressed={kind===option.value} onClick={()=>setKind(option.value)}>{option.label}</button>)}
    </div>
@@ -111,8 +113,8 @@ export function DoctorPage({id,onChanged}:{id:string;onChanged:()=>Promise<void>
   </header>
   {error?<ErrorBox message={error}/>:null}
   <p className="small doctor-card-price">{priceText(d.price)} · {formatText[d.visitFormat]}</p>
-  <ConnectPanel name={d.name} connection={data.connection}/>
   <BookAppointment doctorId={id} doctorName={d.name}/>
+  <ConnectPanel name={d.name} connection={data.connection}/>
   {d.videoUrl?<section className="doctor-section"><h2>Видео-представление</h2><video className="profile-video-player" src={d.videoUrl} controls playsInline preload="metadata" aria-label={`Видео о ${d.name}`}/></section>:null}
   {d.about?<section className="doctor-section"><h2>О враче</h2><p className="profile-prose">{d.about}</p></section>:null}
   {sections.map(s=><section className="doctor-section" key={s.title}><h2>{s.title}</h2><p className="profile-prose">{s.text}</p></section>)}

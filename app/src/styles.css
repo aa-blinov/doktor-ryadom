@@ -967,3 +967,11 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .topbar-bell .topbar-badge{position:absolute;top:-6px;right:-6px}
 .topbar-sos{margin-left:var(--sp-3)}
 .page-links{margin:0 0 var(--sp-4)}
+
+/* Phone polish: collapsible catalogue filters, weekday grid */
+.filters-toggle{display:none}
+@media (max-width:700px){
+ .filters-toggle{display:inline-flex;align-items:center;min-height:44px;margin:0 0 var(--sp-3);padding:0 var(--sp-4);border:1px solid var(--line);border-radius:var(--mantine-radius-md);background:var(--surface);color:var(--ink);font-weight:650;cursor:pointer}
+ .directory-filters.is-collapsed{display:none}
+}
+.weekday-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--sp-2);margin:var(--sp-3) 0}
