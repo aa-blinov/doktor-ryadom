@@ -6,7 +6,9 @@ import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes} from 
 import {readFileSync,readdirSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
-const MAGIC=Buffer.from('RYB1'), PREFIX='ryadom/', NAME=/^ryadom-\d{4}-\d{2}-\d{2}\.sqlite$/;
+const MAGIC=Buffer.from('RYB1'), PREFIX='ryadom/', NAME=/^ryadom-.+\.sqlite$/, REMOTE=/^ryadom\/ryadom-.+\.sqlite\.enc$/;
+// Backups are named by time (ryadom-2026-10-16T02-59-36.963Z.sqlite), so the day is the first ten characters after the prefix.
+const dayOf=(key)=>key.slice(PREFIX.length+7,PREFIX.length+17);
 
 export function encryptBackup(plain,key){
  const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',key,iv);
@@ -60,11 +62,11 @@ async function listKeys(request){
   keys.push(...[...xml.matchAll(/<Key>([^<]+)<\/Key>/g)].map(m=>m[1]));
   token=xml.includes('<IsTruncated>true</IsTruncated>')?xml.match(/<NextContinuationToken>([^<]+)</)?.[1]:undefined;
  }while(token);
- return keys.filter(k=>/ryadom-\d{4}-\d{2}-\d{2}\.sqlite\.enc$/.test(k)).sort();
+ return keys.filter(k=>REMOTE.test(k)).sort();
 }
 
-// One pass: upload what is missing, then keep the newest `retain` copies in the bucket.
-export async function syncOnce({request,directory,key,retain=14,log=console.log}){
+// One pass: upload what is missing, then keep the newest copy of each of the last `retainDays` days.
+export async function syncOnce({request,directory,key,retainDays=14,log=console.log}){
  const remote=await listKeys(request),present=new Set(remote);
  for(const name of readdirSync(directory).filter(n=>NAME.test(n)).sort()){
   const objectKey=`${PREFIX}${name}.enc`;
@@ -73,12 +75,16 @@ export async function syncOnce({request,directory,key,retain=14,log=console.log}
   await request('PUT',objectKey,{body:blob});
   log(`uploaded ${objectKey} (${blob.length} bytes)`);
  }
- const latest=await listKeys(request);
- for(const old of latest.slice(0,Math.max(0,latest.length-retain))){
+ const all=await listKeys(request);
+ const newestPerDay=new Map();
+ for(const k of all)newestPerDay.set(dayOf(k),k);
+ const keepDays=[...newestPerDay.keys()].sort().slice(-retainDays);
+ const keep=new Set(keepDays.map(d=>newestPerDay.get(d)));
+ for(const old of all.filter(k=>!keep.has(k))){
   await request('DELETE',old);
   log(`removed old copy ${old}`);
  }
- return {kept:Math.min(latest.length,retain)};
+ return {days:keepDays.length};
 }
 
 function configFromEnv(env){
