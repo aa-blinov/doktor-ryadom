@@ -975,3 +975,8 @@ body:has(.pwa-notice) #root{padding-top:72px}
  .directory-filters.is-collapsed{display:none}
 }
 .weekday-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--sp-2);margin:var(--sp-3) 0}
+/* Catalogue top row: card link and filters share one line on phones */
+.directory-actions{margin:0 0 var(--sp-4);flex-wrap:wrap;gap:var(--sp-2)}
+.directory-actions .filters-toggle{margin:0}
+.directory-actions{display:flex;flex-direction:row;align-items:center}
+.directory-actions .mantine-Button-root{flex:0 0 auto}

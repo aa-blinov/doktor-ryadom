@@ -56,8 +56,7 @@ export function DoctorDirectory(){
   <button className="back-link" onClick={()=>navigate('/doctor')}><IconArrowLeft size={18}/>Мой врач</button>
   <PageHead title="Найти врача" description="Психологи, психотерапевты и психиатры, чью квалификацию проверил администратор"/>
   <MyAppointments/>
-  <div className="connect-actions"><Button variant="default" onClick={()=>navigate('/card')}>Моя карточка и история лечения</Button></div>
-  <button type="button" className="filters-toggle" aria-expanded={filtersOpen} aria-controls="directory-filters" onClick={()=>setFiltersOpen(o=>!o)}>{filtersOpen?'Скрыть фильтры':'Фильтры и сортировка'}</button>
+  <div className="connect-actions directory-actions"><Button variant="default" onClick={()=>navigate('/card')}>Моя карточка</Button><button type="button" className="filters-toggle" aria-expanded={filtersOpen} aria-controls="directory-filters" onClick={()=>setFiltersOpen(o=>!o)}>{filtersOpen?'Скрыть фильтры':'Фильтры'}</button></div>
   <div id="directory-filters" className={filtersOpen?'directory-filters':'directory-filters is-collapsed'}>
    <div className="kind-filter" role="group" aria-label="Специальность">
     {kindFilters.map(option=><button key={option.value} type="button" className={kind===option.value?'kind-chip selected':'kind-chip'} aria-pressed={kind===option.value} onClick={()=>setKind(option.value)}>{option.label}</button>)}
