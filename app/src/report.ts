@@ -25,7 +25,7 @@ export function careTextLines(data:PatientData,snapshot:Report|undefined,start:s
 }
 
 import {moods, energyWords} from './shared';
-import {practiceContent} from './practices';
+import {findPractice} from './practices';
 import type {PdfReport,PdfBlock} from './reportPdf';
 export function reportPdfData(data:PatientData,snapshot:Report|undefined,name:string,start:string,end:string):PdfReport{
  const summary=summarize(snapshot?.entries??data.entries,snapshot?.practices??data.practices,start,end);
@@ -47,7 +47,7 @@ export function reportPdfData(data:PatientData,snapshot:Report|undefined,name:st
  const careHeadings=new Set(['Опросники:','Назначения:','Ощущения и события:','Личные цели:','После приёма:']);
  const careLines=careTextLines(data,snapshot,start,end);
  for(let i=0;i<careLines.length;i++){const text=careLines[i];if(careHeadings.has(text)){if(careLines[i+1]&&!careHeadings.has(careLines[i+1]))heading(text.slice(0,-1));}else body(text);}
- if(summary.practices.length){heading('Опыт практик');for(const p of summary.practices)body(`${new Date(p.completed_at).toISOString().slice(0,10)}: ${practiceContent.find(x=>x.id===p.practice_id)?.title??p.practice_id}, ${p.feedback==='comfortable'?'комфортно':p.feedback==='same'?'без изменений':'неприятно'}${p.note?`. ${p.note}`:''}`);}
+ if(summary.practices.length){heading('Опыт практик');for(const p of summary.practices)body(`${new Date(p.completed_at).toISOString().slice(0,10)}: ${findPractice(p.practice_id,data.customPractices??[])?.title??p.practice_id}, ${p.feedback==='comfortable'?'комфортно':p.feedback==='same'?'без изменений':'неприятно'}${p.note?`. ${p.note}`:''}`);}
  blocks.push({text:'Сводка содержит самоотчёты. Пропуски не заменяются ответами. Баллы отдельных опросников интерпретирует врач',kind:'note'});
  return {name,start,end,blocks};
 }

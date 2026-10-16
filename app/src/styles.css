@@ -911,3 +911,17 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .survey-question-editor{padding-left:56px}@media(max-width:700px){.survey-question-editor button{min-height:44px}.survey-question-editor label{min-height:44px;display:flex;align-items:center}.survey-drag-handle{width:44px;height:44px}}
 @media(max-width:700px){.survey-question-editor .section-title{flex-direction:column;align-items:stretch;gap:var(--sp-2)}.survey-question-editor .section-title>div{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-2)}}
 .profile-video-player{display:block;width:100%;max-width:560px;max-height:340px;border-radius:var(--sp-3);background:#000;margin:var(--sp-3) 0}.profile-video{margin-top:var(--sp-5);display:grid;gap:var(--sp-3);max-width:640px}
+.doctor-practice-editor{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:var(--sp-6);align-items:start;margin-top:var(--sp-5)}
+.doctor-practice-form{display:grid;gap:var(--sp-4);min-width:0;border:0;padding:0;margin:0}
+.doctor-practice-form>div:last-of-type{margin-top:var(--sp-2)}
+.doctor-practice-side{display:grid;gap:var(--sp-3);align-content:start;min-width:0}
+.doctor-practice-side h3{margin-top:var(--sp-3)}
+.doctor-practice-step{display:grid;gap:var(--sp-3);padding:var(--sp-4) 0;border-top:1px solid var(--line)}
+.doctor-practice-list{display:grid;gap:var(--sp-4)}
+.doctor-practice-card{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:var(--sp-4);align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--sp-4);padding:var(--sp-4)}
+.doctor-practice-card .practice-art{height:80px;overflow:hidden;border-radius:var(--sp-3)}
+.doctor-practice-card .practice-art img{width:100%;height:100%;object-fit:cover}
+.doctor-practice-preview{padding-left:var(--sp-5);display:grid;gap:var(--sp-3)}
+@media(max-width:900px){.doctor-practice-editor{grid-template-columns:1fr}.doctor-practice-card{grid-template-columns:1fr}}
+.doctor-practice-form .profile-fields{align-items:start}.doctor-practice-form h3{margin:var(--sp-3) 0 0}
+.practice-art-placeholder{min-height:120px;display:grid;place-items:center;height:100%}.practice-art.compact .practice-art-placeholder{min-height:96px}

@@ -16,14 +16,16 @@ import {DoctorReminders} from './DoctorReminders';
 import {Treatment,AssessmentResults,AssessmentReview} from './Care';
 import {assessmentContent,standardKinds} from './assessments';
 import { csvCell } from './report';
-import { practiceContent } from './practices';
+import { practiceContent, allPractices, type PracticeView } from './practices';
+import type { CustomPractice } from './shared';
+import { DoctorPractices } from './DoctorPractices';
 import { navigate } from './App';
 import { plural, attentionFlags, canPrescribe, signals, today, type Assessment, type PatientData, type PatientRow, type Plan, type PatientProfile, type User } from './shared';
 export function DoctorWorkspace({user,route}:{user:User;route:string}){
  useSectionScroll(route.startsWith('/patient/')?null:`${user.id}:${route}`);
  const [patients,setPatients]=useState<PatientRow[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[search,setSearch]=useState(''),[listFilter,setListFilter]=useState('all'),[inviting,setInviting]=useState(false),[invite,setInvite]=useState<{token:string;expires:number}|null>(null),[busy,setBusy]=useState(false),[copied,setCopied]=useState(false);
  const reload=useCallback(async()=>{setError('');try{setPatients((await api<{patients:PatientRow[]}>('/doctor/patients')).patients);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
- const showingList=!route.startsWith('/patient/')&&!['/settings','/profile','/code'].includes(route);
+ const showingList=!route.startsWith('/patient/')&&!['/settings','/profile','/code','/practices'].includes(route);
  const refreshList=useCallback(async()=>{if(showingList)await reload();},[reload,showingList]);
  useEffect(()=>{void refreshList();},[refreshList]);
  useRefreshOnReturn(refreshList);
@@ -32,6 +34,7 @@ export function DoctorWorkspace({user,route}:{user:User;route:string}){
  async function copy(){try{await navigator.clipboard.writeText(link);setCopied(true);}catch{setError('Не удалось скопировать. Выделите ссылку и скопируйте вручную.');}}
  if(route.startsWith('/admin')){if(typeof window!=='undefined')window.location.hash='/patients';return null;}
  if(route.startsWith('/patient/'))return <PatientDetail key={route.split('/')[2]} id={route.split('/')[2]} doctorId={user.id} canRx={canPrescribe(user)}/>;
+ if(route==='/practices')return <DoctorPractices/>;
  if(route==='/profile')return <><PageHead title="Профиль" description="Как вас видят пациенты"/><ProfileSettings user={user}/></>;
  if(route==='/code')return <><PageHead title="Приглашения" description="Одноразовые ссылки, чтобы подключить пациента"/><DoctorInvites/></>;
  if(route==='/settings')return <><PageHead title="Аккаунт" description="Аккаунт, уведомления и безопасность"/><section className="settings-panel narrow"><h2>{user.name}</h2><Button variant="light" onClick={()=>window.dispatchEvent(new Event('show-onboarding'))}>Как пользоваться Рядом</Button><p>{user.email}</p><p className="muted">Пациенты подключаются по приглашению и могут отозвать доступ. Для каждого пациента укажите привычку и вопросы в плане наблюдения, а способ связи и время ответа — в записи приёма после беседы.</p></section><DoctorReminders emailVerified={!!user.email_verified_at}/><AccountSettings user={user}/></>;
@@ -56,6 +59,9 @@ function PatientDetail({id,doctorId,canRx}:{id:string;doctorId:string;canRx:bool
 }
 function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSaved:()=>Promise<void>;assessments:Assessment[]}){
  const [practiceQuery,setPracticeQuery]=useState(''),[practiceCategory,setPracticeCategory]=useState('Все');
+ const [customs,setCustoms]=useState<CustomPractice[]>([]);
+ useEffect(()=>{api<{practices:CustomPractice[]}>('/doctor/practices').then(r=>setCustoms(r.practices)).catch(()=>{});},[]);
+ const pool:PracticeView[]=allPractices(customs);
  const [plan,setPlan]=useState<Plan>(initial),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState(false);
  const assignedKinds=new Set(assessments.map(a=>a.kind));
  const [chosen,setChosen]=useState<Set<string>>(()=>new Set(assessments.filter(a=>!a.completed_at&&a.doctor_id).map(a=>a.kind)));
@@ -93,10 +99,10 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
   <section>
    <h2>Практики</h2>
    {plan.practices.length?<div className="plan-list">
-    {plan.practices.map(id=>{const p=practiceContent.find(x=>x.id===id);if(!p)return null;return <label className="plan-row" key={id}>
+    {plan.practices.map(id=>{const p=pool.find(x=>x.id===id);if(!p)return null;return <label className="plan-row" key={id}>
      <Checkbox checked onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?plan.practices:[...plan.practices.filter(x=>x!==id)]})}/>
      <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time}</span></span>
-     <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
+     {p.source?<a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>:null}
     </label>;})}
    </div>:<p className="muted">В плане пока нет практик.</p>}
    <div className="plan-more">
@@ -104,7 +110,7 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
      <TextInput label="Найти практику" placeholder="Название или техника" value={practiceQuery} onChange={e=>setPracticeQuery(e.currentTarget.value)}/>
      <Select label="Направление" value={practiceCategory} onChange={v=>setPracticeCategory(v||'Все')} data={['Все',...Array.from(new Set(practiceContent.map(p=>p.category)))]}/>
     </div>
-    {(()=>{const q=practiceQuery.trim().toLocaleLowerCase('ru');const rest=practiceContent.filter(p=>!plan.practices.includes(p.id)&&(practiceCategory==='Все'||p.category===practiceCategory)&&(!q||p.title.toLocaleLowerCase('ru').includes(q)||p.subtitle.toLocaleLowerCase('ru').includes(q)));return <><p className="muted small" aria-live="polite">Найдено: {rest.length}</p><div className="plan-list">{rest.map(p=><label className="plan-row" key={p.id}>
+    {(()=>{const q=practiceQuery.trim().toLocaleLowerCase('ru');const rest=pool.filter(p=>!p.archived&&!plan.practices.includes(p.id)&&(practiceCategory==='Все'||p.category===practiceCategory)&&(!q||p.title.toLocaleLowerCase('ru').includes(q)||p.subtitle.toLocaleLowerCase('ru').includes(q)));return <><p className="muted small" aria-live="polite">Найдено: {rest.length}</p><div className="plan-list">{rest.map(p=><label className="plan-row" key={p.id}>
      <Checkbox checked={false} onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?[...plan.practices,p.id]:plan.practices})}/>
      <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time} · {p.category}</span><span className="muted small">{p.basis}</span></span>
     </label>)}</div>{rest.length?null:<p className="muted">Ничего не найдено. Измените запрос или направление.</p>}</>;})()}
