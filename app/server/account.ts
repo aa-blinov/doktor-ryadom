@@ -1,4 +1,6 @@
 import type {Hono} from 'hono';
+import {zipStore,bytesOf} from './zip';
+import {storedProfile} from './profiles';
 import {z} from 'zod';
 import {getCookie,deleteCookie} from 'hono/cookie';
 import type {Env} from './env';
@@ -108,10 +110,33 @@ export function accountRoutes(app:App){
   await run(db,'UPDATE users SET totp_secret=NULL,totp_enabled_at=NULL,totp_last_step=NULL WHERE id=?',id);await logAction(db,id,'totp_disable',id);return c.json({ok:true});
  });
  app.post('/api/account/logout-others',async c=>{await run(database(c.env),'DELETE FROM sessions WHERE user_id=? AND token<>?',c.get('user').id,await digest(getCookie(c,'ryadom_session')||''));return c.json({ok:true});});
- app.get('/api/account/export',async c=>{
-  const id=c.get('user').id,db=database(c.env),tables=['goals','goal_logs','survey_templates','profile_documents','doctor_codes','profiles','settings','drafts','checkins','checkin_revisions','practices','assessments','followups','medications','medication_logs','experiences','reports','plans','patient_cards','card_entries','appointment_requests','notices'];
+ const EXPORT_TABLES=['goals','goal_logs','survey_templates','profile_documents','doctor_codes','profiles','settings','drafts','checkins','checkin_revisions','practices','assessments','followups','medications','medication_logs','experiences','reports','plans','patient_cards','card_entries','appointment_requests','notices'];
+ async function exportJson(db:D1Database,user:User){
+  const id=user.id,tables=EXPORT_TABLES;
   const rows=await Promise.all(tables.map(t=>many(db,`SELECT * FROM ${t} WHERE ${t==='survey_templates'?'doctor_id':['settings','profiles','doctor_codes','profile_documents','notices'].includes(t)?'user_id':'patient_id'}=?`,id)));
-  return c.json({schema:1,exportedAt:new Date().toISOString(),account:c.get('user'),data:Object.fromEntries(tables.map((t,i)=>[t,rows[i]]))},200,{'Content-Disposition':'attachment; filename="ryadom-data.json"'});
+  return {schema:1,exportedAt:new Date().toISOString(),account:user,data:Object.fromEntries(tables.map((t,i)=>[t,rows[i]]))};
+ }
+ app.get('/api/account/export',async c=>{
+  const body=await exportJson(database(c.env),c.get('user'));
+  return c.json(body,200,{'Content-Disposition':'attachment; filename="ryadom-data.json"'});
+ });
+ // One archive: data.json with everything as text, plus every photo, video and document the account holds.
+ app.get('/api/account/export.zip',async c=>{
+  const user=c.get('user'),db=database(c.env);
+  const json=await exportJson(db,user);
+  const files:{name:string;data:Buffer}[]=[{name:'data.json',data:Buffer.from(JSON.stringify(json,null,2),'utf8')}];
+  const profile=(await storedProfile(db,user.id)).data;
+  if(profile.photo)files.push({name:'media/profile-photo.jpg',data:bytesOf(profile.photo)});
+  const video=await one<{mime:string;data:ArrayBuffer|Uint8Array}>(db,'SELECT mime,data FROM profile_videos WHERE user_id=?',user.id);
+  if(video)files.push({name:`media/profile-video.${video.mime.includes('webm')?'webm':'mp4'}`,data:Buffer.from(video.data)});
+  for(const d of await many<{id:string;category:string;filename:string;data:string}>(db,'SELECT id,category,filename,data FROM profile_documents WHERE user_id=? ORDER BY created_at',user.id))
+   files.push({name:`documents/${d.category}-${d.id.slice(0,8)}-${d.filename.replace(/[\\/:*?"<>|]/g,'_')}`,data:bytesOf(d.data)});
+  for(const m of await many<{practice_id:string;kind:string;mime:string;data:ArrayBuffer|Uint8Array}>(db,'SELECT pm.practice_id,pm.kind,pm.mime,pm.data FROM practice_media pm JOIN practice_templates pt ON pt.id=pm.practice_id WHERE pt.doctor_id=?',user.id)){
+   const ext=m.mime.includes('png')?'png':m.mime.includes('webp')?'webp':m.mime.includes('webm')?'webm':m.mime.includes('mp4')?'mp4':'jpg';
+   files.push({name:`practices/${m.practice_id}-${m.kind}.${ext}`,data:Buffer.from(m.data)});
+  }
+  files.push({name:'README.txt',data:Buffer.from('Архив Рядом.\n\ndata.json: все ваши записи, карточка, приёмы, опросники, препараты, цели и уведомления в виде JSON.\nmedia/: фото и видео профиля.\ndocuments/: документы профиля (образование, курсы, опыт работы).\npractices/: фото и видео ваших практик (для врачей).\n\nКарточка пациента содержит записи врачей, которые вас ведут; заметки врача в неё не входят.\n','utf8')});
+  return new Response(new Uint8Array(zipStore(files)),{headers:{'Content-Type':'application/zip','Content-Disposition':'attachment; filename="ryadom-archive.zip"','Cache-Control':'no-store'}});
  });
  app.delete('/api/account',async c=>{
   const data=z.object({password:z.string().max(128),confirm:z.literal('УДАЛИТЬ')}).safeParse(await c.req.json());if(!data.success)return c.json({error:'Подтвердите удаление и введите пароль.'},400);

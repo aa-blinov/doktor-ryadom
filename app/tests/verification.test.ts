@@ -7,7 +7,7 @@ async function request(path:string,body?:unknown,cookie?:string,method?:string){
  const r=await app.request(origin+'/api'+path,{method:method??(body===undefined?'GET':'POST'),headers:{Origin:origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)},env);
  return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]};
 }
-async function register(role:string,tag:string){return request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true,adult:true});}
+async function register(role:string,tag:string){const r=await request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true,adult:true});if(role==='doctor')db.binding.prepare('UPDATE users SET totp_enabled_at=1 WHERE id=?').bind(r.data.user.id).run();return r;}
 afterAll(()=>db.close());
 it('doctor applies for verification, admin decides, only admin can see the queue',async()=>{
  const doctor=await register('doctor','verify-doctor'),patient=await register('patient','verify-patient'),admin=await register('doctor','verify-admin');
@@ -19,7 +19,7 @@ it('doctor applies for verification, admin decides, only admin can see the queue
  expect((await db.binding.prepare("SELECT count(*) AS count FROM specialist_requests WHERE doctor_id=?").bind((await request('/me',undefined,doctor.cookie)).data.user.id).first<{count:number}>())?.count).toBe(1);
  expect((await request('/doctor/verification',form,patient.cookie)).status).toBe(403);
  expect((await request('/admin/verifications',undefined,doctor.cookie)).status).toBe(403);
- await db.binding.prepare("UPDATE users SET role='admin' WHERE email=?").bind('verify-admin@example.com').run();
+ await db.binding.prepare("UPDATE users SET totp_enabled_at=1,role='admin' WHERE email=?").bind('verify-admin@example.com').run();
  const queue=await request('/admin/verifications',undefined,admin.cookie);
  expect(queue.status).toBe(200);
  expect(queue.data.requests.some((r:{email:string;status:string})=>r.email==='verify-doctor@example.com'&&r.status==='pending')).toBe(true);

@@ -5,6 +5,7 @@ import { resolve, extname, sep } from 'node:path';
 import app from './index';
 import { openDatabase } from './sqlite';
 import {createServices,deliverNotifications,dailyBackup} from './jobs';
+import {sweepVisits,deliverQueued} from './notices';
 const port=Number(process.env.PORT||3000);
 const origin=new URL(process.env.PUBLIC_ORIGIN||'http://localhost:3000').origin;
 const client=resolve(process.env.CLIENT_DIR||'dist/client');
@@ -15,6 +16,10 @@ let running=false;
 async function jobs(){if(running)return;running=true;try{await deliverNotifications(database.binding,services);await dailyBackup(databasePath);}catch(e){console.error('Background job failed',e instanceof Error?e.name:'Unknown');}finally{running=false;}}
 const jobsTimer=setInterval(jobs,60000);jobsTimer.unref();
 void jobs();
+// Visit reminders and queued notices are checked every 15 seconds, so a reminder goes out at its time, not up to a minute late.
+let fastRunning=false;
+async function fastJobs(){if(fastRunning)return;fastRunning=true;try{await sweepVisits(database.binding);await deliverQueued(database.binding,services);}catch(e){console.error('Fast job failed',e instanceof Error?e.name:'Unknown');}finally{fastRunning=false;}}
+const fastTimer=setInterval(fastJobs,15000);fastTimer.unref();
 const types:Record<string,string>={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2'};
 const assets={fetch:async(request:Request)=>{
  let pathname:string;try{pathname=decodeURIComponent(new URL(request.url).pathname);}catch{return new Response('Invalid path',{status:400});}

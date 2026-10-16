@@ -28,7 +28,7 @@ it('a doctor uploads an MP4 and patients see it; strangers and anonymous users d
  const doctor=await register('doctor','video-doctor@example.com');
  const patient=await register('patient','video-patient@example.com');
  const stranger=await register('patient','video-stranger@example.com');
- db.binding.prepare("UPDATE users SET specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),doctor.id).run();
+ db.binding.prepare("UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),doctor.id).run();
  const up=await request('/profile/video',{method:'PUT',body:mp4(),type:'video/mp4',length:64,cookie:doctor.cookie});
  expect(up.status).toBe(200);
  const body=await up.json() as {videoUrl:string};
@@ -48,7 +48,7 @@ it('a doctor uploads an MP4 and patients see it; strangers and anonymous users d
 it('accepts WebM, rejects other formats, wrong roles and oversize uploads',async()=>{
  const doctor=await register('doctor','video-webm@example.com');
  const patient=await register('patient','video-notdoctor@example.com');
- db.binding.prepare("UPDATE users SET specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),doctor.id).run();
+ db.binding.prepare("UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),doctor.id).run();
  expect((await request('/profile/video',{method:'PUT',body:webm(),type:'video/webm',length:64,cookie:doctor.cookie})).status).toBe(200);
  const text=new TextEncoder().encode('not a video at all, just plain text here');
  expect((await request('/profile/video',{method:'PUT',body:text,type:'video/mp4',length:text.length,cookie:doctor.cookie})).status).toBe(400);
@@ -58,7 +58,7 @@ it('accepts WebM, rejects other formats, wrong roles and oversize uploads',async
 
 it('serves byte ranges for seeking and removes the video on request',async()=>{
  const doctor=await register('doctor','video-range@example.com');
- db.binding.prepare("UPDATE users SET specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),doctor.id).run();
+ db.binding.prepare("UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),doctor.id).run();
  await request('/profile/video',{method:'PUT',body:mp4(),type:'video/mp4',length:64,cookie:doctor.cookie});
  const part=await request(`/profiles/${doctor.id}/video`,{cookie:doctor.cookie,range:'bytes=0-7'});
  expect(part.status).toBe(206);expect(part.headers.get('content-range')).toBe('bytes 0-7/64');expect((await part.arrayBuffer()).byteLength).toBe(8);
@@ -71,7 +71,7 @@ it('serves byte ranges for seeking and removes the video on request',async()=>{
 
 it('a realistic 75 KB clip passes the body limit, which the generic 16 KB limit would reject',async()=>{
  const doctor=await register('doctor','video-realistic@example.com');
- db.binding.prepare("UPDATE users SET specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),doctor.id).run();
+ db.binding.prepare("UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),doctor.id).run();
  const clip=new Uint8Array(75288);clip.set([0x1a,0x45,0xdf,0xa3,0x9f,0x42,0x86,0x81,0x01]);
  const up=await request('/profile/video',{method:'PUT',body:clip,type:'video/webm',length:clip.length,cookie:doctor.cookie});
  expect(up.status).toBe(200);

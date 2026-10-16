@@ -34,7 +34,7 @@ it('one-use account tokens, password rotation and complete patient data deletion
 it('draft, concurrent correction, assigned questionnaires, treatment and immutable reports respect role and consent',async()=>{
  const d=await register('doctor','care-doctor'),p=await register('patient','care-patient'),stranger=await register('doctor','care-stranger'),id=p.data.user.id;
  expect((await request('/doctor/invites',{},d.cookie)).status).toBe(403);
- await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
+ await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
  const invite=await request('/doctor/invites',{},d.cookie);expect(invite.status).toBe(201);expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},p.cookie)).status).toBe(200);
  const data=(await request('/patient/data',undefined,p.cookie)).data;
  const entry={date:today(),mood:2,sleep:5,anxiety:0,energy:null,functioning:3,sleepContext:'tired',note:'Original synthetic note',habit:null};
@@ -94,7 +94,7 @@ it('recovery codes are hashed, tied to email, expire and revoke every active ses
 
 it('WHO-5 and PHQ-9 enforce scoring and agreed contact protocol',async()=>{
  const d=await register('doctor','standard-doctor'),p=await register('patient','standard-patient'),id=p.data.user.id;
- await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
+ await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
  const invite=await request('/doctor/invites',{},d.cookie);expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},p.cookie)).status).toBe(200);
  expect((await request(`/doctor/patients/${id}/assessments`,{kind:'phq9',dueDate:today()},d.cookie)).status).toBe(400);
  const safety={contact:'Звонок врачу в рабочие часы',reviewNote:'Просмотр в рабочий день; экстренная помощь 112',confirmed:true};

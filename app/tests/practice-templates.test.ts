@@ -20,7 +20,7 @@ async function register(role:'doctor'|'patient',email:string,verify=true){
  const r=await request('/auth/register',{json:{name:'Практика Тест',email,password,role,consent:true,adult:true}});
  expect(r.status).toBe(201);
  const id=(await r.json() as {user:{id:string}}).user.id;
- if(role==='doctor'&&verify)db.binding.prepare("UPDATE users SET specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),id).run();
+ if(role==='doctor'&&verify)db.binding.prepare("UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),id).run();
  return {cookie:r.headers.get('set-cookie')!.split(';')[0],id};
 }
 const good={title:'Дыхание у окна',subtitle:'Короткая пауза на выдохе',minutes:2,category:'Забота о себе',basis:'Авторская практика врача',description:'Встаньте у окна и сделайте три выдоха подольше.',steps:[{title:'Встаньте',text:'Подойдите к окну и встаньте ровно.'},{title:'Выдох',text:'Выдохните медленно, считая до четырёх.'}]};

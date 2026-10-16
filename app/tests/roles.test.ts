@@ -16,6 +16,7 @@ it('patient, doctor and administrator complete their core flows without page err
  }
  async function session(tag:string,role:'patient'|'doctor',name:string){
   const reg=await request('/auth/register',{name,email:tag+'@roles.test',password,role,consent:true,adult:true});
+  if(role==='doctor')db.binding.prepare('UPDATE users SET totp_enabled_at=1 WHERE id=?').bind(reg.data.user.id).run();
   const user=reg.data.user;
   const context=await browser.newContext({locale:'ru-RU',serviceWorkers:'block'});
   await context.addCookies([{name:'ryadom_session',value:reg.cookie!.split('=')[1],url:origin}]);
@@ -79,7 +80,7 @@ it('patient, doctor and administrator complete their core flows without page err
 
   // ---- Administrator: promote an account, then review the queue
   const admin=await session('roles-admin','doctor','Админ Ролевой');
-  await db.binding.prepare("UPDATE users SET role='admin' WHERE id=?").bind(admin.user.id).run();
+  await db.binding.prepare("UPDATE users SET totp_enabled_at=1,role='admin' WHERE id=?").bind(admin.user.id).run();
   const a:Page=admin.page;
   await a.goto(origin+'/#/admin');
   await a.getByRole('heading',{name:'Заявки врачей'}).waitFor();

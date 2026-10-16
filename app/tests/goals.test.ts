@@ -20,7 +20,7 @@ it('personal goals, practice feedback and review respect consent, keep snapshots
  expect((await request(`/patient/goals/${goal.id}/logs`,{status:'step',note:'Небольшой шаг'},q.cookie)).status).toBe(404);
  expect((await request(`/patient/goals/${goal.id}/logs`,{status:'step',note:'Небольшой шаг'},p.cookie)).status).toBe(201);
  expect((await request(`/doctor/patients/${id}/data`,undefined,d.cookie)).status).toBe(403);
- await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
+ await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),d.data.user.id).run();
  const invite=await request('/doctor/invites',{},d.cookie);
  expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},p.cookie)).status).toBe(200);
  await request(`/doctor/patients/${id}/plan`,{...defaultPlan,practices:['ground']},d.cookie,'PUT');

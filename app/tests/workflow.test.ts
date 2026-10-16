@@ -7,7 +7,7 @@ async function request(path:string,body?:unknown,cookie?:string,method?:string){
 afterAll(()=>db.close());
 describe('real SQL role and consent workflow',()=>{
  it('persists records and enforces ownership, CSRF and revoked consent',async()=>{
-  const register=async(role:string,name:string)=>{const r=await request('/auth/register',{email:name.replaceAll(' ','').toLowerCase()+'@example.com',name,role,password,consent:true,adult:true});expect(r.status,JSON.stringify(r.data)).toBe(201);if(role==='doctor')await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),r.data.user.id).run();return r;};
+  const register=async(role:string,name:string)=>{const r=await request('/auth/register',{email:name.replaceAll(' ','').toLowerCase()+'@example.com',name,role,password,consent:true,adult:true});expect(r.status,JSON.stringify(r.data)).toBe(201);if(role==='doctor')await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),r.data.user.id).run();return r;};
   const doctor=await register('doctor','Doctor One'),patient=await register('patient','Patient One'),stranger=await register('doctor','Doctor Two');const id=patient.data.user.id;
   expect((await request('/patient/data')).status).toBe(401);
   expect((await request('/patient/data',undefined,patient.cookie)).data.plan.frequency).toBe('daily');
@@ -59,7 +59,7 @@ describe('real SQL role and consent workflow',()=>{
 });
 
 it('does not assign practices automatically and prevents simultaneous replacement of a doctor',async()=>{
- const register=async(role:string,email:string)=>{const r=await request('/auth/register',{email,name:email.split('@')[0],role,password,consent:true,adult:true});expect(r.status).toBe(201);if(role==='doctor')await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),r.data.user.id).run();return r;};
+ const register=async(role:string,email:string)=>{const r=await request('/auth/register',{email,name:email.split('@')[0],role,password,consent:true,adult:true});expect(r.status).toBe(201);if(role==='doctor')await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),r.data.user.id).run();return r;};
  const p=await register('patient','qa-patient@example.com'),d=await register('doctor','qa-doctor@example.com'),other=await register('doctor','qa-other@example.com');
  expect((await request('/patient/data',undefined,p.cookie)).data.plan.practices).toEqual([]);
  expect((await request('/patient/practices',{practiceId:'ground',feedback:'same'},p.cookie)).status).toBe(403);

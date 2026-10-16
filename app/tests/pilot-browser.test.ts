@@ -43,7 +43,7 @@ it('pilot: patient goals and practice notes reach the clinician queue and can be
  try{
   const {page:p,user:patient,cookie:pc}=await pageFor('patient','Александр Тестовый');
   const {page:d,user:doctor,cookie:dc}=await pageFor('doctor','Абат Тестовый');
-  await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),doctor.id).run();
+  await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),doctor.id).run();
   const invite=await request('/doctor/invites',{},dc);await request('/patient/accept',{token:(await invite.json() as any).token,consent:true,adult:true},pc);
   expect((await request('/doctor/patients/'+patient.id+'/plan',{...defaultPlan,practices:['ground']},dc,'PUT')).status).toBe(200);
   await request('/patient/checkins',{date:today(),mood:3,sleep:6,anxiety:1,energy:null,functioning:2,sleepContext:null,note:'Для проверки: хочу обсудить, что помогает отдыхать',habit:null},pc);

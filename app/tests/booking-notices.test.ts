@@ -20,7 +20,7 @@ async function register(role:'doctor'|'patient',email:string,name:string){
  const r=await request('/auth/register',{json:{name,email,password,role,consent:true,adult:true}});
  expect(r.status).toBe(201);
  const id=(await r.json() as {user:{id:string}}).user.id;
- if(role==='doctor')db.binding.prepare("UPDATE users SET specialist_verified_at=?,specialty_kind='psychologist' WHERE id=?").bind(Date.now(),id).run();
+ if(role==='doctor')db.binding.prepare("UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind='psychologist' WHERE id=?").bind(Date.now(),id).run();
  return {cookie:r.headers.get('set-cookie')!.split(';')[0],id};
 }
 const keysFor=async(userId:string)=>(await db.binding.prepare('SELECT key,sent_at FROM notices WHERE user_id=?').bind(userId).all<{key:string;sent_at:number|null}>()).results;

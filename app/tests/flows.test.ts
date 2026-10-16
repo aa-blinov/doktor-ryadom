@@ -38,7 +38,7 @@ it('invitation links a patient to a doctor, the doctor reviews goals and the pat
  try{
   const patient=await session('flows-patient','patient','Пациент Потоков');
   const doctor=await session('flows-doctor','doctor','Врач Потоков');
-  await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),doctor.user.id).run();
+  await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),doctor.user.id).run();
   // Invitation: the doctor creates a link, the patient accepts it with consent.
   const invite=await request('/doctor/invites',{},doctor.cookie);
   expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},patient.cookie)).status).toBe(200);
