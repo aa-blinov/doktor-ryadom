@@ -126,6 +126,7 @@ export function accountRoutes(app:App){
   for(const table of ['goal_logs','goals','checkin_revisions','checkins','practices','drafts','plans'])statements.push(db.prepare(`DELETE FROM ${table} WHERE patient_id=?`).bind(id));
   statements.push(db.prepare('DELETE FROM plans WHERE patient_id IN(SELECT patient_id FROM links WHERE doctor_id=?)').bind(id));
   for(const table of ['links','invites'])statements.push(db.prepare(`DELETE FROM ${table} WHERE ${table==='links'?'patient_id=? OR doctor_id=?':'doctor_id=?'}`).bind(...(table==='links'?[id,id]:[id])));
+  statements.push(db.prepare('DELETE FROM practice_templates WHERE doctor_id=?').bind(id));
   for(const table of ['sessions','account_tokens','push_subscriptions','deliveries','settings','profiles','profile_videos','doctor_codes','profile_documents'])statements.push(db.prepare(`DELETE FROM ${table} WHERE user_id=?`).bind(id));
   statements.push(isDoctor?db.prepare('UPDATE users SET name=?,email=?,password=?,email_verified_at=NULL,specialist_verified_at=NULL WHERE id=?').bind('Удалённый врач',id+'@deleted.invalid','disabled',id):db.prepare('DELETE FROM users WHERE id=?').bind(id));await db.batch(statements);await logAction(db,id,'delete_account',id);deleteCookie(c,'ryadom_session',{path:'/'});return c.json({ok:true});
  });
