@@ -24,7 +24,7 @@ it('the patient export includes the card, doctor entries and visits; deleting th
  const doctor=await register('doctor','exp-doc@example.com','Гульнара Экспорт');
  const patient=await register('patient','exp-pat@example.com','Ильяс Выгрузкин');
  const now=Date.now();
- db.binding.prepare("INSERT INTO patient_cards (patient_id,created_at) VALUES (?,?)").bind(patient.id,now).run();
+ db.binding.prepare("INSERT OR IGNORE INTO patient_cards (patient_id,created_at) VALUES (?,?)").bind(patient.id,now).run();
  db.binding.prepare("INSERT INTO card_entries (id,patient_id,author_id,kind,body,occurred_on,created_at) VALUES (?,?,?,?,?,?,?)").bind('e-export-1',patient.id,doctor.id,'treatment','Запись для выгрузки','2026-10-16',now).run();
  const exp=await (await request('/account/export',{cookie:patient.cookie})).json() as {data:{card_entries:{body:string}[];patient_cards:unknown[];notices:unknown[];appointment_requests:unknown[]}};
  expect(exp.data.card_entries.map(e=>e.body)).toContain('Запись для выгрузки');
