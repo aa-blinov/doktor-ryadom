@@ -101,11 +101,19 @@ function PlanForm({initial,id,onSaved,assessments}:{initial:Plan;id:string;onSav
    <details className="plan-more" open={!plan.practices.length}>
     <summary>Добавить другие практики — ещё {practiceContent.length-plan.practices.length}</summary>
     <div className="plan-list">
-     {practiceContent.filter(p=>!plan.practices.includes(p.id)).map(p=><label className="plan-row" key={p.id}>
+     {practiceContent.filter(p=>!plan.practices.includes(p.id)).slice(0,5).map(p=><label className="plan-row" key={p.id}>
       <Checkbox checked={false} onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?[...plan.practices,p.id]:plan.practices})}/>
       <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time} · {p.category}</span></span>
       <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
      </label>)}
+     {practiceContent.filter(p=>!plan.practices.includes(p.id)).length>5?<details className="plan-more plan-more-rest">
+      <summary>Показать ещё {practiceContent.filter(p=>!plan.practices.includes(p.id)).length-5}</summary>
+      {practiceContent.filter(p=>!plan.practices.includes(p.id)).slice(5).map(p=><label className="plan-row" key={p.id}>
+       <Checkbox checked={false} onChange={e=>setPlan({...plan,practices:e.currentTarget.checked?[...plan.practices,p.id]:plan.practices})}/>
+       <span className="plan-row-main"><strong>{p.title}</strong><span className="muted small">{p.time} · {p.category}</span></span>
+       <a className="source-link" href={p.source} target="_blank" rel="noreferrer">Источник</a>
+      </label>)}
+     </details>:null}
     </div>
    </details>
   </section>
