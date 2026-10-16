@@ -26,7 +26,7 @@ function DoctorVideoIntro({videoUrl,onChanged}:{videoUrl:string|null;onChanged:(
    onChanged(body.videoUrl);setMessage('Видео сохранено. Пациенты увидят его в вашем профиле');}
   catch(e){setError(e instanceof Error?e.message:'Не удалось загрузить видео');}finally{setBusy(false);}}
  async function remove(){setBusy(true);setError('');setMessage('');try{await api('/profile/video',undefined,'DELETE');onChanged(null);setMessage('Видео удалено');}catch(e){setError(errorText(e));}finally{setBusy(false);}}
- return <section className="profile-video" aria-labelledby="profile-video-title"><h3 id="profile-video-title">Видео о себе</h3><p className="muted small">Короткое представление, 60 секунд или меньше, до 50 МБ, MP4 или WebM. Видно пациентам в каталоге.</p>
+ return <section className="profile-video" aria-labelledby="profile-video-title"><h3 id="profile-video-title">Видео-представление</h3><p className="muted small">Короткое представление, 60 секунд или меньше, до 50 МБ, MP4 или WebM. Видно пациентам в каталоге.</p>
   {videoUrl?<video className="profile-video-player" src={videoUrl} controls playsInline preload="metadata" aria-label="Видео о враче"/>:<p className="muted">Видео пока нет</p>}
   <Group gap="var(--sp-3)"><FileButton onChange={file=>void upload(file)} accept="video/mp4,video/webm">{props=><Button {...props} variant="outline" size="sm" disabled={busy}>{videoUrl?'Заменить видео':'Загрузить видео'}</Button>}</FileButton>{videoUrl?<Button variant="subtle" size="sm" disabled={busy} onClick={()=>void remove()}>Удалить видео</Button>:null}</Group>
   {busy?<p className="muted small">Загружаем…</p>:null}{error?<ErrorBox message={error}/>:null}{message?<Alert color="forest" role="status" mt="var(--sp-3)">{message}</Alert>:null}
