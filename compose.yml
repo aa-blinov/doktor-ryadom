@@ -75,6 +75,34 @@ services:
       options:
         max-size: "2m"
         max-file: "2"
+  # Off-site copies: encrypted here, uploaded to S3 with the keys in .env.offsite (never in git).
+  # This is the only service with network egress besides the app; the backup service stays offline.
+  offsite:
+    image: doktor-ryadom-app
+    restart: unless-stopped
+    init: true
+    command: ["node", "scripts/offsite.mjs"]
+    depends_on:
+      app:
+        condition: service_healthy
+    env_file:
+      - .env.offsite
+    environment:
+      BACKUP_DIRECTORY: /backups
+    volumes:
+      - ryadom_backups:/backups:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "2m"
+        max-file: "2"
 volumes:
   ryadom_data:
   ryadom_backups:
