@@ -10,7 +10,7 @@ const kindFilters=[{label:'Все',value:'all'},{label:'Психологи',valu
 
 type Card={id:string;name:string;kind:SpecialtyKind|null;city:string;specialty:string;clinic:string;experienceYears:number|null;focusAreas:string;about:string;photoUrl:string|null;rating:number|null;reviewCount:number};
 type Review={id:string;rating:number;body:string;createdAt:number;author:string;hidden:boolean};
-type Detail={doctor:Card&{address:string;education:string;courses:string;workHistory:string};reviews:Review[];mine:{rating:number;body:string;hidden:boolean}|null;connection:{linkedToThis:boolean;linkedToOther:boolean;pendingRequestId:string|null}};
+type Detail={doctor:Card&{address:string;education:string;courses:string;workHistory:string;videoUrl:string|null};reviews:Review[];mine:{rating:number;body:string;hidden:boolean}|null;connection:{linkedToThis:boolean;linkedToOther:boolean;pendingRequestId:string|null}};
 
 const reviewWord=(n:number)=>{const a=n%100,b=n%10;return a>10&&a<20?'отзывов':b===1?'отзыв':b>1&&b<5?'отзыва':'отзывов';};
 const years=(n:number)=>{const a=n%100,b=n%10;return a>10&&a<20?'лет':b===1?'год':b>1&&b<5?'года':'лет';};
@@ -87,6 +87,7 @@ export function DoctorPage({id,onChanged}:{id:string;onChanged:()=>Promise<void>
   </header>
   {error?<ErrorBox message={error}/>:null}
   <ConnectPanel name={d.name} connection={data.connection}/>
+  {d.videoUrl?<section className="doctor-section"><h2>Видео о себе</h2><video className="profile-video-player" src={d.videoUrl} controls playsInline preload="metadata" aria-label={`Видео о ${d.name}`}/></section>:null}
   {d.about?<section className="doctor-section"><h2>О враче</h2><p className="profile-prose">{d.about}</p></section>:null}
   {sections.map(s=><section className="doctor-section" key={s.title}><h2>{s.title}</h2><p className="profile-prose">{s.text}</p></section>)}
   <Reviews doctorId={id} reviews={data.reviews} mine={data.mine} onChanged={load}/>

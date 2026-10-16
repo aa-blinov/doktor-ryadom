@@ -3,7 +3,7 @@ import { verificationRoutes } from './verification';
 import { directoryRoutes } from './directory';
 import { adminRoutes } from './admin';
 import {profileDocumentRoutes} from './profile-documents';
-import {profileRoutes,doctorProfile,patientProfile} from './profiles';
+import {profileRoutes,profileVideoRoutes,doctorProfile,patientProfile} from './profiles';
 import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
@@ -21,16 +21,19 @@ const sessionName = 'ryadom_session';
 const authSchema = z.object({ email: z.string().trim().email().max(200).transform(v => v.toLowerCase()), password: z.string().min(12, 'Пароль должен содержать минимум 12 символов').max(128) });
 const loginSchema = authSchema.extend({ code: z.string().trim().max(20).optional() });
 const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor']), consent: z.literal(true) });
-const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 app.use('*', async (c,next) => { await next(); c.header('X-Content-Type-Options','nosniff'); c.header('Referrer-Policy','same-origin'); c.header('X-Frame-Options','DENY'); c.header('Content-Security-Policy',CSP); });
-app.use('/api/*', async(c,next)=>bodyLimit({maxSize:c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000,onError:c=>c.json({error:'Слишком большой запрос'},413)})(c,next));
+app.use('/api/*', async(c,next)=>bodyLimit({maxSize:c.req.method==='PUT'&&c.req.path==='/api/profile/video'?52428800:c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000,onError:c=>c.json({error:'Слишком большой запрос'},413)})(c,next));
 app.use('/api/*', async (c, next) => {
   c.header('Cache-Control', 'no-store'); c.header('X-Content-Type-Options', 'nosniff'); c.header('Referrer-Policy', 'same-origin');
   if (['POST','PUT','PATCH','DELETE'].includes(c.req.method)) {
     const origin = c.req.header('Origin');
     if (!origin || origin !== new URL(c.req.url).origin) return c.json({ error: 'Запрос из другого источника отклонён. Обновите страницу.' }, 403);
-    if (!c.req.header('Content-Type')?.includes('application/json')) return c.json({ error: 'Ожидается JSON' }, 415);
-    const length = Number(c.req.header('Content-Length') || 0); if (length > (c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000)) return c.json({ error: 'Слишком большой запрос' }, 413);
+    // Video is the one binary upload: only the exact route and a video MIME type; Origin and session checks still apply.
+    const ct = c.req.header('Content-Type') || '';
+    const videoUpload = c.req.method === 'PUT' && c.req.path === '/api/profile/video' && /^video\/(mp4|webm)$/.test(ct);
+    if (!ct.includes('application/json') && !videoUpload) return c.json({ error: 'Ожидается JSON' }, 415);
+    const length = Number(c.req.header('Content-Length') || 0); if (length > (videoUpload ? 52428800 : c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000)) return c.json({ error: 'Слишком большой запрос' }, 413);
   }
   await next();
 });
@@ -92,7 +95,7 @@ app.get('/api/me',async c=>{const user=c.get('user');return c.json({user:user.ro
 app.post('/api/auth/logout', async c => { const body=await c.req.json().catch(()=>({}));if(typeof body.endpoint==='string')await run(database(c.env),'DELETE FROM push_subscriptions WHERE endpoint=? AND user_id=?',body.endpoint,c.get('user').id); await run(database(c.env),'DELETE FROM sessions WHERE token=?',await digest(getCookie(c,sessionName) || '')); deleteCookie(c,sessionName,{ path:'/' }); return c.json({ ok:true }); });
 accountRoutes(app);
 notificationRoutes(app);
-profileRoutes(app);profileDocumentRoutes(app);
+profileRoutes(app);profileVideoRoutes(app);profileDocumentRoutes(app);
 app.get('/api/settings', async c => { const row = await one<{ data: string }>(database(c.env),'SELECT data FROM settings WHERE user_id=?',c.get('user').id); return c.json({ settings: settingsSchema.parse(row ? JSON.parse(row.data) : defaultSettings) }); });
 app.put('/api/settings', async c => { const data = settingsSchema.safeParse(await c.req.json()); if (!data.success) return c.json({ error:'Проверьте настройки.' },400); const user=c.get('user'); const settings={...data.data,reminderEmail:data.data.reminderEmail&&!!user.email_verified_at}; await run(database(c.env),'INSERT INTO settings (user_id,data) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data',user.id,JSON.stringify(settings)); return c.json({ settings }); });
 app.use('/api/patient/*', async(c,next) => { if(c.get('user').role!=='patient') return c.json({ error:'Этот раздел доступен пациенту.' },403); await next(); });

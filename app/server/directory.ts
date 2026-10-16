@@ -49,7 +49,7 @@ export function directoryRoutes(app:App){
    user.role==='patient'?one<{doctor_id:string}>(db,'SELECT doctor_id FROM links WHERE patient_id=? AND revoked_at IS NULL',user.id):null,
    user.role==='patient'?one<{id:string}>(db,"SELECT id FROM connection_requests WHERE patient_id=? AND doctor_id=? AND status='pending'",user.id,id):null,
   ]);
-  return c.json({doctor:{...base,about:profile.about,address:profile.address,education:profile.education,courses:profile.courses,workHistory:profile.workHistory},
+  return c.json({doctor:{...base,about:profile.about,address:profile.address,education:profile.education,courses:profile.courses,workHistory:profile.workHistory,videoUrl:profile.videoUrl},
    reviews:reviews.map(r=>({id:r.id,rating:r.rating,body:r.body,createdAt:r.created_at,author:firstName(r.name),hidden:!!r.hidden_at})),
    mine:mine?{rating:mine.rating,body:mine.body,hidden:!!mine.hidden_at}:null,
    connection:{linkedToThis:link?.doctor_id===id,linkedToOther:!!link&&link.doctor_id!==id,pendingRequestId:pending?.id??null}});

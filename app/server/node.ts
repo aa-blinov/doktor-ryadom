@@ -28,7 +28,7 @@ const assets={fetch:async(request:Request)=>{
 const server=createServer(async(incoming,outgoing)=>{
  try{
   const chunks:Buffer[]=[];let length=0;
-  for await(const chunk of incoming){const bytes=Buffer.from(chunk);length+=bytes.length;if(length>(incoming.method==='POST'&&/^\/api\/patient\/assessments\/[^/?]+(?:\?.*)?$/.test(incoming.url??'')?65536:incoming.method==='POST'&&incoming.url==='/api/profile/documents'?7340032:incoming.method==='PUT'&&incoming.url==='/api/profile/photo'?200000:16000)){outgoing.writeHead(413,{'Content-Type':'application/json'});outgoing.end(JSON.stringify({error:'Слишком большой запрос'}));return;}chunks.push(bytes);}
+  for await(const chunk of incoming){const bytes=Buffer.from(chunk);length+=bytes.length;if(length>(incoming.method==='PUT'&&(incoming.url||'').split('?')[0]==='/api/profile/video'?52428800:incoming.method==='POST'&&/^\/api\/patient\/assessments\/[^/?]+(?:\?.*)?$/.test(incoming.url??'')?65536:incoming.method==='POST'&&incoming.url==='/api/profile/documents'?7340032:incoming.method==='PUT'&&incoming.url==='/api/profile/photo'?200000:16000)){outgoing.writeHead(413,{'Content-Type':'application/json'});outgoing.end(JSON.stringify({error:'Слишком большой запрос'}));return;}chunks.push(bytes);}
   const headers=new Headers();for(const [name,value] of Object.entries(incoming.headers)){if(value!==undefined)headers.set(name,Array.isArray(value)?value.join(','):value);}
   // The service has no host port. Caddy sets X-Real-IP; never trust a free-form value.
   const clientIp=(headers.get('X-Real-IP')||incoming.socket.remoteAddress||'local').trim();
