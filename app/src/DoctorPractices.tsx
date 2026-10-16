@@ -67,6 +67,7 @@ export function DoctorPractices(){
      <Select label="Направление" value={draft.category} data={categories} onChange={v=>setDraft({...draft,category:v||categories[0]})}/>
     </div>
     <TextInput label="Основа" description="Например: дыхание по методике, ВОЗ или авторская практика" value={draft.basis} onChange={e=>setDraft({...draft,basis:e.currentTarget.value})} maxLength={160}/>
+    <p className="muted small">Текст и шаги пишете вы, и отвечаете за них вы. Рядом не проверяет клинические формулировки: перед использованием с пациентами сверьте их с собственной практикой.</p>
     <Textarea label="Описание" description="Зачем эта практика и кому она подходит" value={draft.description} onChange={e=>setDraft({...draft,description:e.currentTarget.value})} minRows={3} maxLength={600}/>
     <section aria-label="Шаги практики">
      <h3>Шаги</h3>
