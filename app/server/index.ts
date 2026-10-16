@@ -2,6 +2,7 @@ import {surveyRoutes} from './surveys';
 import { verificationRoutes } from './verification';
 import { directoryRoutes } from './directory';
 import { bookingRoutes } from './booking';
+import { cardRoutes } from './card';
 import { adminRoutes } from './admin';
 import {profileDocumentRoutes} from './profile-documents';
 import {profileRoutes,profileVideoRoutes,doctorProfile,patientProfile} from './profiles';
@@ -194,7 +195,7 @@ app.delete('/api/doctor/invites/:id', async c => {
 app.use('/api/doctor/patients/:id/*', async(c,next) => { const link=await one(database(c.env),'SELECT patient_id FROM links WHERE patient_id=? AND doctor_id=? AND revoked_at IS NULL',c.req.param('id'),c.get('user').id); if(!link) return c.json({ error:'Доступ к пациенту отсутствует или отозван.' },403); await next(); });
 doctorCareRoutes(app);
 surveyRoutes(app);
-verificationRoutes(app);directoryRoutes(app);bookingRoutes(app);
+verificationRoutes(app);directoryRoutes(app);bookingRoutes(app);cardRoutes(app);
 adminRoutes(app);
 app.get('/api/doctor/patients/:id/data', async c => { const id=c.req.param('id'),db=database(c.env); await logAction(db,c.get('user').id,'view_patient',id); await run(db,'UPDATE sos_events SET acknowledged_at=?,acknowledged_by=? WHERE patient_id=? AND acknowledged_at IS NULL',Date.now(),c.get('user').id,id); const data=await patientData(db,id); const patient=await one<{id:string;name:string}>(db,'SELECT id,name FROM users WHERE id=?',id); const reports=await many<{payload:string}>(db,'SELECT * FROM reports WHERE patient_id=? AND doctor_id=? ORDER BY (reviewed_at IS NULL) DESC,created_at DESC LIMIT 30',id,c.get('user').id); return c.json({ ...data,draft:null,reports:reports.map(({payload,...row})=>({...row,...JSON.parse(payload)})),patient:{...patient,profile:await patientProfile(db,id)} }); });
 app.post('/api/doctor/patients/:id/reports/:reportId/review', async c => {

@@ -7,6 +7,7 @@ import {many,one,run} from './db';
 import {settingsSchema,defaultPlan,defaultSettings,type User,type Settings} from '../src/shared';
 import type {Env} from './env';
 import {allowedPushEndpoint} from './notifications';
+import {sweepVisits,deliverQueued} from './notices';
 export function createServices(path:string,origin:string){
  const directory=dirname(path),keyPath=join(directory,'vapid.json');
  mkdirSync(directory,{recursive:true});
@@ -27,6 +28,8 @@ export function reminderDue(now:number,settings:Settings,frequency:string,lastDa
  return frequency!=='weekly'||!lastDate||Date.parse(local.date)-Date.parse(lastDate)>=7*86400000;
 }
 export async function deliverNotifications(db:D1Database,services:ReturnType<typeof createServices>,now=Date.now()){
+ // Appointment events first: expiry, reminders, then everything queued (including requests made since the last run).
+ await sweepVisits(db,now);await deliverQueued(db,services,now);
  // SOS goes to every linked doctor, push and email, regardless of patient reminder settings.
  const sos=await many<{id:string;doctor_id:string;email:string;email_verified_at:string|null}>(db,'SELECT s.id,l.doctor_id,d.email,d.email_verified_at FROM sos_events s JOIN links l ON l.patient_id=s.patient_id AND l.revoked_at IS NULL JOIN users d ON d.id=l.doctor_id WHERE s.notified_at IS NULL');
  const sosEvents=[...new Set(sos.map(row=>row.id))];
