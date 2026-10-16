@@ -959,3 +959,11 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .card-timeline li{display:flex;flex-direction:column;gap:2px;padding-left:var(--sp-3);border-left:2px solid var(--line)}
 .card-event-title{font-size:15px;line-height:1.35}
 .card-event-detail{margin:0;color:var(--muted);font-size:14px}
+
+/* Header bell for every role; the bottom bar keeps five destinations */
+.topbar-bell{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:auto;border:1px solid var(--line);border-radius:var(--mantine-radius-md);background:var(--surface);color:var(--ink);text-decoration:none}
+.topbar-bell:hover{background:var(--soft)}
+.topbar-bell:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+.topbar-bell .topbar-badge{position:absolute;top:-6px;right:-6px}
+.topbar-sos{margin-left:var(--sp-3)}
+.page-links{margin:0 0 var(--sp-4)}
