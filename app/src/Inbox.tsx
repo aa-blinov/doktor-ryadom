@@ -15,7 +15,9 @@ export function useUnread(userId?:string){
   const tick=async()=>{try{const r=await api<{unread:number}>('/inbox');if(alive)setUnread(r.unread);}catch{/* offline: keep the last value */}};
   void tick();
   const timer=setInterval(()=>void tick(),30000);
-  return()=>{alive=false;clearInterval(timer);};
+  // The inbox page announces what it marked as read, so the badge clears at once.
+  window.addEventListener('inbox-changed',tick);
+  return()=>{alive=false;clearInterval(timer);window.removeEventListener('inbox-changed',tick);};
  },[userId]);
  return unread;
 }
@@ -30,7 +32,7 @@ export function InboxPage(){
    setItems(r.items);
    // What was unread when the page opened stays marked for this visit; then everything is read.
    setFresh(new Set(r.items.filter(i=>!i.read).map(i=>i.id)));
-   if(r.unread)await api('/inbox/read',{all:true});
+   if(r.unread){await api('/inbox/read',{all:true});window.dispatchEvent(new Event('inbox-changed'));}
   }catch(e){setError(errorText(e));}
  },[]);
  useEffect(()=>{void load();},[load]);
