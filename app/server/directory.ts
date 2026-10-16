@@ -14,7 +14,7 @@ const VERIFIED="u.role='doctor' AND u.specialist_verified_at IS NOT NULL AND u.b
 type Row={id:string;name:string;specialty_kind:string|null;city:string|null;rating:number|null;review_count:number};
 async function card(db:D1Database,row:Row){
  const {data,updated}=await storedProfile(db,row.id);
- return {id:row.id,name:row.name,kind:row.specialty_kind,city:row.city??'',specialty:data.specialty??'',clinic:data.clinic??'',experienceYears:data.experienceYears??null,focusAreas:data.focusAreas??'',about:(data.about??'').slice(0,180),photoUrl:data.photo?`/api/profiles/${row.id}/photo?v=${updated}`:null,rating:row.rating===null?null:Math.round(row.rating*10)/10,reviewCount:row.review_count};
+ return {id:row.id,name:row.name,kind:row.specialty_kind,city:row.city??'',price:data.price??null,visitFormat:data.visitFormat??'both',specialty:data.specialty??'',clinic:data.clinic??'',experienceYears:data.experienceYears??null,focusAreas:data.focusAreas??'',about:(data.about??'').slice(0,180),photoUrl:data.photo?`/api/profiles/${row.id}/photo?v=${updated}`:null,rating:row.rating===null?null:Math.round(row.rating*10)/10,reviewCount:row.review_count};
 }
 const SELECT_DOCTOR=`SELECT u.id,u.name,u.specialty_kind,
  (SELECT r.city FROM specialist_requests r WHERE r.doctor_id=u.id AND r.status='approved' ORDER BY r.updated_at DESC LIMIT 1) AS city,
@@ -29,13 +29,33 @@ export function directoryRoutes(app:App){
 
  app.get('/api/directory',async c=>{
   const db=database(c.env),kind=c.req.query('kind')??'',q=(c.req.query('q')??'').trim().toLowerCase(),city=(c.req.query('city')??'').trim().toLowerCase();
-  const rows=await many<Row>(db,`${SELECT_DOCTOR} ORDER BY review_count DESC, u.name LIMIT 200`);
-  let cards=await Promise.all(rows.map(r=>card(db,r)));
+  const format=c.req.query('format')??'all',maxPrice=Number(c.req.query('maxPrice'))||0,onlyFree=c.req.query('free')==='1';
+  const sort=c.req.query('sort')??'',page=Math.max(1,Math.floor(Number(c.req.query('page'))||1));
+  const rows=await many<Row>(db,SELECT_DOCTOR);
+  // Nearest open slot per doctor, one query for the whole catalogue. A slot is free when no pending or confirmed request holds it.
+  const nearest=await many<{doctor_id:string;starts_at:number}>(db,`SELECT s.doctor_id,MIN(s.starts_at) AS starts_at FROM doctor_slots s
+   WHERE s.status='open' AND s.starts_at>? AND NOT EXISTS(SELECT 1 FROM appointment_requests r WHERE r.slot_id=s.id AND r.status IN ('pending','confirmed')) GROUP BY s.doctor_id`,Date.now());
+  const nextAt=new Map(nearest.map(r=>[r.doctor_id,r.starts_at]));
+  let cards=(await Promise.all(rows.map(r=>card(db,r)))).map(x=>({...x,nextSlotAt:nextAt.get(x.id)??null}));
   if((specialtyKinds as readonly string[]).includes(kind))cards=cards.filter(x=>x.kind===kind);
   if(q)cards=cards.filter(x=>[x.name,x.specialty,x.clinic,x.focusAreas].join(' ').toLowerCase().includes(q));
   if(city)cards=cards.filter(x=>x.city.toLowerCase().includes(city));
+  // Online means the doctor takes online visits too ("both").
+  if(format==='online'||format==='offline')cards=cards.filter(x=>x.visitFormat===format||x.visitFormat==='both');
+  if(maxPrice>0)cards=cards.filter(x=>x.price!==null&&x.price<=maxPrice);
+  if(onlyFree)cards=cards.filter(x=>x.nextSlotAt!==null);
+  const byNull=(a:number|null,b:number|null,dir:1|-1)=>a===null&&b===null?0:a===null?1:b===null?-1:(a-b)*dir;
+  const sorters:Record<string,(a:typeof cards[number],b:typeof cards[number])=>number>={
+   rating:(a,b)=>byNull(a.rating,b.rating,-1)||b.reviewCount-a.reviewCount,
+   experience:(a,b)=>byNull(a.experienceYears,b.experienceYears,-1),
+   price:(a,b)=>byNull(a.price,b.price,1),
+   nearest:(a,b)=>byNull(a.nextSlotAt,b.nextSlotAt,1),
+  };
+  // Default order: most reviewed first, as before.
+  cards.sort(sorters[sort]??((a,b)=>b.reviewCount-a.reviewCount||a.name.localeCompare(b.name,'ru')));
+  const total=cards.length,pageSize=12;
   const cities=[...new Set(rows.map(r=>r.city).filter((x):x is string=>!!x))].sort();
-  return c.json({doctors:cards,cities});
+  return c.json({doctors:cards.slice((page-1)*pageSize,page*pageSize),total,page,pageSize,cities});
  });
 
  app.get('/api/directory/:id',async c=>{

@@ -5,13 +5,19 @@ import {api,errorText} from './api';
 import {navigate} from './App';
 import {Empty,ErrorBox,PageHead,formatDate, PageLoader} from './ui';
 import {specialtyLabels,type SpecialtyKind} from './shared';
+import {BookAppointment,MyAppointments,dateTimeText} from './Booking';
 
 const kindFilters=[{label:'Все',value:'all'},{label:'Психологи',value:'psychologist'},{label:'Психотерапевты',value:'psychotherapist'},{label:'Психиатры',value:'psychiatrist'}] as const;
 
-type Card={id:string;name:string;kind:SpecialtyKind|null;city:string;specialty:string;clinic:string;experienceYears:number|null;focusAreas:string;about:string;photoUrl:string|null;rating:number|null;reviewCount:number};
+type Card={id:string;name:string;kind:SpecialtyKind|null;city:string;specialty:string;clinic:string;experienceYears:number|null;focusAreas:string;about:string;photoUrl:string|null;rating:number|null;reviewCount:number;price:number|null;visitFormat:'online'|'offline'|'both';nextSlotAt?:number|null};
 type Review={id:string;rating:number;body:string;createdAt:number;author:string;hidden:boolean};
 type Detail={doctor:Card&{address:string;education:string;courses:string;workHistory:string;videoUrl:string|null};reviews:Review[];mine:{rating:number;body:string;hidden:boolean}|null;connection:{linkedToThis:boolean;linkedToOther:boolean;pendingRequestId:string|null}};
 
+const formatText={online:'Онлайн',offline:'Очно',both:'Онлайн и очно'} as const;
+const priceText=(price:number|null)=>price===null?'Стоимость уточняйте у врача':`${price.toLocaleString('ru-RU')} ₸ за приём`;
+const sortOptions=[{value:'',label:'Сначала с отзывами'},{value:'rating',label:'По рейтингу'},{value:'experience',label:'По стажу'},{value:'price',label:'По цене'},{value:'nearest',label:'Ближайшая запись'}];
+const formatOptions=[{value:'all',label:'Любой формат'},{value:'online',label:'Онлайн'},{value:'offline',label:'Очно'}];
+const priceOptions=[{value:'0',label:'Любая цена'},{value:'2000',label:'До 2 000 ₸'},{value:'5000',label:'До 5 000 ₸'},{value:'10000',label:'До 10 000 ₸'}];
 const reviewWord=(n:number)=>{const a=n%100,b=n%10;return a>10&&a<20?'отзывов':b===1?'отзыв':b>1&&b<5?'отзыва':'отзывов';};
 const years=(n:number)=>{const a=n%100,b=n%10;return a>10&&a<20?'лет':b===1?'год':b>1&&b<5?'года':'лет';};
 // Hide free-text specialty when it only repeats the type chip («Психиатр» / «Врач-психиатр» / «Психиатрия»).
@@ -32,37 +38,53 @@ function Rating({card}:{card:Pick<Card,'rating'|'reviewCount'>}){
 }
 
 export function DoctorDirectory(){
- const [doctors,setDoctors]=useState<Card[]>([]),[cities,setCities]=useState<string[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const [kind,setKind]=useState('all'),[query,setQuery]=useState(''),[city,setCity]=useState('');
- const load=useCallback(async()=>{setError('');try{const r=await api<{doctors:Card[];cities:string[]}>('/directory');setDoctors(r.doctors);setCities(r.cities);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
- useEffect(()=>{void load();},[load]);
- const shown=useMemo(()=>doctors.filter(d=>(kind==='all'||d.kind===kind)&&(!city||d.city===city)&&(!query.trim()||[d.name,d.specialty,d.clinic,d.focusAreas].join(' ').toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru')))),[doctors,kind,city,query]);
+ const [items,setItems]=useState<Card[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[cities,setCities]=useState<string[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ const [kind,setKind]=useState('all'),[query,setQuery]=useState(''),[city,setCity]=useState(''),[sort,setSort]=useState(''),[format,setFormat]=useState('all'),[maxPrice,setMaxPrice]=useState('0'),[free,setFree]=useState(false);
+ const qs=(p:number)=>{const s=new URLSearchParams({page:String(p)});if(kind!=='all')s.set('kind',kind);if(query.trim())s.set('q',query.trim());if(city)s.set('city',city);if(sort)s.set('sort',sort);if(format!=='all')s.set('format',format);if(maxPrice!=='0')s.set('maxPrice',maxPrice);if(free)s.set('free','1');return s.toString();};
+ const fetchPage=useCallback(async(p:number,append:boolean)=>{
+  setError('');setLoading(true);
+  try{const r=await api<{doctors:Card[];total:number;cities:string[]}>(`/directory?${qs(p)}`);setItems(prev=>append?[...prev,...r.doctors]:r.doctors);setTotal(r.total);setPage(p);setCities(r.cities);}
+  catch(e){setError(errorText(e));}finally{setLoading(false);}
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[kind,query,city,sort,format,maxPrice,free]);
+ // Typing waits 300 ms before asking the server; other filters answer at once.
+ useEffect(()=>{const timer=setTimeout(()=>void fetchPage(1,false),query?300:0);return()=>clearTimeout(timer);},[fetchPage,query]);
+ const reset=()=>{setKind('all');setQuery('');setCity('');setSort('');setFormat('all');setMaxPrice('0');setFree(false);};
  return <section className="directory">
   <button className="back-link" onClick={()=>navigate('/doctor')}><IconArrowLeft size={18}/>Мой врач</button>
   <PageHead title="Найти врача" description="Психологи, психотерапевты и психиатры, чью квалификацию проверил администратор"/>
+  <MyAppointments/>
   <div className="directory-filters">
    <div className="kind-filter" role="group" aria-label="Специальность">
     {kindFilters.map(option=><button key={option.value} type="button" className={kind===option.value?'kind-chip selected':'kind-chip'} aria-pressed={kind===option.value} onClick={()=>setKind(option.value)}>{option.label}</button>)}
    </div>
-   <div className="directory-search">
+   <div className="directory-search directory-bar">
     <TextInput aria-label="Поиск врача" placeholder="Имя, направление или клиника" value={query} onChange={e=>setQuery(e.currentTarget.value)}/>
     {cities.length>1?<NativeSelect aria-label="Город" value={city} onChange={e=>setCity(e.currentTarget.value)} data={[{value:'',label:'Все города'},...cities.map(c=>({value:c,label:c}))]}/>:null}
+    <NativeSelect aria-label="Сортировка" value={sort} onChange={e=>setSort(e.currentTarget.value)} data={sortOptions}/>
+    <NativeSelect aria-label="Формат приёма" value={format} onChange={e=>setFormat(e.currentTarget.value)} data={formatOptions}/>
+    <NativeSelect aria-label="Стоимость" value={maxPrice} onChange={e=>setMaxPrice(e.currentTarget.value)} data={priceOptions}/>
+    <Checkbox label="Только с свободным временем" checked={free} onChange={e=>setFree(e.currentTarget.checked)}/>
    </div>
   </div>
   <p className="muted small directory-note">Препараты назначает только психиатр. Психологи и психотерапевты работают разговором и практиками.</p>
-  {loading?<PageLoader/>:null}
-  {error?<ErrorBox message={error} retry={load}/>:null}
-  {!loading&&!error&&!shown.length?<Empty title="Врачей не найдено" description="Измените фильтры или поиск" icon={<IconStar/>} action="Сбросить" onAction={()=>{setKind('all');setQuery('');setCity('');}}/>:null}
-  <div className="doctor-list">{shown.map(d=><a key={d.id} className="doctor-card" href={`#/doctors/${d.id}`}>
+  <p className="muted small" aria-live="polite">{loading&&!items.length?'':`Найдено врачей: ${total}`}</p>
+  {loading&&!items.length?<PageLoader/>:null}
+  {error?<ErrorBox message={error} retry={()=>void fetchPage(1,false)}/>:null}
+  {!loading&&!error&&!items.length?<Empty title="Врачей не найдено" description="Измените фильтры или поиск" icon={<IconStar/>} action="Сбросить" onAction={reset}/>:null}
+  <div className="doctor-list">{items.map(d=><a key={d.id} className="doctor-card" href={`#/doctors/${d.id}`}>
    <Avatar src={d.photoUrl} size={64} radius="xl" alt="">{d.name.slice(0,1)}</Avatar>
    <div className="doctor-card-main">
     <h2>{d.name}</h2>
     <p className="doctor-card-meta"><span className={`pill kind-${d.kind??'none'}`}>{d.kind?specialtyLabels[d.kind]:'Специалист'}</span>{specialtyLine(d.kind,d.specialty)?<span>{specialtyLine(d.kind,d.specialty)}</span>:null}</p>
     <p className="muted small">{[d.city,d.clinic,d.experienceYears!==null?`стаж ${d.experienceYears} ${years(d.experienceYears)}`:''].filter(Boolean).join(' · ')}</p>
+    <p className="small doctor-card-price">{priceText(d.price)} · {formatText[d.visitFormat]}</p>
     {d.about?<p className="doctor-card-about">{d.about}{d.about.length>=180?'…':''}</p>:null}
     <Rating card={d}/>
+    <p className="small">{d.nextSlotAt?<strong>Ближайшая запись: {dateTimeText(d.nextSlotAt)}</strong>:<span className="muted">Свободного времени пока нет</span>}</p>
    </div>
   </a>)}</div>
+  {items.length<total?<div className="connect-actions"><Button variant="default" loading={loading} onClick={()=>void fetchPage(page+1,true)}>Показать ещё</Button></div>:null}
  </section>;
 }
 
@@ -86,7 +108,9 @@ export function DoctorPage({id,onChanged}:{id:string;onChanged:()=>Promise<void>
    </div>
   </header>
   {error?<ErrorBox message={error}/>:null}
+  <p className="small doctor-card-price">{priceText(d.price)} · {formatText[d.visitFormat]}</p>
   <ConnectPanel name={d.name} connection={data.connection}/>
+  <BookAppointment doctorId={id} doctorName={d.name}/>
   {d.videoUrl?<section className="doctor-section"><h2>Видео-представление</h2><video className="profile-video-player" src={d.videoUrl} controls playsInline preload="metadata" aria-label={`Видео о ${d.name}`}/></section>:null}
   {d.about?<section className="doctor-section"><h2>О враче</h2><p className="profile-prose">{d.about}</p></section>:null}
   {sections.map(s=><section className="doctor-section" key={s.title}><h2>{s.title}</h2><p className="profile-prose">{s.text}</p></section>)}
