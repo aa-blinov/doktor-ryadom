@@ -7,7 +7,7 @@ async function request(path:string,body?:unknown,cookie?:string,method?:string){
  const r=await app.request(origin+'/api'+path,{method:method??(body===undefined?'GET':'POST'),headers:{Origin:origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)},env);
  return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]};
 }
-async function register(role:string,tag:string){return request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true});}
+async function register(role:string,tag:string){return request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true,adult:true});}
 afterAll(()=>db.close());
 it('doctor applies for verification, admin decides, only admin can see the queue',async()=>{
  const doctor=await register('doctor','verify-doctor'),patient=await register('patient','verify-patient'),admin=await register('doctor','verify-admin');

@@ -9,14 +9,14 @@ async function request(path:string,body?:unknown,cookie?:string,method?:string){
  return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]};
 }
 const accounts=new Map<string,{cookie:string;id:string}>();
-async function register(role:string,tag:string){const known=accounts.get(tag);if(known)return known;const r=await request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true});expect(r.status).toBe(201);const account={cookie:r.cookie!,id:r.data.user.id as string};accounts.set(tag,account);return account;}
+async function register(role:string,tag:string){const known=accounts.get(tag);if(known)return known;const r=await request('/auth/register',{name:'Тест '+tag,email:tag+'@example.com',password,role,consent:true,adult:true});expect(r.status).toBe(201);const account={cookie:r.cookie!,id:r.data.user.id as string};accounts.set(tag,account);return account;}
 async function verify(id:string,kind:string|null){await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=? WHERE id=?').bind(Date.now(),kind,id).run();await db.binding.prepare('INSERT INTO specialist_requests (id,doctor_id,kind,specialty,license,city,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,kind,'Специалист','LIC-'+id.slice(0,4),'Алматы','approved',Date.now(),Date.now()).run();}
 afterAll(()=>db.close());
 
 it('only a verified psychiatrist may prescribe medication',async()=>{
  const psychiatrist=await register('doctor','dir-psy'),psychologist=await register('doctor','dir-psych'),patient=await register('patient','dir-med-p');
  await verify(psychiatrist.id,'psychiatrist');await verify(psychologist.id,'psychologist');
- for(const doc of [psychiatrist,psychologist]){const inv=await request('/doctor/invites',{},doc.cookie);const pat=doc===psychiatrist?patient:await register('patient','dir-med-p2');expect((await request('/patient/accept',{token:inv.data.token,consent:true},pat.cookie)).status).toBe(200);
+ for(const doc of [psychiatrist,psychologist]){const inv=await request('/doctor/invites',{},doc.cookie);const pat=doc===psychiatrist?patient:await register('patient','dir-med-p2');expect((await request('/patient/accept',{token:inv.data.token,consent:true,adult:true},pat.cookie)).status).toBe(200);
   const res=await request(`/doctor/patients/${pat.id}/medications`,{name:'Препарат',instructions:'1 раз в день',startDate:'2026-10-01'},doc.cookie);
   expect(res.status).toBe(doc===psychiatrist?201:403);}
 },40000);
@@ -50,14 +50,14 @@ it('catalogue lists verified doctors with filters, rating and patient-only acces
 it('patient connects only via one-time invite, which cannot be reused',async()=>{
  const d=await register('doctor','dir-b'),p=await register('patient','dir-p'),p2=await register('patient','dir-p2');
  await db.binding.prepare('UPDATE users SET email_verified_at=? WHERE id=?').bind(Date.now(),d.id).run();
- expect((await request(`/directory/${d.id}/request`,{message:'Нужна помощь',consent:true},p.cookie)).status).toBe(404);
+ expect((await request(`/directory/${d.id}/request`,{message:'Нужна помощь',consent:true,adult:true},p.cookie)).status).toBe(404);
  mail.length=0;
  const inv=await request('/doctor/invites',{},d.cookie);expect(inv.status).toBe(201);expect(inv.data.token).toMatch(/^[a-f0-9]{64}$/i);
  expect((await request('/invites/'+inv.data.token,undefined,p.cookie)).status).toBe(200);
  expect(mail).toHaveLength(0); // invite is link-based, no patient-initiated email
- expect((await request('/patient/accept',{token:inv.data.token,consent:true},p.cookie)).status).toBe(200);
- expect((await request('/patient/accept',{token:inv.data.token,consent:true},p.cookie)).status).toBe(404);
- expect((await request('/patient/accept',{token:inv.data.token,consent:true},p2.cookie)).status).toBe(404);
+ expect((await request('/patient/accept',{token:inv.data.token,consent:true,adult:true},p.cookie)).status).toBe(200);
+ expect((await request('/patient/accept',{token:inv.data.token,consent:true,adult:true},p.cookie)).status).toBe(404);
+ expect((await request('/patient/accept',{token:inv.data.token,consent:true,adult:true},p2.cookie)).status).toBe(404);
  expect((await request('/doctor/patients/'+p.id+'/data',undefined,d.cookie)).status).toBe(200);
  expect((await request('/doctor/patients/'+p2.id+'/data',undefined,d.cookie)).status).toBe(403);
 },40000);

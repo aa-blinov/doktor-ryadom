@@ -6,11 +6,10 @@ import { openDatabase } from '../server/sqlite';
 import app from '../server/index';
 it('Docker database retains sessions and records after restart and rolls back failed batches',async()=>{
  const directory=mkdtempSync(join(tmpdir(),'ryadom-sqlite-'));const path=join(directory,'database.sqlite');
- const oldMigrations=join(directory,'old-migrations');mkdirSync(oldMigrations);copyFileSync('drizzle/0000_initial_schema.sql',join(oldMigrations,'0000_initial_schema.sql'));
- let database=openDatabase(path,oldMigrations);
+ let database=openDatabase(path);  // the app always runs every migration at start, so the test does too
  try{
  const origin='https://doktor-ryadom.duckdns.org';
- const registered=await app.request(origin+'/api/auth/register',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email:'persistent@example.com',name:'Тестовый пациент',password:'test-password-very-long',role:'patient',consent:true})},{DB:database.binding,ASSETS:{} as Fetcher});
+ const registered=await app.request(origin+'/api/auth/register',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email:'persistent@example.com',name:'Тестовый пациент',password:'test-password-very-long',role:'patient',consent:true,adult:true})},{DB:database.binding,ASSETS:{} as Fetcher});
  expect(registered.status).toBe(201);expect(registered.headers.get('set-cookie')).toContain('Secure');const cookie=registered.headers.get('set-cookie')!.split(';')[0];
  const identity=await registered.json() as {user:{id:string}};
  await expect(database.binding.batch([

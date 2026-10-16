@@ -15,7 +15,7 @@ it('patient, doctor and administrator complete their core flows without page err
   return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]};
  }
  async function session(tag:string,role:'patient'|'doctor',name:string){
-  const reg=await request('/auth/register',{name,email:tag+'@roles.test',password,role,consent:true});
+  const reg=await request('/auth/register',{name,email:tag+'@roles.test',password,role,consent:true,adult:true});
   const user=reg.data.user;
   const context=await browser.newContext({locale:'ru-RU',serviceWorkers:'block'});
   await context.addCookies([{name:'ryadom_session',value:reg.cookie!.split('=')[1],url:origin}]);

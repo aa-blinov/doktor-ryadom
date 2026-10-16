@@ -7,7 +7,7 @@ async function request(path:string,body?:unknown,cookie?:string,method?:string){
 afterAll(()=>db.close());
 // A doctor with no link to a patient must not be able to write that patient's plan, nor read its data.
 it('a doctor without a link to the patient cannot write or read the patient plan',async()=>{
- const doctor=await request('/auth/register',{name:'Врач Чужой',email:'plan-access-doctor@example.com',password,role:'doctor',consent:true});
+ const doctor=await request('/auth/register',{name:'Врач Чужой',email:'plan-access-doctor@example.com',password,role:'doctor',consent:true,adult:true});
  expect(doctor.status).toBe(201);
  const plan={frequency:'daily',sleep:true,anxiety:true,energy:false,functioning:true,practices:[],habit:''};
  const write=await request('/doctor/patients/00000000-0000-4000-8000-000000000000/plan',plan,doctor.cookie,'PUT');

@@ -7,7 +7,7 @@ async function request(path:string,body?:unknown,cookie?:string,method?:string){
 afterAll(()=>db.close());
 describe('real SQL role and consent workflow',()=>{
  it('persists records and enforces ownership, CSRF and revoked consent',async()=>{
-  const register=async(role:string,name:string)=>{const r=await request('/auth/register',{email:name.replaceAll(' ','').toLowerCase()+'@example.com',name,role,password,consent:true});expect(r.status,JSON.stringify(r.data)).toBe(201);if(role==='doctor')await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),r.data.user.id).run();return r;};
+  const register=async(role:string,name:string)=>{const r=await request('/auth/register',{email:name.replaceAll(' ','').toLowerCase()+'@example.com',name,role,password,consent:true,adult:true});expect(r.status,JSON.stringify(r.data)).toBe(201);if(role==='doctor')await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),r.data.user.id).run();return r;};
   const doctor=await register('doctor','Doctor One'),patient=await register('patient','Patient One'),stranger=await register('doctor','Doctor Two');const id=patient.data.user.id;
   expect((await request('/patient/data')).status).toBe(401);
   expect((await request('/patient/data',undefined,patient.cookie)).data.plan.frequency).toBe('daily');
@@ -16,7 +16,7 @@ describe('real SQL role and consent workflow',()=>{
   expect((await request(`/doctor/patients/${id}/data`,undefined,doctor.cookie)).status).toBe(403);
   const invite=await request('/doctor/invites',{},doctor.cookie);expect(invite.status).toBe(201);
   expect((await request('/patient/accept',{token:invite.data.token,consent:false},patient.cookie)).status).toBe(400);
-  expect((await request('/patient/accept',{token:invite.data.token,consent:true},patient.cookie)).status).toBe(200);
+  expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},patient.cookie)).status).toBe(200);
   expect((await request('/invites/'+invite.data.token)).status).toBe(404);
   const entry={date:today(),mood:3,sleep:5,anxiety:0,energy:null,functioning:2,sleepContext:'tired',note:'Synthetic test record',habit:null};
   expect((await request('/patient/checkins',{...entry,functioning:4},patient.cookie)).status).toBe(400);
@@ -59,23 +59,23 @@ describe('real SQL role and consent workflow',()=>{
 });
 
 it('does not assign practices automatically and prevents simultaneous replacement of a doctor',async()=>{
- const register=async(role:string,email:string)=>{const r=await request('/auth/register',{email,name:email.split('@')[0],role,password,consent:true});expect(r.status).toBe(201);if(role==='doctor')await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),r.data.user.id).run();return r;};
+ const register=async(role:string,email:string)=>{const r=await request('/auth/register',{email,name:email.split('@')[0],role,password,consent:true,adult:true});expect(r.status).toBe(201);if(role==='doctor')await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),r.data.user.id).run();return r;};
  const p=await register('patient','qa-patient@example.com'),d=await register('doctor','qa-doctor@example.com'),other=await register('doctor','qa-other@example.com');
  expect((await request('/patient/data',undefined,p.cookie)).data.plan.practices).toEqual([]);
  expect((await request('/patient/practices',{practiceId:'ground',feedback:'same'},p.cookie)).status).toBe(403);
  const code=(await request('/doctor/invites',{},d.cookie)).data.token,second=(await request('/doctor/invites',{},other.cookie)).data.token;
  const prepare=db.binding.prepare.bind(db.binding);let reads=0;let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
  db.binding.prepare=((sql:string)=>{const statement=prepare(sql);if(sql==='SELECT patient_id FROM links WHERE patient_id=? AND revoked_at IS NULL'){const bind=statement.bind.bind(statement);statement.bind=((...values:unknown[])=>{const bound=bind(...values);const first=bound.first.bind(bound);bound.first=(async()=>{const row=await first();if(++reads===2)release();await gate;return row;}) as typeof bound.first;return bound;}) as typeof statement.bind;}return statement;});
- let accepted:Awaited<ReturnType<typeof request>>[];try{accepted=await Promise.all([request('/patient/accept',{token:code,consent:true},p.cookie),request('/patient/accept',{token:second,consent:true},p.cookie)]);}finally{db.binding.prepare=prepare;}
+ let accepted:Awaited<ReturnType<typeof request>>[];try{accepted=await Promise.all([request('/patient/accept',{token:code,consent:true,adult:true},p.cookie),request('/patient/accept',{token:second,consent:true,adult:true},p.cookie)]);}finally{db.binding.prepare=prepare;}
 
  expect(accepted.map(r=>r.status).sort()).toEqual([200,409]);
  const winner=accepted[0].status===200?d:other;expect((await request('/patient/data',undefined,p.cookie)).data.doctor.id).toBe(winner.data.user.id);
  expect((await request('/patient/data',undefined,p.cookie)).data.plan.practices).toEqual([]);
  await request('/patient/revoke',{},p.cookie);expect((await request('/patient/data',undefined,p.cookie)).data.plan.practices).toEqual([]);
  // Either invite may win the race above; only the losing one is still unused.
- expect((await request('/patient/accept',{token:winner===d?second:code,consent:true},p.cookie)).status).toBe(200);
+ expect((await request('/patient/accept',{token:winner===d?second:code,consent:true,adult:true},p.cookie)).status).toBe(200);
  const q=await register('patient','qa-invite-one@example.com'),r=await register('patient','qa-invite-two@example.com');const invite=await request('/doctor/invites',{},d.cookie);
- const once=await Promise.all([request('/patient/accept',{token:invite.data.token,consent:true},q.cookie),request('/patient/accept',{token:invite.data.token,consent:true},r.cookie)]);
+ const once=await Promise.all([request('/patient/accept',{token:invite.data.token,consent:true,adult:true},q.cookie),request('/patient/accept',{token:invite.data.token,consent:true,adult:true},r.cookie)]);
  expect(once.filter(x=>x.status===200)).toHaveLength(1);expect(once.filter(x=>x.status===409||x.status===404)).toHaveLength(1);
  const connections=await db.binding.prepare('SELECT patient_id FROM links WHERE patient_id IN (?,?) AND revoked_at IS NULL').bind(q.data.user.id,r.data.user.id).all();expect(connections.results).toHaveLength(1);
 

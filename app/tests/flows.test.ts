@@ -18,7 +18,7 @@ it('invitation links a patient to a doctor, the doctor reviews goals and the pat
   return {status:r.status,data:await r.json() as any,cookie:r.headers.get('set-cookie')?.split(';')[0]};
  }
  async function session(tag:string,role:'patient'|'doctor',name:string){
-  const reg=await request('/auth/register',{name,email:tag+'@flows.test',password,role,consent:true});
+  const reg=await request('/auth/register',{name,email:tag+'@flows.test',password,role,consent:true,adult:true});
   const context=await browser.newContext({locale:'ru-RU',serviceWorkers:'block'});
   await context.addCookies([{name:'ryadom_session',value:reg.cookie!.split('=')[1],url:origin}]);
   await context.addInitScript(id=>localStorage.setItem('ryadom:onboarding:v1:'+id,'seen'),reg.data.user.id);
@@ -41,7 +41,7 @@ it('invitation links a patient to a doctor, the doctor reviews goals and the pat
   await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),doctor.user.id).run();
   // Invitation: the doctor creates a link, the patient accepts it with consent.
   const invite=await request('/doctor/invites',{},doctor.cookie);
-  expect((await request('/patient/accept',{token:invite.data.token,consent:true},patient.cookie)).status).toBe(200);
+  expect((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},patient.cookie)).status).toBe(200);
   await request('/doctor/patients/'+patient.user.id+'/plan',{...defaultPlan,practices:['ground']},doctor.cookie,'PUT');
   await request('/patient/checkins',{date:today(),mood:3,sleep:6,anxiety:1,energy:null,functioning:2,sleepContext:null,note:'',habit:null},patient.cookie);
 

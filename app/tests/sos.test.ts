@@ -8,7 +8,7 @@ async function request(path:string,body?:unknown,cookie?:string){
 }
 afterAll(()=>db.close());
 it('a second SOS tap within a minute is the same signal',async()=>{
- const p=await request('/auth/register',{name:'Тест SOS',email:'sos-patient@example.com',password:'test-sos-password-long',role:'patient',consent:true});
+ const p=await request('/auth/register',{name:'Тест SOS',email:'sos-patient@example.com',password:'test-sos-password-long',role:'patient',consent:true,adult:true});
  const count=async()=>(await db.binding.prepare('SELECT count(*) AS n FROM sos_events WHERE patient_id=?').bind(p.data.user.id).first<{n:number}>())!.n;
  expect((await request('/patient/sos',{},p.cookie)).status).toBe(200);
  expect((await request('/patient/sos',{},p.cookie)).status).toBe(200);

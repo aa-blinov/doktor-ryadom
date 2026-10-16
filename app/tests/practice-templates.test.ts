@@ -17,7 +17,7 @@ async function request(path:string,init:{method?:string;json?:unknown;body?:Uint
  return app.request(origin+'/api'+path,{method,headers,body},env);
 }
 async function register(role:'doctor'|'patient',email:string,verify=true){
- const r=await request('/auth/register',{json:{name:'Практика Тест',email,password,role,consent:true}});
+ const r=await request('/auth/register',{json:{name:'Практика Тест',email,password,role,consent:true,adult:true}});
  expect(r.status).toBe(201);
  const id=(await r.json() as {user:{id:string}}).user.id;
  if(role==='doctor'&&verify)db.binding.prepare("UPDATE users SET specialist_verified_at=?,specialty_kind='psychiatrist' WHERE id=?").bind(Date.now(),id).run();
@@ -66,7 +66,7 @@ it('a plan takes only own, unarchived practices; the patient sees and logs them'
  const theirs=(await (await request('/doctor/practices',{json:good,cookie:stranger.cookie})).json() as {practice:{id:string}}).practice.id;
  // the patient must be linked to the doctor before a plan can be written
  const inv=await (await request('/doctor/invites',{json:{},cookie:doctor.cookie})).json() as {token:string};
- expect((await request('/patient/accept',{json:{token:inv.token,consent:true},cookie:patient.cookie})).status).toBe(200);
+ expect((await request('/patient/accept',{json:{token:inv.token,consent:true,adult:true},cookie:patient.cookie})).status).toBe(200);
  const plan=(practices:string[])=>({frequency:'daily',sleep:true,anxiety:true,energy:false,functioning:true,practices,habit:''});
  expect((await request(`/doctor/patients/${patient.id}/plan`,{method:'PUT',json:plan(['ground',mineRef]),cookie:doctor.cookie})).status).toBe(200);
  expect((await request(`/doctor/patients/${patient.id}/plan`,{method:'PUT',json:plan([theirs]),cookie:doctor.cookie})).status).toBe(400);

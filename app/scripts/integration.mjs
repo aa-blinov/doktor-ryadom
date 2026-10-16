@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8787';
 const suffix=Date.now();const pass='test-password-very-long';
 async function request(path,body,cookie,method){const r=await fetch(base+'/api'+path,{method:method||(body===undefined?'GET':'POST'),headers:{Origin:base,...(body===undefined?{}:{'Content-Type':'application/json'}),...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
-async function signup(role,name){const r=await request('/auth/register',{email:`${role}-${name}-${suffix}@example.com`,password:pass,role,name,consent:true});assert.equal(r.status,201,JSON.stringify(r.data));return r;}
+async function signup(role,name){const r=await request('/auth/register',{email:`${role}-${name}-${suffix}@example.com`,password:pass,role,name,consent:true,adult:true});assert.equal(r.status,201,JSON.stringify(r.data));return r;}
 const doctor=await signup('doctor','Test Doctor'),patient=await signup('patient','Test Patient'),stranger=await signup('doctor','Other Doctor');
 const id=patient.data.user.id;
 assert.equal((await request('/doctor/patients',undefined,patient.cookie)).status,403);
@@ -10,7 +10,7 @@ assert.equal((await request(`/doctor/patients/${id}/data`,undefined,doctor.cooki
 assert.equal((await request('/patient/data')).status,401);
 const invite=await request('/doctor/invites',{},doctor.cookie);assert.equal(invite.status,201);
 assert.equal((await request('/patient/accept',{token:invite.data.token,consent:false},patient.cookie)).status,400);
-assert.equal((await request('/patient/accept',{token:invite.data.token,consent:true},patient.cookie)).status,200);
+assert.equal((await request('/patient/accept',{token:invite.data.token,consent:true,adult:true},patient.cookie)).status,200);
 assert.equal((await request('/invites/'+invite.data.token)).status,404);
 const d=new Date();const date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const entry={date,mood:3,sleep:5,anxiety:0,energy:null,functioning:2,sleepContext:'tired',note:'Synthetic test record',habit:null};

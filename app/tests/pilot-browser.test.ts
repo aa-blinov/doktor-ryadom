@@ -15,7 +15,7 @@ it('pilot: patient goals and practice notes reach the clinician queue and can be
   return app.request(origin+'/api'+path,{method,headers:{Origin:origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:JSON.stringify(body)},env);
  }
  async function pageFor(role:string,name:string){
-  const registered=await request('/auth/register',{name,email:role+'@pilot.test',role,password,consent:true});const user=(await registered.json() as any).user;
+  const registered=await request('/auth/register',{name,email:role+'@pilot.test',role,password,consent:true,adult:true});const user=(await registered.json() as any).user;
   const cookie=registered.headers.get('set-cookie')!.split(';')[0];
   const context=await browser.newContext({locale:'ru-RU',serviceWorkers:'block'});
   await context.addCookies([{name:'ryadom_session',value:cookie.split('=')[1],url:origin}]);
@@ -44,7 +44,7 @@ it('pilot: patient goals and practice notes reach the clinician queue and can be
   const {page:p,user:patient,cookie:pc}=await pageFor('patient','Александр Тестовый');
   const {page:d,user:doctor,cookie:dc}=await pageFor('doctor','Абат Тестовый');
   await db.binding.prepare('UPDATE users SET specialist_verified_at=?,specialty_kind=\'psychiatrist\' WHERE id=?').bind(Date.now(),doctor.id).run();
-  const invite=await request('/doctor/invites',{},dc);await request('/patient/accept',{token:(await invite.json() as any).token,consent:true},pc);
+  const invite=await request('/doctor/invites',{},dc);await request('/patient/accept',{token:(await invite.json() as any).token,consent:true,adult:true},pc);
   expect((await request('/doctor/patients/'+patient.id+'/plan',{...defaultPlan,practices:['ground']},dc,'PUT')).status).toBe(200);
   await request('/patient/checkins',{date:today(),mood:3,sleep:6,anxiety:1,energy:null,functioning:2,sleepContext:null,note:'Для проверки: хочу обсудить, что помогает отдыхать',habit:null},pc);
   await p.goto(origin+'/#/goals');

@@ -7,7 +7,7 @@ it('push test sends only to an owned device, limits repeats and removes expired 
  const db=createDatabase(),sent:string[]=[],origin='https://push.test';let status=0;
  const env={DB:db.binding,ASSETS:{} as Fetcher,PUSH_PUBLIC_KEY:'key',PUSH_SEND:async(sub:{endpoint:string},body:string)=>{if(status)throw {statusCode:status};sent.push(sub.endpoint+body);}};
  async function request(path:string,body?:unknown,cookie?:string){return app.request(origin+'/api'+path,{method:body?'POST':'GET',headers:{Origin:origin,...(cookie?{Cookie:cookie}:{}),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined},env);}
- async function register(email:string){const r=await request('/auth/register',{name:'Тест push',email,password:'push-test-password-long',role:'patient',consent:true});expect(r.status).toBe(201);return {cookie:r.headers.get('set-cookie')!.split(';')[0],id:(await r.json() as any).user.id};}
+ async function register(email:string){const r=await request('/auth/register',{name:'Тест push',email,password:'push-test-password-long',role:'patient',consent:true,adult:true});expect(r.status).toBe(201);return {cookie:r.headers.get('set-cookie')!.split(';')[0],id:(await r.json() as any).user.id};}
  try{const a=await register('push-a@example.com'),b=await register('push-b@example.com');const endpoint='https://fcm.googleapis.com/fcm/send/owned';const subscription={endpoint,keys:{p256dh:'a'.repeat(87),auth:'b'.repeat(22)}};
  expect((await request('/notifications/test',{endpoint})).status).toBe(401);
  expect((await request('/notifications/subscribe',subscription,a.cookie)).status).toBe(200);
