@@ -20,12 +20,13 @@ import { practiceContent, allPractices, type PracticeView } from './practices';
 import type { CustomPractice } from './shared';
 import { DoctorPractices } from './DoctorPractices';
 import { navigate } from './App';
+import { DoctorSchedule } from './Booking';
 import { plural, attentionFlags, canPrescribe, signals, today, type Assessment, type PatientData, type PatientRow, type Plan, type PatientProfile, type User } from './shared';
 export function DoctorWorkspace({user,route}:{user:User;route:string}){
  useSectionScroll(route.startsWith('/patient/')?null:`${user.id}:${route}`);
  const [patients,setPatients]=useState<PatientRow[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[search,setSearch]=useState(''),[listFilter,setListFilter]=useState('all'),[inviting,setInviting]=useState(false),[invite,setInvite]=useState<{token:string;expires:number}|null>(null),[busy,setBusy]=useState(false),[copied,setCopied]=useState(false);
  const reload=useCallback(async()=>{setError('');try{setPatients((await api<{patients:PatientRow[]}>('/doctor/patients')).patients);}catch(e){setError(errorText(e));}finally{setLoading(false);}},[]);
- const showingList=!route.startsWith('/patient/')&&!['/settings','/profile','/code','/practices'].includes(route);
+ const showingList=!route.startsWith('/patient/')&&!['/settings','/profile','/code','/practices','/schedule'].includes(route);
  const refreshList=useCallback(async()=>{if(showingList)await reload();},[reload,showingList]);
  useEffect(()=>{void refreshList();},[refreshList]);
  useRefreshOnReturn(refreshList);
@@ -36,6 +37,7 @@ export function DoctorWorkspace({user,route}:{user:User;route:string}){
  if(route.startsWith('/patient/'))return <PatientDetail key={route.split('/')[2]} id={route.split('/')[2]} doctorId={user.id} canRx={canPrescribe(user)}/>;
  if(route==='/practices')return <DoctorPractices/>;
  if(route==='/profile')return <><PageHead title="Профиль" description="Как вас видят пациенты"/><ProfileSettings user={user}/></>;
+ if(route==='/schedule')return <><PageHead title="Расписание" description="Свободное время для записи, заявки пациентов"/><DoctorSchedule/></>;
  if(route==='/code')return <><PageHead title="Приглашения" description="Одноразовые ссылки, чтобы подключить пациента"/><DoctorInvites/></>;
  if(route==='/settings')return <><PageHead title="Аккаунт" description="Аккаунт, уведомления и безопасность"/><section className="settings-panel narrow"><h2>{user.name}</h2><Button variant="light" onClick={()=>window.dispatchEvent(new Event('show-onboarding'))}>Как пользоваться Рядом</Button><p>{user.email}</p><p className="muted">Пациенты подключаются по приглашению и могут отозвать доступ. Для каждого пациента укажите привычку и вопросы в плане наблюдения, а способ связи и время ответа — в записи приёма после беседы.</p></section><DoctorReminders emailVerified={!!user.email_verified_at}/><AccountSettings user={user}/></>;
  const filtered=patients.filter(p=>p.name.toLocaleLowerCase('ru').includes(search.trim().toLocaleLowerCase('ru'))&&(listFilter==='all'||(listFilter==='attention'?attentionFlags(p,today()).length>0:listFilter==='new'?(p.pending_reports+p.pending_assessments+(p.pending_practices??0)+(p.pending_goals??0))>0:!p.count)));
