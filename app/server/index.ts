@@ -3,6 +3,8 @@ import { verificationRoutes } from './verification';
 import { directoryRoutes } from './directory';
 import { bookingRoutes } from './booking';
 import { cardRoutes } from './card';
+import { inboxRoutes } from './inbox';
+import { queueNotice, sendNow } from './notices';
 import { adminRoutes } from './admin';
 import {profileDocumentRoutes} from './profile-documents';
 import {profileRoutes,profileVideoRoutes,doctorProfile,patientProfile} from './profiles';
@@ -166,9 +168,12 @@ app.post('/api/patient/accept', async c => {
   const statements=[insert.bind(id,acceptedAt,token,Date.now()),db.prepare('DELETE FROM plans WHERE patient_id=? AND changes()=1').bind(id),db.prepare('DELETE FROM drafts WHERE patient_id=? AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(id,id,invite.doctor_id,acceptedAt),db.prepare('UPDATE invites SET used=1,raw=NULL WHERE token=? AND used=0 AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(token,id,invite.doctor_id,acceptedAt)];
   const result=await db.batch(statements);
   if(!result[0].meta.changes)return c.json({error:'Приглашение уже использовано. Попросите врача создать новое.'},409);
-  await logAction(db,id,'grant_access',invite.doctor_id); return c.json({ ok:true });
+  await logAction(db,id,'grant_access',invite.doctor_id);
+  await queueNotice(db,`link:${id}:accepted:${acceptedAt}`,invite.doctor_id,'Пациент принял приглашение. Его записи и карточка доступны в кабинете.','/#/patients',acceptedAt);
+  await sendNow(db,c.env);
+  return c.json({ ok:true });
 });
-app.post('/api/patient/revoke', async c => { const db=database(c.env),id=c.get('user').id; await db.batch([db.prepare('UPDATE links SET revoked_at=? WHERE patient_id=? AND revoked_at IS NULL').bind(Date.now(),id),db.prepare('DELETE FROM plans WHERE patient_id=?').bind(id)]); await logAction(db,id,'revoke_access',id); return c.json({ ok:true }); });
+app.post('/api/patient/revoke', async c => { const db=database(c.env),id=c.get('user').id; const previous=await one<{doctor_id:string}>(db,'SELECT doctor_id FROM links WHERE patient_id=? AND revoked_at IS NULL',id); await db.batch([db.prepare('UPDATE links SET revoked_at=? WHERE patient_id=? AND revoked_at IS NULL').bind(Date.now(),id),db.prepare('DELETE FROM plans WHERE patient_id=?').bind(id)]); await logAction(db,id,'revoke_access',id); if(previous){await queueNotice(db,`link:${id}:revoked:${Date.now()}`,previous.doctor_id,'Пациент отозвал доступ к записям и карточке.','/#/patients');await sendNow(db,c.env);} return c.json({ ok:true }); });
 app.use('/api/doctor/*', async(c,next) => { if(c.get('user').role!=='doctor') return c.json({ error:'Этот раздел доступен врачу.' },403); await next(); });
 app.get('/api/doctor/patients', async c => c.json({ patients:await many(database(c.env),'SELECT u.id,u.name,(SELECT date FROM checkins WHERE patient_id=u.id ORDER BY date DESC LIMIT 1) AS last_date,(SELECT mood FROM checkins WHERE patient_id=u.id ORDER BY date DESC LIMIT 1) AS last_mood,(SELECT count(*) FROM checkins WHERE patient_id=u.id) AS count,(SELECT count(*) FROM reports WHERE patient_id=u.id AND doctor_id=l.doctor_id AND reviewed_at IS NULL) AS pending_reports,(SELECT count(*) FROM assessments WHERE patient_id=u.id AND doctor_id=l.doctor_id AND completed_at IS NOT NULL AND reviewed_at IS NULL) AS pending_assessments,(SELECT count(*) FROM assessments WHERE patient_id=u.id AND doctor_id=l.doctor_id AND kind=\'phq9\' AND completed_at IS NOT NULL AND reviewed_at IS NULL AND json_extract(answers,\'$[8]\')>0) AS pending_safety,(SELECT count(*) FROM practices WHERE patient_id=u.id AND (reviewed_at IS NULL OR reviewer_id IS NULL OR reviewer_id!=l.doctor_id)) AS pending_practices,(SELECT count(*) FROM goal_logs WHERE patient_id=u.id AND (reviewed_at IS NULL OR reviewer_id IS NULL OR reviewer_id!=l.doctor_id)) AS pending_goals ,(SELECT count(*) FROM sos_events WHERE patient_id=u.id AND acknowledged_at IS NULL) AS open_sos FROM links l JOIN users u ON u.id=l.patient_id WHERE l.doctor_id=? AND l.revoked_at IS NULL ORDER BY open_sos DESC,pending_safety DESC,(pending_reports+pending_assessments+pending_practices+pending_goals) DESC,u.name',c.get('user').id) }));
 app.get('/api/doctor/invites', async c => {
@@ -195,7 +200,7 @@ app.delete('/api/doctor/invites/:id', async c => {
 app.use('/api/doctor/patients/:id/*', async(c,next) => { const link=await one(database(c.env),'SELECT patient_id FROM links WHERE patient_id=? AND doctor_id=? AND revoked_at IS NULL',c.req.param('id'),c.get('user').id); if(!link) return c.json({ error:'Доступ к пациенту отсутствует или отозван.' },403); await next(); });
 doctorCareRoutes(app);
 surveyRoutes(app);
-verificationRoutes(app);directoryRoutes(app);bookingRoutes(app);cardRoutes(app);
+verificationRoutes(app);directoryRoutes(app);bookingRoutes(app);cardRoutes(app);inboxRoutes(app);
 adminRoutes(app);
 app.get('/api/doctor/patients/:id/data', async c => { const id=c.req.param('id'),db=database(c.env); await logAction(db,c.get('user').id,'view_patient',id); await run(db,'UPDATE sos_events SET acknowledged_at=?,acknowledged_by=? WHERE patient_id=? AND acknowledged_at IS NULL',Date.now(),c.get('user').id,id); const data=await patientData(db,id); const patient=await one<{id:string;name:string}>(db,'SELECT id,name FROM users WHERE id=?',id); const reports=await many<{payload:string}>(db,'SELECT * FROM reports WHERE patient_id=? AND doctor_id=? ORDER BY (reviewed_at IS NULL) DESC,created_at DESC LIMIT 30',id,c.get('user').id); return c.json({ ...data,draft:null,reports:reports.map(({payload,...row})=>({...row,...JSON.parse(payload)})),patient:{...patient,profile:await patientProfile(db,id)} }); });
 app.post('/api/doctor/patients/:id/reports/:reportId/review', async c => {

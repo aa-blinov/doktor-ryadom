@@ -3,8 +3,20 @@ import {settingsSchema,defaultSettings} from '../src/shared';
 import {zoneDateTime} from '../src/timezone';
 import {allowedPushEndpoint} from './notifications';
 import type {createServices} from './jobs';
+import type {Env} from './env';
 
 const HOUR=3600000, HOLD_MS=24*HOUR;
+
+// Any event that a person should see in their inbox goes through here. Keys are unique per event and person.
+export async function queueNotice(db:D1Database,key:string,userId:string,body:string,url='/#/today',now=Date.now()){
+ await run(db,'INSERT OR IGNORE INTO notices (key,user_id,body,url,created_at) VALUES (?,?,?,?,?)',key,userId,body,url,now);
+}
+
+// Delivers what is queued right away, after a change. The minute job stays as the retry path.
+export async function sendNow(db:D1Database,env:Pick<Env,'MAIL'|'PUSH_SEND'>){
+ try{await deliverQueued(db,{publicKey:'',mail:env.MAIL,push:env.PUSH_SEND??(async()=>{})} as unknown as Parameters<typeof deliverQueued>[1],Date.now());}
+ catch{console.error('Notice delivery failed');}
+}
 export type VisitEvent='requested'|'confirmed'|'declined'|'cancelled_by_doctor'|'cancelled_by_patient'|'expired'|'remind24'|'remind1';
 
 // Each visit event produces a message for one or both sides. Texts carry no diagnosis, no reason and no patient name.
@@ -49,7 +61,8 @@ export async function deliverQueued(db:D1Database,services:ReturnType<typeof cre
   if(!claimed.meta.changes)continue;
   const settingsRow=await one<{data:string}>(db,'SELECT data FROM settings WHERE user_id=?',n.user_id);
   const settings=settingsSchema.parse(settingsRow?JSON.parse(settingsRow.data):defaultSettings);
-  if(!settings.visitNotifications)continue;
+  const isVisit=n.key.startsWith('visit:');
+  if(isVisit&&!settings.visitNotifications)continue;
   const subscriptions=await many<{endpoint:string;data:string}>(db,'SELECT endpoint,data FROM push_subscriptions WHERE user_id=?',n.user_id);
   for(const sub of subscriptions){
    if(!allowedPushEndpoint(sub.endpoint))continue;
@@ -57,6 +70,6 @@ export async function deliverQueued(db:D1Database,services:ReturnType<typeof cre
    catch(e){const status=(e as {statusCode?:number}).statusCode;if(status===404||status===410)await run(db,'DELETE FROM push_subscriptions WHERE endpoint=?',sub.endpoint);}
   }
   const user=await one<{email:string;email_verified_at:string|null}>(db,'SELECT email,email_verified_at FROM users WHERE id=?',n.user_id);
-  if(user?.email_verified_at&&services.mail){try{await services.mail.send({to:user.email,subject:'Рядом: запись к врачу',text:`${n.body}\n${process.env.PUBLIC_ORIGIN||'https://doktor-ryadom.duckdns.org'}/`});}catch{console.error('Visit email failed');}}
+  if(user?.email_verified_at&&services.mail){try{await services.mail.send({to:user.email,subject:'Рядом: новое уведомление',text:`У вас новое уведомление в Рядом. Откройте приложение, чтобы его прочитать. Письмо не содержит сведений о приёме или здоровье.\n${process.env.PUBLIC_ORIGIN||'https://doktor-ryadom.duckdns.org'}/`});}catch{console.error('Visit email failed');}}
  }
 }
