@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { binaryUploadLimit } from './upload-limits';
+import { requestBodyLimit } from './upload-limits';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import app from './index';
@@ -29,7 +29,8 @@ const assets={fetch:async(request:Request)=>{
 const server=createServer(async(incoming,outgoing)=>{
  try{
   const chunks:Buffer[]=[];let length=0;
-  for await(const chunk of incoming){const bytes=Buffer.from(chunk);length+=bytes.length;if(length>((binaryUploadLimit(incoming.method||'',(incoming.url||'').split('?')[0],String(incoming.headers['content-type']||''))||incoming.method==='POST'&&/^\/api\/patient\/assessments\/[^/?]+(?:\?.*)?$/.test(incoming.url??'')?65536:incoming.method==='POST'&&incoming.url==='/api/profile/documents'?7340032:incoming.method==='PUT'&&incoming.url==='/api/profile/photo'?200000:16000))){outgoing.writeHead(413,{'Content-Type':'application/json'});outgoing.end(JSON.stringify({error:'Слишком большой запрос'}));return;}chunks.push(bytes);}
+  const limit=requestBodyLimit(incoming.method||'',(incoming.url||'').split('?')[0],String(incoming.headers['content-type']||''));
+  for await(const chunk of incoming){const bytes=Buffer.from(chunk);length+=bytes.length;if(length>limit){outgoing.writeHead(413,{'Content-Type':'application/json'});outgoing.end(JSON.stringify({error:'Слишком большой запрос'}));return;}chunks.push(bytes);}
   const headers=new Headers();for(const [name,value] of Object.entries(incoming.headers)){if(value!==undefined)headers.set(name,Array.isArray(value)?value.join(','):value);}
   // The service has no host port. Caddy sets X-Real-IP; never trust a free-form value.
   const clientIp=(headers.get('X-Real-IP')||incoming.socket.remoteAddress||'local').trim();
