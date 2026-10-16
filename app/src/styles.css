@@ -905,3 +905,4 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .sidebar .account-meta strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset;-webkit-box-orient:unset;max-width:100%}
 .totp-secret{font-size:20px;font-weight:700;letter-spacing:.12em;margin:var(--sp-3) 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.account-block>p+a{margin-bottom:var(--sp-4)}
 .account-block>p+form{margin-top:var(--sp-3)}
+@media(max-width:700px){.public-footer a,.footer-brand{display:inline-flex;align-items:center;min-height:44px}}

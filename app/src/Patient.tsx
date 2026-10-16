@@ -129,7 +129,7 @@ function Checkin({data,onSaved}:{data:PatientData;onSaved:()=>Promise<void>}){
  // One question per screen. Someone filling this in is often not in a good state, and a wall of
  // five scales with three save-shaped buttons is a lot to hold in the head at once.
  const steps:Step[]=[
-  {key:'mood',title:'Самочувствие',description:'Как вы сегодня?',type:'mood'},
+  {key:'mood',title:'Самочувствие',description:'Как вы себя чувствуете?',type:'mood'},
   ...(plan.anxiety?[{key:'anxiety',title:'Тревога',description:'Насколько вы тревожитесь сегодня?',type:'choices'} as Step]:[]),
   ...(plan.energy?[{key:'energy',title:'Энергия',description:'Как ваша энергия сегодня?',type:'choices'} as Step]:[]),
   ...(plan.functioning?[{key:'functioning',title:'Обычные дела',description:'Как справляетесь с обычными делами?',type:'choices'} as Step]:[]),
