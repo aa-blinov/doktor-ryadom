@@ -10,7 +10,7 @@ type Doctor={id:string;name:string;email:string;created_at:number;blocked_at:num
 type Patient={id:string;created_at:number;blocked_at:number|null};
 const requestText:Record<string,string>={pending:'Заявка на проверке',needs_info:'Нужны уточнения',rejected:'Заявка отклонена',approved:'Подтверждён'};
 export function AdminArea({route,user}:{route:string;user:User}){
- if(route==='/settings')return <><PageHead title="Аккаунт администратора" description="Пароль и доступ к кабинету"/><AccountSettings user={user}/></>;
+ if(route==='/settings')return <><PageHead title="Аккаунт администратора" description="Пароль и доступ к кабинету"/><p className="page-links"><a className="text-link" href="#/admin/audit">Журнал действий →</a></p><AccountSettings user={user}/></>;
  if(route==='/admin/doctors')return <AdminDoctors/>;
  if(route==='/admin/patients')return <AdminPatients/>;
  if(route==='/admin/reviews')return <AdminReviews/>;
