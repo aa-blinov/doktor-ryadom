@@ -42,7 +42,7 @@ it('every patient has a card from registration; the archive holds data, photos a
  const files=readZip(Buffer.from(await zip.arrayBuffer()));
  expect([...files.keys()]).toContain('data.json');
  expect([...files.keys()]).toContain('README.txt');
- const data=JSON.parse(files.get('data.json')!.toString('utf8'));
+ const data=JSON.parse(new TextDecoder().decode(files.get('data.json')!));
  expect(data.data.patient_cards).toHaveLength(1);
 });
 

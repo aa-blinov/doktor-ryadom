@@ -8,7 +8,7 @@ it('writes a ZIP whose entries read back byte for byte, with valid CRCs',()=>{
  const files=readZip(zip);
  expect([...files.keys()]).toEqual(['data.json','media/фото.jpg']);
  expect(files.get('media/фото.jpg')).toEqual(photo);
- expect(files.get('data.json')!.toString('utf8')).toBe('{"ок":true}');
+ expect(new TextDecoder().decode(files.get('data.json')!)).toBe('{"ок":true}');
 });
 
 it('decodes data URLs to bytes and keeps plain text as UTF-8',()=>{

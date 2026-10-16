@@ -2,7 +2,8 @@ import {crc32} from '../../server/zip';
 
 // Reads a stored (uncompressed) ZIP the way a tool would: end record, central directory, then each local entry.
 // Checks every CRC, so a broken archive fails here rather than on someone's computer.
-export function readZip(buf:Buffer):Map<string,Buffer>{
+export function readZip(input:Uint8Array):Map<string,Buffer>{
+ const buf=Buffer.from(input);
  const eocd=buf.lastIndexOf(Buffer.from([0x50,0x4b,0x05,0x06]));
  if(eocd<0)throw new Error('no end record');
  const count=buf.readUInt16LE(eocd+10);
