@@ -7,14 +7,15 @@ import {ErrorBox,PageHead,PageLoader} from './ui';
 
 type Card={
  patient:{name:string;birthDate:string|null;about:string};
- history:{at:number;type:'visit'|'assessment'|'medication'|'goal';title:string;detail:string}[];
+ history:{at:number;type:'visit'|'assessment'|'medication'|'goal'|'entry';title:string;detail:string}[];
+ entries:{id:string;kind:string;kindLabel:string;body:string;occurredOn:string;authorName:string;withdrawn:boolean;withdrawReason:string|null}[];
  medications:{id:string;name:string;instructions:string;asNeeded:boolean;startDate:string;endDate:string|null;doctorName:string}[];
  goals:{id:string;title:string;reason:string;createdAt:number;closedAt:number|null}[];
  assessments:{id:string;title:string;score:number|null;completedAt:number;doctorName:string}[];
  note:string;
 };
 const dateText=(ms:number)=>new Date(ms).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Almaty'});
-const kindLabel:Record<string,string>={visit:'Приём',assessment:'Опросник',medication:'Препарат',goal:'Цель'};
+const kindLabel:Record<string,string>={visit:'Приём',assessment:'Опросник',medication:'Препарат',goal:'Цель',entry:'Запись врача'};
 
 // The patient's own card: profile, treatment history, medications, goals and questionnaires.
 export function PatientCard(){
@@ -37,6 +38,11 @@ export function PatientCard(){
     <h2 id="card-history">История лечения</h2>
     {!card.history.length?<p className="muted">Пока пусто. Здесь появятся приёмы, опросники и назначения.</p>:null}
     <ol className="card-timeline">{card.history.map((e,i)=><li key={i} className={`card-event card-event-${e.type}`}><span className="muted small">{dateText(e.at)} · {kindLabel[e.type]}</span><strong>{e.title}</strong>{e.detail?<p className="muted small">{e.detail}</p>:null}</li>)}</ol>
+   </section>
+   <section className="doctor-section" aria-labelledby="card-entries">
+    <h2 id="card-entries">Записи врачей</h2>
+    {!card.entries.length?<p className="muted">Врач пока не добавлял записей.</p>:null}
+    {card.entries.map(e=><article className={e.withdrawn?'request-row card-entry withdrawn':'request-row card-entry'} key={e.id}><div><strong>{e.kindLabel}</strong><p className="muted small">{e.occurredOn} · {e.authorName}</p>{e.withdrawn?<p className="muted small">Отозвано: {e.withdrawReason}</p>:<p className="care-prose">{e.body}</p>}</div></article>)}
    </section>
    <section className="doctor-section" aria-labelledby="card-meds">
     <h2 id="card-meds">Препараты</h2>

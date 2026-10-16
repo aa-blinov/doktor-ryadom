@@ -4,7 +4,7 @@ import type {Env} from './env';
 import type {User} from '../src/shared';
 import {one,many,run,logAction,database} from './db';
 import {storedProfile} from './profiles';
-import {queueVisitEvent,type VisitEvent} from './notices';
+import {queueVisitEvent,sendNow,type VisitEvent} from './notices';
 import {viewerZone} from './zones';
 import {zonedToUtc,DEFAULT_TIMEZONE} from '../src/timezone';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
@@ -108,7 +108,7 @@ export function bookingRoutes(app:App){
    if(!r.meta.changes)return c.json({error:'Заявка уже обработана или не найдена'},409);
    await logAction(db,doctor,`appointment_${action}`,id);
    const event:VisitEvent=action==='confirm'?'confirmed':action==='decline'?'declined':'cancelled_by_doctor';
-   await queueVisitEvent(db,id,event);
+   await queueVisitEvent(db,id,event); await sendNow(db,c.env);
    return c.json({ok:true});
   });
  }
@@ -150,7 +150,7 @@ export function bookingRoutes(app:App){
   }
   if(!r.meta.changes)return c.json({error:SLOT_TAKEN},409);
   await logAction(db,patient,'appointment_request',id);
-  await queueVisitEvent(db,id,'requested');
+  await queueVisitEvent(db,id,'requested'); await sendNow(db,c.env);
   return c.json({id,status:'pending'},201);
  });
 
@@ -167,7 +167,7 @@ export function bookingRoutes(app:App){
   const db=database(c.env),patient=c.get('user').id;
   const r=await run(db,"UPDATE appointment_requests SET status='cancelled',decided_at=? WHERE id=? AND patient_id=? AND status IN ('pending','confirmed')",Date.now(),c.req.param('id'),patient);
   if(!r.meta.changes)return c.json({error:'Запись уже отменена или не найдена'},409);
-  await queueVisitEvent(db,c.req.param('id'),'cancelled_by_patient');
+  await queueVisitEvent(db,c.req.param('id'),'cancelled_by_patient'); await sendNow(db,c.env);
   return c.json({ok:true});
  });
 }

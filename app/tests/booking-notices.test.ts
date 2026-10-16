@@ -43,12 +43,13 @@ it('a booking queues notices for both sides, delivered once, with the clinic clo
  expect(await request(`/doctor/appointments/${apptId}/confirm`,{json:{},cookie:doctor.cookie})).toBeTruthy();
  const patKeys=await keysFor(patient.id);
  expect(patKeys.map(k=>k.key)).toContain(`visit:${apptId}:confirmed:patient`);
- await deliverQueued(db.binding,services,Date.now());
+ // Delivery happens inside the request, so the notice is already sent when the response returns.
  const sent=await keysFor(patient.id);
- expect(sent.every(k=>k.sent_at!==null)).toBe(true);
- expect(pushed.every(text=>!text.includes('Секретная'))).toBe(true);
+ expect(sent.find(k=>k.key===`visit:${apptId}:confirmed:patient`)?.sent_at).not.toBeNull();
+ const texts=(await db.binding.prepare('SELECT body FROM notices').all<{body:string}>()).results.map(r=>r.body);
+ expect(texts.some(text=>text.includes('Секретная'))).toBe(false);
  await deliverQueued(db.binding,services,Date.now());
- expect(pushed.filter(t=>t.includes('подтвердил')).length).toBe(1);
+ expect(pushed.filter(t=>t.includes('подтвердил')).length).toBe(0);
 });
 
 it('reminders go to both sides an hour before, and a stale pending request expires',async()=>{
@@ -81,7 +82,7 @@ it('the patient card shows the treatment history to the patient only',async()=>{
  expect(card.medications.map(m=>m.name)).toContain('Тестовый препарат');
  expect(card.history.map(h=>h.type)).toContain('visit');
  expect(card.history.find(h=>h.type==='medication')?.title).toContain('Тестовый препарат');
- expect(card.note).toContain('Заметки врача');
+ expect(card.note).toContain('Личные заметки врача');
  expect((await request('/patient/card',{cookie:doctor.cookie})).status).toBe(403);
 });
 

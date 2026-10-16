@@ -3,6 +3,7 @@ import {z} from 'zod';
 import type {Env} from './env';
 import {specialtyKinds,type User} from '../src/shared';
 import {one,many,run,logAction,database} from './db';
+import {queueNotice,sendNow} from './notices';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
 const requestSchema=z.object({
  kind:z.enum(specialtyKinds),
@@ -30,6 +31,9 @@ export function verificationRoutes(app:App){
   if(open){await run(db,"UPDATE specialist_requests SET kind=?,specialty=?,license=?,city=?,note=?,status='pending',updated_at=? WHERE id=?",e.kind,e.specialty,e.license,e.city,e.note,now,open.id);}
   else{await run(db,"INSERT INTO specialist_requests (id,doctor_id,kind,specialty,license,city,note,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'pending',?,?)",crypto.randomUUID(),user.id,e.kind,e.specialty,e.license,e.city,e.note,now,now);}
   await logAction(db,user.id,'submit_specialist_request',user.id);
+  const latest=await one<{id:string}>(db,'SELECT id FROM specialist_requests WHERE doctor_id=? ORDER BY updated_at DESC LIMIT 1',user.id);
+  for(const admin of await many<{id:string}>(db,"SELECT id FROM users WHERE role='admin'"))await queueNotice(db,`verif:${latest?.id}:${now}:admin:${admin.id}`,admin.id,'Новая заявка на проверку врача. Откройте раздел «Врачи».','/#/admin/doctors',now);
+  await sendNow(db,c.env);
   return c.json({ok:true});
  });
  app.get('/api/admin/verifications',async c=>{
@@ -60,6 +64,9 @@ export function verificationRoutes(app:App){
   // the audit join looks users up by subject id, so a request id showed no name at all.
   const decisionAction={approve:'approve_specialist',needs_info:'request_specialist_info',reject:'reject_specialist'}[decision]!;
   await logAction(db,admin,decisionAction,req.doctor_id);
+  const outcome={approve:'Профиль подтверждён. Теперь вы в каталоге врачей.',reject:'Заявка на проверку отклонена. Откройте профиль, чтобы посмотреть комментарий.',needs_info:'Администратор просит уточнить данные в заявке. Откройте профиль.'} as Record<string,string>;
+  await queueNotice(db,`verif:${c.req.param('id')}:decision:${now}:${req.doctor_id}`,req.doctor_id,outcome[decision]??'Решение по заявке на проверку изменилось. Откройте профиль.','/#/profile',now);
+  await sendNow(db,c.env);
   const doctor=await one<{email:string;email_verified_at:number|null}>(db,'SELECT email,email_verified_at FROM users WHERE id=?',req.doctor_id);
   const mail=c.env.MAIL;
   if(mail&&doctor?.email_verified_at){
