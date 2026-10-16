@@ -11,7 +11,7 @@ type App=Hono<{Bindings:Env;Variables:{user:User}}>;
 
 export const CARD_KINDS=['visit_summary','diagnosis','treatment','referral','other'] as const;
 const KIND_LABEL:Record<string,string>={visit_summary:'Итоги приёма',diagnosis:'Диагноз',treatment:'Назначение и план лечения',referral:'Направление',other:'Запись'};
-const entrySchema=z.object({kind:z.enum(CARD_KINDS),body:z.string().trim().min(1,'Напишите текст записи').max(4000,'Запись длиннее 4000 символов'),occurredOn:z.string().regex(/^\d{4}-\d{2}-\d{2}$/,'Укажите дату')});
+const entrySchema=z.object({kind:z.enum(CARD_KINDS),body:z.string().trim().min(1,'Напишите текст записи').max(4000,'Запись длиннее 4000 символов'),occurredOn:z.string().regex(/^\d{4}-\d{2}-\d{2}$/,'Укажите дату').refine(d=>d<=new Date(Date.now()+86400000).toISOString().slice(0,10),'Дата записи не может быть в будущем')});
 const withdrawSchema=z.object({reason:z.string().trim().min(1,'Напишите причину отзыва').max(500,'Причина короче 500 символов')});
 
 type EntryRow={id:string;patient_id:string;author_id:string;author_name:string;kind:string;body:string;occurred_on:string;created_at:number;withdrawn_at:number|null;withdraw_reason:string|null};
@@ -35,7 +35,7 @@ export function cardRoutes(app:App){
   const assessmentTitle=(kind:string,definition:string|null)=>definition?JSON.parse(definition).title??'Авторский опрос':assessmentContent[standardKind(kind as Parameters<typeof standardKind>[0])].title;
   type Event={at:number;type:'visit'|'assessment'|'medication'|'goal'|'entry';title:string;detail:string};
   const history:Event[]=[
-   ...visits.map(v=>({at:v.starts_at,type:'visit' as const,title:`Приём у врача: ${v.doctor_name}, ${zoneDateTime(v.starts_at,v.patient_tz)}`,detail:({confirmed:'подтверждён',pending:'ждёт ответа врача',declined:'врач не смог принять',cancelled:'отменён'} as Record<string,string>)[v.status]??v.status})),
+   ...visits.map(v=>({at:v.starts_at,type:'visit' as const,title:`Приём у врача: ${v.doctor_name}, ${zoneDateTime(v.starts_at,v.patient_tz)}`,detail:v.status==='confirmed'&&v.starts_at>Date.now()?'предстоит':({confirmed:'подтверждён',pending:'ждёт ответа врача',declined:'врач не смог принять',cancelled:'отменён'} as Record<string,string>)[v.status]??v.status})),
    ...assessments.map(a=>({at:a.completed_at,type:'assessment' as const,title:assessmentTitle(a.kind,a.definition),detail:a.score===null?'Ответы сохранены':`Общий балл ${a.score}. Заполнил(а) по назначению: ${a.doctor_name}`})),
    ...meds.map(m=>({at:m.created_at,type:'medication' as const,title:`Назначен препарат: ${m.name}`,detail:`${m.doctor_name}${m.as_needed?', по необходимости':''}. С ${m.start_date}${m.end_date?` по ${m.end_date}`:''}`})),
    ...goals.flatMap(g=>[{at:g.created_at,type:'goal' as const,title:`Цель: ${g.title}`,detail:g.reason},...(g.closed_at?[{at:g.closed_at,type:'goal' as const,title:`Цель закрыта: ${g.title}`,detail:''}]:[])]),

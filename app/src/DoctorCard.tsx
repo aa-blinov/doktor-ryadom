@@ -34,7 +34,7 @@ export function DoctorPatientCard({patientId}:{patientId:string}){
    <h3>Новая запись</h3>
    <div className="directory-search">
     <NativeSelect label="Тип записи" value={kind} onChange={e=>setKind(e.currentTarget.value)} data={KINDS}/>
-    <TextInput type="date" label="Дата" value={occurredOn} onChange={e=>setOccurredOn(e.currentTarget.value)}/>
+    <TextInput type="date" label="Дата" description="Не позже сегодняшнего дня" max={todayIso()} value={occurredOn} onChange={e=>setOccurredOn(e.currentTarget.value)}/>
    </div>
    <Textarea label="Текст записи" description="Только то, что нужно для ведения пациента. До 4000 символов" value={body} onChange={e=>setBody(e.currentTarget.value)} maxLength={4000} minRows={3}/>
    {saved?<p role="status" className="muted small">{saved}</p>:null}
@@ -47,7 +47,7 @@ export function DoctorPatientCard({patientId}:{patientId:string}){
      <strong>{e.kindLabel}</strong><span className="muted small"> · {e.occurredOn} · {e.authorName}{e.mine?' (вы)':''}</span>
      {e.withdrawn?<p className="muted small">Отозвано: {e.withdrawReason}</p>:<p className="care-prose">{e.body}</p>}
      {e.mine&&!e.withdrawn&&withdrawing!==e.id?<Button size="xs" variant="subtle" onClick={()=>setWithdrawing(e.id)}>Отозвать запись</Button>:null}
-     {withdrawing===e.id?<div className="directory-search">
+     {withdrawing===e.id?<div className="card-withdraw">
       <TextInput label="Причина отзыва" value={reason} onChange={ev=>setReason(ev.currentTarget.value)} maxLength={500}/>
       <div className="connect-actions"><Button color="red" loading={busy} disabled={!reason.trim()} onClick={()=>void withdraw(e.id)}>Отозвать</Button><Button variant="default" onClick={()=>setWithdrawing(null)}>Отмена</Button></div>
      </div>:null}
