@@ -1,8 +1,5 @@
 import {afterAll,expect,it} from 'vitest';
-import {execFileSync} from 'node:child_process';
-import {mkdtempSync,writeFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {readZip} from './helpers/zip-read';
 import app from '../server/index';
 import {createDatabase} from './db-adapter';
 const db=createDatabase(),origin='https://factor.test',password='factor-test-password-long';
@@ -42,13 +39,10 @@ it('every patient has a card from registration; the archive holds data, photos a
  const zip=await request('/account/export.zip',{cookie:patient.cookie});
  expect(zip.status).toBe(200);
  expect(zip.headers.get('content-type')).toBe('application/zip');
- const file=join(mkdtempSync(join(tmpdir(),'factor-zip-')),'archive.zip');
- writeFileSync(file,Buffer.from(await zip.arrayBuffer()));
- expect(execFileSync('unzip',['-tq',file]).toString()).toContain('No errors');
- const listing=execFileSync('unzip',['-Z1',file]).toString();
- expect(listing).toContain('data.json');
- expect(listing).toContain('README.txt');
- const data=JSON.parse(execFileSync('unzip',['-p',file,'data.json']).toString());
+ const files=readZip(Buffer.from(await zip.arrayBuffer()));
+ expect([...files.keys()]).toContain('data.json');
+ expect([...files.keys()]).toContain('README.txt');
+ const data=JSON.parse(files.get('data.json')!.toString('utf8'));
  expect(data.data.patient_cards).toHaveLength(1);
 });
 
