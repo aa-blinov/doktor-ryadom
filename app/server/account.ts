@@ -109,8 +109,8 @@ export function accountRoutes(app:App){
  });
  app.post('/api/account/logout-others',async c=>{await run(database(c.env),'DELETE FROM sessions WHERE user_id=? AND token<>?',c.get('user').id,await digest(getCookie(c,'ryadom_session')||''));return c.json({ok:true});});
  app.get('/api/account/export',async c=>{
-  const id=c.get('user').id,db=database(c.env),tables=['goals','goal_logs','survey_templates','profile_documents','doctor_codes','profiles','settings','drafts','checkins','checkin_revisions','practices','assessments','followups','medications','medication_logs','experiences','reports','plans'];
-  const rows=await Promise.all(tables.map(t=>many(db,`SELECT * FROM ${t} WHERE ${t==='survey_templates'?'doctor_id':['settings','profiles','doctor_codes','profile_documents'].includes(t)?'user_id':'patient_id'}=?`,id)));
+  const id=c.get('user').id,db=database(c.env),tables=['goals','goal_logs','survey_templates','profile_documents','doctor_codes','profiles','settings','drafts','checkins','checkin_revisions','practices','assessments','followups','medications','medication_logs','experiences','reports','plans','patient_cards','card_entries','appointment_requests','notices'];
+  const rows=await Promise.all(tables.map(t=>many(db,`SELECT * FROM ${t} WHERE ${t==='survey_templates'?'doctor_id':['settings','profiles','doctor_codes','profile_documents','notices'].includes(t)?'user_id':'patient_id'}=?`,id)));
   return c.json({schema:1,exportedAt:new Date().toISOString(),account:c.get('user'),data:Object.fromEntries(tables.map((t,i)=>[t,rows[i]]))},200,{'Content-Disposition':'attachment; filename="ryadom-data.json"'});
  });
  app.delete('/api/account',async c=>{
