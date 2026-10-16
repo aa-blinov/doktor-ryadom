@@ -10,3 +10,12 @@ export function binaryUploadLimit(method:string,path:string,contentType:string):
  if(/^\/api\/doctor\/practices\/[^/]+\/media\/video$/.test(path)&&VIDEO_TYPES.includes(type))return 50*MB;
  return null;
 }
+// Byte cap for the Node adapter, which sees the raw request before Hono. Binary routes first, then the JSON-sized caps.
+export function requestBodyLimit(method:string,path:string,contentType:string):number{
+ const binary=binaryUploadLimit(method,path,contentType);
+ if(binary!==null)return binary;
+ if(method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(path))return 65536;
+ if(method==='POST'&&path==='/api/profile/documents')return 7*MB;
+ if(method==='PUT'&&path==='/api/profile/photo')return 200000;
+ return 16000;
+}

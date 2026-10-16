@@ -34,7 +34,7 @@ export type Report = { id: string; doctor_id: string; from_date: string; to_date
 export type CustomPractice={id:string;title:string;subtitle:string;minutes:number;category:string;basis:string;description:string;steps:{title:string;text:string}[];archived:boolean;photoUrl:string|null;videoUrl:string|null};
 export type PatientData = { lastSosAt?: number | null; entriesTruncated?: boolean; customPractices?: CustomPractice[]; reports: Report[]; entries: Entry[]; practices: PracticeLog[]; plan: Plan; settings: Settings; doctor: { id: string; name: string;profile?:DoctorProfile } | null;draft:CheckinDraft|null;assessments:Assessment[];followups:Followup[];medications:Medication[];medicationLogs:MedicationLog[];experiences:Experience[];goals?:Goal[];goalLogs?:GoalLog[] };
 export type PatientRow = { id: string; name: string; last_date: string | null; last_mood: number | null; count: number; pending_reports: number;pending_assessments:number;pending_safety?:number;pending_practices?:number;pending_goals?:number;open_sos?:number };
-// ponytail: рабочие пороги, утверждает психиатр. Настроение 1-2 это «Очень тяжело» и «Тяжело».
+// ponytail: рабочие пороги без клинического утверждения (не проверены психиатром). Настроение 1-2 это «Очень тяжело» и «Тяжело». Сверить до пилота.
 export const attentionRules={silentDays:3,lowMood:2};
 export function attentionFlags(p:PatientRow,todayDate:string){
  const flags:{key:string;label:string}[]=[];
