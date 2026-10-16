@@ -2,6 +2,7 @@ import {useSectionScroll} from './useSectionScroll';
 import {Goals} from './Goals';
 import {PracticeExperienceList} from './PracticeLibrary';
 import { DoctorDirectory, DoctorPage } from './DoctorDirectory';
+import { PatientCard } from './PatientCard';
 import { PracticeVisual } from './PracticeVisual';
 import {ProfileSettings,DoctorProfileDetails} from './ProfileSettings';
 import { useRefreshOnReturn } from './useRefreshOnReturn';
@@ -57,6 +58,7 @@ function patientScreen({route,data,user,reload,onLogout,themeLabel,onToggleTheme
  if(route.startsWith('/history')||route.startsWith('/practices/history')){const section=route==='/history/practices'?'practices':'checkins';const sectionSwitch=<SegmentedControl fullWidth mb="var(--sp-5)" value={section} onChange={v=>navigate(v==='practices'?'/history/practices':'/history')} data={[{label:'Отметки',value:'checkins'},{label:'Практики',value:'practices'}]}/>;return <>{section==='checkins'&&data.entriesTruncated?<p className="muted small history-truncated">Здесь показаны записи за последний год. Более ранние остаются в выгрузке у врача.</p>:null}{section==='practices'?<PageHead title="Ваша история" description="Практики, которые вы прошли, и ваши оценки"/>:null}{section==='practices'?sectionSwitch:null}{section==='practices'?<PracticeExperienceList data={data}/>:<><History entries={data.entries} switcher={sectionSwitch}/><AssessmentReview assessments={data.assessments} onSaved={reload}/></>}</>;}
  if(route==='/practices')return <PracticeLibrary data={data}/>;
  if(route==='/doctors')return <DoctorDirectory/>;
+  if(route==='/card')return <PatientCard/>;
  if(route.startsWith('/doctors/'))return <DoctorPage key={route.split('/')[2]} id={route.split('/')[2]} onChanged={reload}/>;
  if(route==='/doctor')return <section className="care-section doctor-page"><h1>Ваш врач</h1>{data.doctor?<><p><strong>{data.doctor.name}</strong></p><DoctorProfileDetails name={data.doctor.name} profile={data.doctor.profile}/><div className="doctor-page-actions"><Button variant="outline" onClick={()=>navigate('/plan')}>План врача</Button><Button variant="subtle" onClick={()=>navigate('/doctors')}>Каталог врачей</Button></div></>:<><p className="muted">Врач не подключён. Выберите специалиста в каталоге или подключитесь по приглашению.</p><div className="doctor-page-actions"><Button size="lg" onClick={()=>navigate('/doctors')}>Найти врача</Button><Button variant="outline" onClick={()=>navigate('/settings/connect')}>У меня есть приглашение</Button></div><Button variant="subtle" mt="var(--sp-4)" onClick={()=>navigate('/plan')}>План врача</Button></>}</section>;
  if(route==='/settings'||route==='/settings/connect')return <PatientSettings data={data} user={user} focusConnect={route==='/settings/connect'} onSaved={reload} onLogout={onLogout} themeLabel={themeLabel} onToggleTheme={onToggleTheme}/>;

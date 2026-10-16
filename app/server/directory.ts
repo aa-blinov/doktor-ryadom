@@ -4,6 +4,7 @@ import type {Env} from './env';
 import {specialtyKinds,type User} from '../src/shared';
 import {one,many,run,logAction,database} from './db';
 import {doctorProfile,storedProfile} from './profiles';
+import {viewerZone} from './zones';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
 
 const reviewSchema=z.object({rating:z.number().int().min(1).max(5),body:z.string().trim().max(1000).default('')});
@@ -14,7 +15,7 @@ const VERIFIED="u.role='doctor' AND u.specialist_verified_at IS NOT NULL AND u.b
 type Row={id:string;name:string;specialty_kind:string|null;city:string|null;rating:number|null;review_count:number};
 async function card(db:D1Database,row:Row){
  const {data,updated}=await storedProfile(db,row.id);
- return {id:row.id,name:row.name,kind:row.specialty_kind,city:row.city??'',price:data.price??null,visitFormat:data.visitFormat??'both',specialty:data.specialty??'',clinic:data.clinic??'',experienceYears:data.experienceYears??null,focusAreas:data.focusAreas??'',about:(data.about??'').slice(0,180),photoUrl:data.photo?`/api/profiles/${row.id}/photo?v=${updated}`:null,rating:row.rating===null?null:Math.round(row.rating*10)/10,reviewCount:row.review_count};
+ return {id:row.id,name:row.name,kind:row.specialty_kind,city:row.city??'',price:data.price??null,visitFormat:data.visitFormat??'both',timezone:data.timezone??'Asia/Almaty',specialty:data.specialty??'',clinic:data.clinic??'',experienceYears:data.experienceYears??null,focusAreas:data.focusAreas??'',about:(data.about??'').slice(0,180),photoUrl:data.photo?`/api/profiles/${row.id}/photo?v=${updated}`:null,rating:row.rating===null?null:Math.round(row.rating*10)/10,reviewCount:row.review_count};
 }
 const SELECT_DOCTOR=`SELECT u.id,u.name,u.specialty_kind,
  (SELECT r.city FROM specialist_requests r WHERE r.doctor_id=u.id AND r.status='approved' ORDER BY r.updated_at DESC LIMIT 1) AS city,
@@ -55,7 +56,7 @@ export function directoryRoutes(app:App){
   cards.sort(sorters[sort]??((a,b)=>b.reviewCount-a.reviewCount||a.name.localeCompare(b.name,'ru')));
   const total=cards.length,pageSize=12;
   const cities=[...new Set(rows.map(r=>r.city).filter((x):x is string=>!!x))].sort();
-  return c.json({doctors:cards.slice((page-1)*pageSize,page*pageSize),total,page,pageSize,cities});
+  return c.json({doctors:cards.slice((page-1)*pageSize,page*pageSize),total,page,pageSize,cities,viewerTimezone:await viewerZone(db,c.get('user').id)});
  });
 
  app.get('/api/directory/:id',async c=>{

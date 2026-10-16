@@ -5,11 +5,12 @@ import {api,errorText} from './api';
 import {navigate} from './App';
 import {Empty,ErrorBox,PageHead,formatDate, PageLoader} from './ui';
 import {specialtyLabels,type SpecialtyKind} from './shared';
-import {BookAppointment,MyAppointments,dateTimeText} from './Booking';
+import {BookAppointment,MyAppointments} from './Booking';
+import {zoneDateTime,DEFAULT_TIMEZONE} from './timezone';
 
 const kindFilters=[{label:'Все',value:'all'},{label:'Психологи',value:'psychologist'},{label:'Психотерапевты',value:'psychotherapist'},{label:'Психиатры',value:'psychiatrist'}] as const;
 
-type Card={id:string;name:string;kind:SpecialtyKind|null;city:string;specialty:string;clinic:string;experienceYears:number|null;focusAreas:string;about:string;photoUrl:string|null;rating:number|null;reviewCount:number;price:number|null;visitFormat:'online'|'offline'|'both';nextSlotAt?:number|null};
+type Card={id:string;name:string;kind:SpecialtyKind|null;city:string;specialty:string;clinic:string;experienceYears:number|null;focusAreas:string;about:string;photoUrl:string|null;rating:number|null;reviewCount:number;price:number|null;visitFormat:'online'|'offline'|'both';timezone:string;nextSlotAt?:number|null};
 type Review={id:string;rating:number;body:string;createdAt:number;author:string;hidden:boolean};
 type Detail={doctor:Card&{address:string;education:string;courses:string;workHistory:string;videoUrl:string|null};reviews:Review[];mine:{rating:number;body:string;hidden:boolean}|null;connection:{linkedToThis:boolean;linkedToOther:boolean;pendingRequestId:string|null}};
 
@@ -38,12 +39,12 @@ function Rating({card}:{card:Pick<Card,'rating'|'reviewCount'>}){
 }
 
 export function DoctorDirectory(){
- const [items,setItems]=useState<Card[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[cities,setCities]=useState<string[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ const [items,setItems]=useState<Card[]>([]),[viewerTz,setViewerTz]=useState(DEFAULT_TIMEZONE),[total,setTotal]=useState(0),[page,setPage]=useState(1),[cities,setCities]=useState<string[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [kind,setKind]=useState('all'),[query,setQuery]=useState(''),[city,setCity]=useState(''),[sort,setSort]=useState(''),[format,setFormat]=useState('all'),[maxPrice,setMaxPrice]=useState('0'),[free,setFree]=useState(false);
  const qs=(p:number)=>{const s=new URLSearchParams({page:String(p)});if(kind!=='all')s.set('kind',kind);if(query.trim())s.set('q',query.trim());if(city)s.set('city',city);if(sort)s.set('sort',sort);if(format!=='all')s.set('format',format);if(maxPrice!=='0')s.set('maxPrice',maxPrice);if(free)s.set('free','1');return s.toString();};
  const fetchPage=useCallback(async(p:number,append:boolean)=>{
   setError('');setLoading(true);
-  try{const r=await api<{doctors:Card[];total:number;cities:string[]}>(`/directory?${qs(p)}`);setItems(prev=>append?[...prev,...r.doctors]:r.doctors);setTotal(r.total);setPage(p);setCities(r.cities);}
+  try{const r=await api<{doctors:Card[];total:number;cities:string[];viewerTimezone:string}>(`/directory?${qs(p)}`);setViewerTz(r.viewerTimezone);setItems(prev=>append?[...prev,...r.doctors]:r.doctors);setTotal(r.total);setPage(p);setCities(r.cities);}
   catch(e){setError(errorText(e));}finally{setLoading(false);}
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[kind,query,city,sort,format,maxPrice,free]);
@@ -54,6 +55,7 @@ export function DoctorDirectory(){
   <button className="back-link" onClick={()=>navigate('/doctor')}><IconArrowLeft size={18}/>Мой врач</button>
   <PageHead title="Найти врача" description="Психологи, психотерапевты и психиатры, чью квалификацию проверил администратор"/>
   <MyAppointments/>
+  <div className="connect-actions"><Button variant="default" onClick={()=>navigate('/card')}>Моя карточка и история лечения</Button></div>
   <div className="directory-filters">
    <div className="kind-filter" role="group" aria-label="Специальность">
     {kindFilters.map(option=><button key={option.value} type="button" className={kind===option.value?'kind-chip selected':'kind-chip'} aria-pressed={kind===option.value} onClick={()=>setKind(option.value)}>{option.label}</button>)}
@@ -81,7 +83,7 @@ export function DoctorDirectory(){
     <p className="small doctor-card-price">{priceText(d.price)} · {formatText[d.visitFormat]}</p>
     {d.about?<p className="doctor-card-about">{d.about}{d.about.length>=180?'…':''}</p>:null}
     <Rating card={d}/>
-    <p className="small">{d.nextSlotAt?<strong>Ближайшая запись: {dateTimeText(d.nextSlotAt)}</strong>:<span className="muted">Свободного времени пока нет</span>}</p>
+    <p className="small">{d.nextSlotAt?<strong>Ближайшая запись: {zoneDateTime(d.nextSlotAt,viewerTz)}</strong>:<span className="muted">Свободного времени пока нет</span>}</p>
    </div>
   </a>)}</div>
   {items.length<total?<div className="connect-actions"><Button variant="default" loading={loading} onClick={()=>void fetchPage(page+1,true)}>Показать ещё</Button></div>:null}

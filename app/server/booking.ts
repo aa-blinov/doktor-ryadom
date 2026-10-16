@@ -3,10 +3,14 @@ import {z} from 'zod';
 import type {Env} from './env';
 import type {User} from '../src/shared';
 import {one,many,run,logAction,database} from './db';
+import {storedProfile} from './profiles';
+import {queueVisitEvent,type VisitEvent} from './notices';
+import {viewerZone} from './zones';
+import {zonedToUtc,DEFAULT_TIMEZONE} from '../src/timezone';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
 
-// Doctors and clinics in Kazakhstan work on Asia/Almaty, UTC+5 without daylight saving.
-const TZ='+05:00', DAY=86400000, MAX_GENERATE_DAYS=62, MAX_GENERATED=500, BOOK_AHEAD_DAYS=14, MAX_PENDING_PER_PATIENT=5;
+// Slots are entered in the clinic's own time zone (profile field), stored as instants.
+const DAY=86400000, MAX_GENERATE_DAYS=62, MAX_GENERATED=500, BOOK_AHEAD_DAYS=14, MAX_PENDING_PER_PATIENT=5;
 const SLOT_TAKEN='Этот слот уже занят или недоступен. Выберите другое время';
 const VERIFIED_DOCTOR="u.role='doctor' AND u.specialist_verified_at IS NOT NULL AND u.blocked_at IS NULL";
 
@@ -37,13 +41,14 @@ export function bookingRoutes(app:App){
   const db=database(c.env),doctor=c.get('user').id;
   const from=Number(c.req.query('from'))||Date.now(),to=Number(c.req.query('to'))||from+30*DAY;
   if(!(to>from)||to-from>MAX_GENERATE_DAYS*DAY)return c.json({error:'Выберите период не длиннее двух месяцев'},400);
-  const slots=await many<{id:string;starts_at:number;minutes:number;status:string;request_id:string|null;request_status:string|null;reason:string|null;patient_name:string|null}>(db,
-   `SELECT s.id,s.starts_at,s.minutes,s.status,r.id AS request_id,r.status AS request_status,r.reason,u.name AS patient_name
+  const slots=await many<{id:string;starts_at:number;minutes:number;tz:string;status:string;request_id:string|null;request_status:string|null;reason:string|null;patient_name:string|null}>(db,
+   `SELECT s.id,s.starts_at,s.minutes,s.tz,s.status,r.id AS request_id,r.status AS request_status,r.reason,u.name AS patient_name
     FROM doctor_slots s
     LEFT JOIN appointment_requests r ON r.slot_id=s.id AND r.status IN ('pending','confirmed')
     LEFT JOIN users u ON u.id=r.patient_id
     WHERE s.doctor_id=? AND s.starts_at>=? AND s.starts_at<? ORDER BY s.starts_at LIMIT 1000`,doctor,from,to);
-  return c.json({slots:slots.map(s=>({id:s.id,startsAt:s.starts_at,minutes:s.minutes,status:s.status,request:s.request_id?{id:s.request_id,status:s.request_status,reason:s.reason??'',patientName:s.patient_name??''}:null}))});
+  const timezone=(await storedProfile(db,doctor)).data.timezone??DEFAULT_TIMEZONE;
+  return c.json({timezone,slots:slots.map(s=>({id:s.id,startsAt:s.starts_at,minutes:s.minutes,tz:s.tz,status:s.status,request:s.request_id?{id:s.request_id,status:s.request_status,reason:s.reason??'',patientName:s.patient_name??''}:null}))});
  });
 
  app.post('/api/doctor/slots/generate',async c=>{
@@ -52,20 +57,21 @@ export function bookingRoutes(app:App){
   const start=Date.parse(`${p.dateFrom}T00:00:00Z`),end=Date.parse(`${p.dateTo}T00:00:00Z`);
   if(!(end>=start)||(end-start)/DAY+1>MAX_GENERATE_DAYS)return c.json({error:'Выберите период не длиннее 62 дней'},400);
   if(minutesOf(p.to)-minutesOf(p.from)<p.minutes)return c.json({error:'Окно короче одного слота'},400);
+  const tz=(await storedProfile(db,doctor)).data.timezone??DEFAULT_TIMEZONE;
   const rows:{starts:number}[]=[];
   for(let day=start;day<=end;day+=DAY){
    const date=new Date(day).toISOString().slice(0,10);
    if(!p.weekdays.includes(isoWeekday(date)))continue;
    for(let t=minutesOf(p.from);t+p.minutes<=minutesOf(p.to);t+=p.minutes){
     const hh=String(Math.floor(t/60)).padStart(2,'0'),mm=String(t%60).padStart(2,'0');
-    const starts=Date.parse(`${date}T${hh}:${mm}:00${TZ}`);
+    const starts=zonedToUtc(date,`${hh}:${mm}`,tz);
     if(starts>Date.now())rows.push({starts});
    }
   }
   if(rows.length>MAX_GENERATED)return c.json({error:`За раз можно создать не больше ${MAX_GENERATED} слотов. Сократите период`},400);
   let created=0;
   for(let i=0;i<rows.length;i+=50){
-   const results=await db.batch(rows.slice(i,i+50).map(r=>db.prepare('INSERT OR IGNORE INTO doctor_slots (id,doctor_id,starts_at,minutes) VALUES (?,?,?,?)').bind(crypto.randomUUID(),doctor,r.starts,p.minutes)));
+   const results=await db.batch(rows.slice(i,i+50).map(r=>db.prepare('INSERT OR IGNORE INTO doctor_slots (id,doctor_id,starts_at,minutes,tz) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(),doctor,r.starts,p.minutes,tz)));
    created+=results.reduce((sum,r)=>sum+(r.meta.changes??0),0);
   }
   await logAction(db,doctor,'generate_slots',doctor);
@@ -87,11 +93,11 @@ export function bookingRoutes(app:App){
 
  app.get('/api/doctor/appointments',async c=>{
   const db=database(c.env),doctor=c.get('user').id;
-  const rows=await many<{id:string;status:string;reason:string;created_at:number;starts_at:number;minutes:number;patient_name:string}>(db,
-   `SELECT r.id,r.status,r.reason,r.created_at,s.starts_at,s.minutes,u.name AS patient_name
+  const rows=await many<{id:string;status:string;reason:string;created_at:number;starts_at:number;minutes:number;tz:string;patient_name:string}>(db,
+   `SELECT r.id,r.status,r.reason,r.created_at,s.starts_at,s.minutes,s.tz,u.name AS patient_name
     FROM appointment_requests r JOIN doctor_slots s ON s.id=r.slot_id JOIN users u ON u.id=r.patient_id
     WHERE r.doctor_id=? AND r.status IN ('pending','confirmed') ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, s.starts_at LIMIT 200`,doctor);
-  return c.json({appointments:rows.map(r=>({id:r.id,status:r.status,reason:r.reason,startsAt:r.starts_at,minutes:r.minutes,patientName:r.patient_name,createdAt:r.created_at}))});
+  return c.json({appointments:rows.map(r=>({id:r.id,status:r.status,reason:r.reason,startsAt:r.starts_at,minutes:r.minutes,timezone:r.tz,patientName:r.patient_name,createdAt:r.created_at}))});
  });
 
  for(const action of ['confirm','decline','cancel'] as const){
@@ -101,6 +107,8 @@ export function bookingRoutes(app:App){
    const r=await run(db,'UPDATE appointment_requests SET status=?,decided_at=? WHERE id=? AND doctor_id=? AND status=?',to,Date.now(),id,doctor,from);
    if(!r.meta.changes)return c.json({error:'Заявка уже обработана или не найдена'},409);
    await logAction(db,doctor,`appointment_${action}`,id);
+   const event:VisitEvent=action==='confirm'?'confirmed':action==='decline'?'declined':'cancelled_by_doctor';
+   await queueVisitEvent(db,id,event);
    return c.json({ok:true});
   });
  }
@@ -116,7 +124,8 @@ export function bookingRoutes(app:App){
     WHERE s.doctor_id=? AND s.status='open' AND s.starts_at>? AND s.starts_at<?
     AND NOT EXISTS(SELECT 1 FROM appointment_requests r WHERE r.slot_id=s.id AND r.status IN ('pending','confirmed'))
     ORDER BY s.starts_at LIMIT 500`,doctorId,now+30*60000,now+BOOK_AHEAD_DAYS*DAY);
-  return c.json({slots:slots.map(s=>({id:s.id,startsAt:s.starts_at,minutes:s.minutes}))});
+  const timezone=(await storedProfile(db,doctorId)).data.timezone??DEFAULT_TIMEZONE;
+  return c.json({timezone,viewerTimezone:await viewerZone(db,c.get('user').id),slots:slots.map(s=>({id:s.id,startsAt:s.starts_at,minutes:s.minutes}))});
  });
 
  app.post('/api/patient/appointments',async c=>{
@@ -126,13 +135,14 @@ export function bookingRoutes(app:App){
   if((pending?.count??0)>=MAX_PENDING_PER_PATIENT)return c.json({error:'У вас уже несколько заявок без ответа. Дождитесь решения врачей'},409);
   const id=crypto.randomUUID();
   let r;
+  const patientTz=await viewerZone(db,patient);
   try{
    r=await run(db,
-    `INSERT INTO appointment_requests (id,slot_id,patient_id,doctor_id,reason,status,created_at)
-     SELECT ?,s.id,?,s.doctor_id,?,'pending',? FROM doctor_slots s
+    `INSERT INTO appointment_requests (id,slot_id,patient_id,doctor_id,reason,status,created_at,patient_tz)
+     SELECT ?,s.id,?,s.doctor_id,?,'pending',?,? FROM doctor_slots s
      WHERE s.id=? AND s.status='open' AND s.starts_at>?
      AND EXISTS(SELECT 1 FROM users u WHERE u.id=s.doctor_id AND ${VERIFIED_DOCTOR})`,
-    id,patient,reason,Date.now(),slotId,Date.now());
+    id,patient,reason,Date.now(),patientTz,slotId,Date.now());
   }catch(e){
    // The partial unique index refuses a second active request for the same slot.
    if(String(e).includes('UNIQUE'))return c.json({error:SLOT_TAKEN},409);
@@ -140,22 +150,25 @@ export function bookingRoutes(app:App){
   }
   if(!r.meta.changes)return c.json({error:SLOT_TAKEN},409);
   await logAction(db,patient,'appointment_request',id);
+  await queueVisitEvent(db,id,'requested');
   return c.json({id,status:'pending'},201);
  });
 
  app.get('/api/patient/appointments',async c=>{
   const db=database(c.env),patient=c.get('user').id;
-  const rows=await many<{id:string;status:string;reason:string;starts_at:number;minutes:number;doctor_name:string;created_at:number}>(db,
-   `SELECT r.id,r.status,r.reason,r.created_at,s.starts_at,s.minutes,u.name AS doctor_name
+  const rows=await many<{id:string;status:string;reason:string;starts_at:number;minutes:number;patient_tz:string;doctor_name:string;created_at:number}>(db,
+   `SELECT r.id,r.status,r.reason,r.created_at,r.patient_tz,s.starts_at,s.minutes,u.name AS doctor_name
     FROM appointment_requests r JOIN doctor_slots s ON s.id=r.slot_id JOIN users u ON u.id=r.doctor_id
     WHERE r.patient_id=? ORDER BY s.starts_at DESC LIMIT 100`,patient);
-  return c.json({appointments:rows.map(r=>({id:r.id,status:r.status,reason:r.reason,startsAt:r.starts_at,minutes:r.minutes,doctorName:r.doctor_name}))});
+  return c.json({appointments:rows.map(r=>({id:r.id,status:r.status,reason:r.reason,startsAt:r.starts_at,minutes:r.minutes,doctorName:r.doctor_name,timezone:r.patient_tz}))});
  });
 
  app.post('/api/patient/appointments/:id/cancel',async c=>{
   const db=database(c.env),patient=c.get('user').id;
   const r=await run(db,"UPDATE appointment_requests SET status='cancelled',decided_at=? WHERE id=? AND patient_id=? AND status IN ('pending','confirmed')",Date.now(),c.req.param('id'),patient);
-  return r.meta.changes?c.json({ok:true}):c.json({error:'Запись уже отменена или не найдена'},409);
+  if(!r.meta.changes)return c.json({error:'Запись уже отменена или не найдена'},409);
+  await queueVisitEvent(db,c.req.param('id'),'cancelled_by_patient');
+  return c.json({ok:true});
  });
 }
 
