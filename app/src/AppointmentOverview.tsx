@@ -45,14 +45,14 @@ export function AppointmentOverview({data,onOpen,patientId,onSaved}:{data:Patien
    {attention.length?<div className="attention-list">
     {attention.map((item,i)=><div key={i} className={`attention-row attention-${item.kind}`}>
      <p>{item.text}</p>
-     {item.tab?<Button size="xs" variant="subtle" onClick={()=>onOpen(item.tab!)}>{item.actionLabel??'Открыть'}</Button>:null}
+     {item.tab?<Button size="sm" variant="subtle" onClick={()=>onOpen(item.tab!)}>{item.actionLabel??'Открыть'}</Button>:null}
     </div>)}
    </div>:<p className="muted">Явных сигналов нет. Ждут просмотра появятся здесь.</p>}
    {summary.pendingReports.length?<div className="attention-pending">
     <h3>Ждут просмотра: сводки</h3>
     {summary.pendingReports.map(r=><div className="attention-row" key={r.id}>
      <p>Сводка за период {formatDate(r.from_date,true)} — {formatDate(r.to_date,true)}</p>
-     <Button size="xs" variant="outline" loading={reviewing===r.id} onClick={()=>void reviewReport(r.id)}>Подтвердить просмотр</Button>
+     <Button size="sm" variant="outline" loading={reviewing===r.id} onClick={()=>void reviewReport(r.id)}>Подтвердить просмотр</Button>
     </div>)}
    </div>:null}
    {attention.some(a=>a.kind==='signal')?<p className="muted small attention-note">Наблюдаемые ответы. Клиническую значимость оценивает врач.</p>:null}

@@ -23,7 +23,7 @@ export function ProfileEntryList({label,description,value,onChange,disabled,maxL
    <ul className="profile-entry-rows">
     {lines.map((line,i)=><li key={`${line}-${i}`}>
      <TextInput value={line} disabled={disabled} maxLength={maxLength} onChange={e=>edit(line,e.currentTarget.value)} aria-label={`${label}, запись ${i+1}`}/>
-     <Button variant="subtle" color="red" size="xs" disabled={disabled} onClick={()=>remove(line)}>Удалить</Button>
+     <Button variant="subtle" color="red" size="sm" disabled={disabled} onClick={()=>remove(line)}>Удалить</Button>
     </li>)}
    </ul>
    {!lines.length?<p className="muted small">Пока нет записей</p>:null}
