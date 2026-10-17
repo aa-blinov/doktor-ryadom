@@ -29,6 +29,9 @@ async function sendMedia(practiceId:string,kind:'photo'|'video',file:File){
  const body=await res.json().catch(()=>({})) as {error?:string};if(!res.ok)throw new Error(body.error||'Не удалось загрузить файл');
 }
 
+// A local address for a file that is not uploaded yet; released when the file changes or the editor closes.
+function useObjectUrl(file:File|null){const [url,setUrl]=useState<string|null>(null);useEffect(()=>{if(!file){setUrl(null);return;}const u=URL.createObjectURL(file);setUrl(u);return()=>URL.revokeObjectURL(u);},[file]);return url;}
+
 // One step row: a drag handle for touch and mouse, plus the arrow buttons for keyboard and screen readers.
 function StepRow({step,index,count,onMove,onRemove,onChange}:{step:Step;index:number;count:number;onMove:(delta:number)=>void;onRemove:()=>void;onChange:(patch:Partial<Step>)=>void}){
  const {attributes,listeners,setNodeRef,setActivatorNodeRef,transform,transition,isDragging}=useSortable({id:step.uid});
@@ -51,6 +54,7 @@ export function DoctorPractices(){
  const [pending,setPending]=useState<{photo:File|null;video:File|null}>({photo:null,video:null});
  const current=list?.find(p=>p.id===editingId)??null;
  const readOnly=!!current?.archived;
+ const pendingPhotoUrl=useObjectUrl(pending.photo),pendingVideoUrl=useObjectUrl(pending.video);
  const sensors=useSensors(useSensor(PointerSensor,{activationConstraint:{distance:6}}),useSensor(KeyboardSensor,{coordinateGetter:sortableKeyboardCoordinates}));
  async function reload(){const r=await api<{practices:CustomPractice[]}>('/doctor/practices');setList(r.practices);}
  useEffect(()=>{reload().catch(e=>setError(errorText(e)));},[]);
@@ -164,10 +168,12 @@ export function DoctorPractices(){
       <FileButton onChange={f=>void pick('photo',f)} accept="image/jpeg,image/png,image/webp" disabled={busy}>{p=><Button {...p} variant="outline" size="sm" disabled={busy}>{pending.photo?'Заменить фото':'Выбрать фото'}</Button>}</FileButton>
       {pending.photo?<span className="muted small">{pending.photo.name}</span>:null}
      </Group>
+     {pendingPhotoUrl?<img className="practice-pending-photo" src={pendingPhotoUrl} alt={`Фото к практике: ${draft.title||'без названия'}`}/>:null}
      <Group gap="var(--sp-3)" mt="var(--sp-3)">
       <FileButton onChange={f=>void pick('video',f)} accept="video/mp4,video/webm" disabled={busy}>{p=><Button {...p} variant="outline" size="sm" disabled={busy}>{pending.video?'Заменить видео':'Выбрать видео'}</Button>}</FileButton>
       {pending.video?<span className="muted small">{pending.video.name}</span>:null}
      </Group>
+     {pendingVideoUrl?<video className="profile-video-player" src={pendingVideoUrl} controls playsInline preload="metadata" aria-label="Видео к практике (ещё не сохранено)"/>:null}
      <p className="muted small">Фото до 5 МБ, видео до 50 МБ и до 3 минут.</p>
     </>}
     <h3 style={{marginTop:'var(--sp-5)'}}>Так увидит пациент</h3>

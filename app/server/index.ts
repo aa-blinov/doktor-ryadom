@@ -27,7 +27,7 @@ const sessionName = 'ryadom_session';
 const authSchema = z.object({ email: z.string().trim().email().max(200).transform(v => v.toLowerCase()), password: z.string().min(12, 'Пароль должен содержать минимум 12 символов').max(128) });
 const loginSchema = authSchema.extend({ code: z.string().trim().max(20).optional() });
 const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor']), consent: z.literal(true), adult: z.literal(true, { message: 'Регистрация доступна с 18 лет' }) });
-const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 app.use('*', async (c,next) => { await next(); c.header('X-Content-Type-Options','nosniff'); c.header('Referrer-Policy','same-origin'); c.header('X-Frame-Options','DENY'); c.header('Content-Security-Policy',CSP); });
 app.use('/api/*', async(c,next)=>bodyLimit({maxSize:binaryUploadLimit(c.req.method,c.req.path,c.req.header('Content-Type')||'')||(c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000),onError:c=>c.json({error:'Слишком большой запрос'},413)})(c,next));
 app.use('/api/*', async (c, next) => {
