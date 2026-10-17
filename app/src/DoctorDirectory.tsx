@@ -51,12 +51,13 @@ export function DoctorDirectory(){
  },[kind,query,city,sort,format,maxPrice,free]);
  // Typing waits 300 ms before asking the server; other filters answer at once.
  useEffect(()=>{const timer=setTimeout(()=>void fetchPage(1,false),query?300:0);return()=>clearTimeout(timer);},[fetchPage,query]);
+ const activeFilters=[kind!=='all',format!=='all',sort!=='',maxPrice!=='0',free,city!=='',query.trim()!==''].filter(Boolean).length;
  const reset=()=>{setKind('all');setQuery('');setCity('');setSort('');setFormat('all');setMaxPrice('0');setFree(false);};
  return <section className="directory">
   <button className="back-link" onClick={()=>navigate('/doctor')}><IconArrowLeft size={18}/>Мой врач</button>
   <PageHead title="Найти врача" description="Психологи, психотерапевты и психиатры, чью квалификацию проверил администратор"/>
   <MyAppointments/>
-  <div className="connect-actions directory-actions"><Button variant="default" onClick={()=>navigate('/card')}>Моя карточка</Button><button type="button" className="filters-toggle" aria-expanded={filtersOpen} aria-controls="directory-filters" onClick={()=>setFiltersOpen(o=>!o)}>{filtersOpen?'Скрыть фильтры':'Фильтры'}</button></div>
+  <div className="connect-actions directory-actions"><Button variant="default" onClick={()=>navigate('/card')}>Моя карточка</Button><button type="button" className="filters-toggle" aria-expanded={filtersOpen} aria-controls="directory-filters" onClick={()=>setFiltersOpen(o=>!o)}>{filtersOpen?'Скрыть фильтры':`Фильтры${activeFilters?` · ${activeFilters}`:''}`}</button></div>
   <div id="directory-filters" className={filtersOpen?'directory-filters':'directory-filters is-collapsed'}>
    <div className="kind-filter" role="group" aria-label="Специальность">
     {kindFilters.map(option=><button key={option.value} type="button" className={kind===option.value?'kind-chip selected':'kind-chip'} aria-pressed={kind===option.value} onClick={()=>setKind(option.value)}>{option.label}</button>)}
@@ -82,10 +83,9 @@ export function DoctorDirectory(){
     <h2>{d.name}</h2>
     <p className="doctor-card-meta"><span className={`pill kind-${d.kind??'none'}`}>{d.kind?specialtyLabels[d.kind]:'Специалист'}</span>{specialtyLine(d.kind,d.specialty)?<span>{specialtyLine(d.kind,d.specialty)}</span>:null}</p>
     <p className="muted small">{[d.city,d.clinic,d.experienceYears!==null?`стаж ${d.experienceYears} ${years(d.experienceYears)}`:''].filter(Boolean).join(' · ')}</p>
-    <p className="small doctor-card-price">{priceText(d.price)} · {formatText[d.visitFormat]}</p>
+    <p className="small doctor-card-price">{priceText(d.price)} · <span className="nowrap">{formatText[d.visitFormat]}</span></p>
     {d.about?<p className="doctor-card-about">{d.about}{d.about.length>=180?'…':''}</p>:null}
-    <Rating card={d}/>
-    <p className="small">{d.nextSlotAt?<strong>Ближайшая запись: {zoneDateTime(d.nextSlotAt,viewerTz)}</strong>:<span className="muted">Свободного времени пока нет</span>}</p>
+    {d.rating!=null||d.nextSlotAt!=null?<p className="small card-status">{d.rating!=null?<Rating card={d}/>:null}{d.nextSlotAt!=null?<strong>{d.rating!=null?' · ':''}Ближайшая запись: {zoneDateTime(d.nextSlotAt,viewerTz)}</strong>:null}</p>:null}
    </div>
   </a>)}</div>
   {items.length<total?<div className="connect-actions"><Button variant="default" loading={loading} onClick={()=>void fetchPage(page+1,true)}>Показать ещё</Button></div>:null}
@@ -112,7 +112,7 @@ export function DoctorPage({id,onChanged}:{id:string;onChanged:()=>Promise<void>
    </div>
   </header>
   {error?<ErrorBox message={error}/>:null}
-  <p className="small doctor-card-price">{priceText(d.price)} · {formatText[d.visitFormat]}</p>
+  <p className="small doctor-card-price">{priceText(d.price)} · <span className="nowrap">{formatText[d.visitFormat]}</span></p>
   <BookAppointment doctorId={id} doctorName={d.name}/>
   <ConnectPanel name={d.name} connection={data.connection}/>
   {d.videoUrl?<section className="doctor-section"><h2>Видео-представление</h2><video className="profile-video-player" src={d.videoUrl} controls playsInline preload="metadata" aria-label={`Видео о ${d.name}`}/></section>:null}

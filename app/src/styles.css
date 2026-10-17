@@ -993,3 +993,10 @@ body:has(.pwa-notice) #root{padding-top:72px}
  .doctor-list>.doctor-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:var(--sp-5)}
 }
 .directory-bar .mantine-NativeSelect-input{min-height:40px}
+
+/* Final catalogue pass: 44px controls, 14px specialty pill, unbroken format words, footer link target */
+.directory-bar .mantine-NativeSelect-input{min-height:44px}
+.nowrap{white-space:nowrap}
+.doctor-card .pill{font-size:14px}
+.card-status{margin:0}
+.footer-brand{display:inline-flex;align-items:center;min-height:44px}
