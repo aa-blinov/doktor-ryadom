@@ -60,6 +60,7 @@ export function DoctorDirectory(){
   <div id="directory-filters" className={filtersOpen?'directory-filters':'directory-filters is-collapsed'}>
    <div className="kind-filter" role="group" aria-label="Специальность">
     {kindFilters.map(option=><button key={option.value} type="button" className={kind===option.value?'kind-chip selected':'kind-chip'} aria-pressed={kind===option.value} onClick={()=>setKind(option.value)}>{option.label}</button>)}
+    <button type="button" className={free?'kind-chip selected':'kind-chip'} aria-pressed={free} onClick={()=>setFree(f=>!f)}>Со свободным временем</button>
    </div>
    <div className="directory-search directory-bar">
     <TextInput aria-label="Поиск врача" placeholder="Имя, направление или клиника" value={query} onChange={e=>setQuery(e.currentTarget.value)}/>
@@ -67,7 +68,7 @@ export function DoctorDirectory(){
     <NativeSelect aria-label="Сортировка" value={sort} onChange={e=>setSort(e.currentTarget.value)} data={sortOptions}/>
     <NativeSelect aria-label="Формат приёма" value={format} onChange={e=>setFormat(e.currentTarget.value)} data={formatOptions}/>
     <NativeSelect aria-label="Стоимость" value={maxPrice} onChange={e=>setMaxPrice(e.currentTarget.value)} data={priceOptions}/>
-    <Checkbox label="Только с свободным временем" checked={free} onChange={e=>setFree(e.currentTarget.checked)}/>
+    
    </div>
   </div>
   <p className="muted small directory-note">Препараты назначает только психиатр. Психологи и психотерапевты работают разговором и практиками.</p>
