@@ -59,8 +59,21 @@ export function signals(entries: Entry[]) { const latest = entries.slice(0, 3); 
 
 export type CheckinDraft={entry:EntryInput;plan:Plan;step:number};
 export type Assessment={id:string;doctor_id:string;kind:'gad7'|'phq2'|'who5'|'phq9'|`custom:${string}`;due_date:string;answers:SurveyAnswer[]|null;definition?:SurveySnapshot|null;safety?:{contact:string;reviewNote:string}|null;score:number|null;completed_at:number|null;reviewed_at:number|null};
-export const followupSchema=z.object({notes:z.string().trim().min(1).max(3000),goal:z.string().trim().max(300),nextDate:entrySchema.shape.date.nullable(),contact:z.string().trim().max(500)});
-export type Followup={id:string;doctor_id:string;created_at:number;data:z.infer<typeof followupSchema>};
+export const DYNAMICS=['improved','same','worse','not_assessed'] as const;
+export const DYNAMICS_LABEL:Record<(typeof DYNAMICS)[number],string>={improved:'Улучшение',same:'Без изменений',worse:'Ухудшение',not_assessed:'Не оценивали'};
+// The visit part (complaints, objective data, dynamics, diagnosis) is the clinician's record. The patient sees the recommendation, goal, next visit and dynamics only.
+export const followupSchema=z.object({
+ notes:z.string().trim().min(1).max(3000),goal:z.string().trim().max(300),nextDate:entrySchema.shape.date.nullable(),contact:z.string().trim().max(500),
+ visitAt:z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).nullable().default(null),
+ complaints:z.string().trim().max(2000).default(''),
+ objective:z.string().trim().max(2000).default(''),
+ dynamics:z.enum(DYNAMICS).default('not_assessed'),
+ dynamicsNote:z.string().trim().max(1000).default(''),
+ diagnosis:z.string().trim().max(500).default(''),
+});
+export const DOCTOR_ONLY_FOLLOWUP_FIELDS=['complaints','objective','dynamicsNote','diagnosis','visitAt'] as const;
+// Records written before the visit fields existed have only the first four; the input type keeps them valid.
+export type Followup={id:string;doctor_id:string;created_at:number;data:z.input<typeof followupSchema>};
 export type Medication={id:string;doctor_id:string;name:string;instructions:string;as_needed:number;start_date:string;end_date:string|null;created_at:number};
 export type MedicationLog={id:string;medication_id:string;date:string;status:'taken'|'missed'|'not_needed';note:string;created_at:number};
 export type Experience={id:string;date:string;note:string;created_at:number};
