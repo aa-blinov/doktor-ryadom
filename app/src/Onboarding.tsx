@@ -15,9 +15,11 @@ const doctorStories=[
  {title:'Согласуйте план наблюдения',text:'Выберите вопросы, частоту отметок и подходящие практики. Укажите, когда просматриваете записи и как с вами связаться.',visual:'checkin'},
  {title:'Просмотрите историю перед приёмом',text:'Откройте историю и сводку пациента: самочувствие, сон, заметки и ответы на опросы. Подтвердите просмотр сводки, чтобы пациент видел, что вы её прочитали.',visual:'history'},
 ];
-export function Onboarding({user}:{user:User}) {
+export function Onboarding({user,autoOpen=false}:{user:User;autoOpen?:boolean}) {
  const key=`ryadom:onboarding:v1:${user.id}`;
- const [opened,setOpened]=useState(()=>{try{return localStorage.getItem(key)!=='seen';}catch{return true;}}),[step,setStep]=useState(0);
+ const [opened,setOpened]=useState(false),[step,setStep]=useState(0);
+ // The guide opens by itself only on the home screen, never over a search or a form, and only until it has been seen.
+ useEffect(()=>{if(!autoOpen)return;try{if(localStorage.getItem(key)!=='seen')setOpened(true);}catch{/* without storage the guide stays closed until asked for */}},[autoOpen,key]);
  const stories=user.role==='doctor'?doctorStories:patientStories;const story=stories[step];
  function close(){try{localStorage.setItem(key,'seen');}catch{/* Reading the guide remains optional without local storage. */}setOpened(false);}
  useEffect(()=>{const replay=()=>{setStep(0);setOpened(true);};window.addEventListener('show-onboarding',replay);return()=>window.removeEventListener('show-onboarding',replay);},[]);
