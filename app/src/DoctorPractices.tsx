@@ -37,7 +37,7 @@ function StepRow({step,index,count,onMove,onRemove,onChange}:{step:Step;index:nu
  const {attributes,listeners,setNodeRef,setActivatorNodeRef,transform,transition,isDragging}=useSortable({id:step.uid});
  return <div ref={setNodeRef} className={isDragging?'doctor-practice-step is-dragging':'doctor-practice-step'} style={{transform:CSS.Transform.toString(transform),transition}}>
   <div className="section-title"><strong>Шаг {index+1}</strong><Group gap="var(--sp-2)" wrap="wrap">
-   <button type="button" className="step-handle" ref={setActivatorNodeRef} {...attributes} {...listeners} aria-label={`Перетащить шаг ${index+1}`}><IconGripVertical size={18}/> Перетащить</button>
+   <Button size="sm" variant="subtle" ref={setActivatorNodeRef} {...attributes} {...listeners} leftSection={<IconGripVertical size={16}/>} aria-label={`Перетащить шаг ${index+1}`}>Перетащить</Button>
    <Button size="sm" variant="subtle" disabled={index===0} aria-label={`Поднять шаг ${index+1}`} onClick={()=>onMove(-1)}>Выше</Button>
    <Button size="sm" variant="subtle" disabled={index===count-1} aria-label={`Опустить шаг ${index+1}`} onClick={()=>onMove(1)}>Ниже</Button>
    <Button size="sm" variant="subtle" disabled={count===1} aria-label={`Удалить шаг ${index+1}`} onClick={onRemove}>Удалить</Button>
