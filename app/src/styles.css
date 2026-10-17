@@ -986,3 +986,10 @@ body:has(.pwa-notice) #root{padding-top:72px}
  .directory-bar>*{flex:1 1 200px}
 }
 .directory-bar .mantine-Checkbox-root{flex:0 0 auto;white-space:nowrap}
+
+/* Catalogue polish: two cards per row on desktop, selects at a comfortable height */
+@media (min-width:900px){
+ .doctor-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:0;background:transparent;overflow:visible;gap:var(--sp-4)}
+ .doctor-list>.doctor-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:var(--sp-5)}
+}
+.directory-bar .mantine-NativeSelect-input{min-height:40px}
