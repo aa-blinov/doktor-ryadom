@@ -1000,3 +1000,10 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .doctor-card .pill{font-size:14px}
 .card-status{margin:0}
 .footer-brand{display:inline-flex;align-items:center;min-height:44px}
+
+/* Practice steps: touch-friendly drag handle, 44px targets, lifted row while dragging */
+.doctor-practice-step .mantine-Button-root{padding:0 var(--sp-3)}
+.step-handle{min-height:44px;min-width:44px;padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--mantine-radius-md);background:var(--surface);color:var(--ink);font:inherit;font-weight:600;touch-action:none;cursor:grab}
+.step-handle:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.doctor-practice-step{background:var(--surface);border-radius:var(--mantine-radius-md)}
+.doctor-practice-step.is-dragging{box-shadow:0 8px 20px rgba(35,56,47,.16);opacity:.96}
