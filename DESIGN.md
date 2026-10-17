@@ -51,7 +51,7 @@ typography:
     lineHeight: 1.55
   label:
     fontFamily: "Golos Text, sans-serif"
-    fontSize: "13px"
+    fontSize: "14px"
     fontWeight: 600
 rounded:
   control: "8px"
@@ -138,9 +138,9 @@ The persisted Mantine color scheme keeps the same quiet journal hierarchy with a
 
 ## Typography
 
-Golos Text is self-hosted through bundled Fontsource files: Cyrillic and Latin weights 400, 500, 600 and 700. The fallback is sans-serif. The CSS headline weight of 750 resolves to the nearest static face (700). Text sizes were raised across the app: supporting copy is 14–15px, nothing meaningful is set below 13px, and phone scale labels are the one exception (hidden in favor of a chosen-value hint).
+Golos Text is self-hosted through bundled Fontsource files: Cyrillic and Latin weights 400, 500, 600 and 700. The fallback is sans-serif. The CSS headline weight of 750 resolves to the nearest static face (700). Text sizes were raised across the app: supporting copy is 14–15px, nothing meaningful is set below 14px, and phone scale labels are the one exception (hidden in favor of a chosen-value hint).
 
-Every font size in the stylesheet comes from one scale: 13, 14, 15, 16, 18, 22, 26 and 32px. Labels, meta and pills are 13px; field and button labels are 14px; supporting copy is 15px; body is 16px; row titles and sub-headings are 18px; section and panel headings are 22px; page and question headings are 26px on mobile and 32px on desktop. A new size snaps to this list. Paragraphs use a relaxed line-height of 1.75. Mobile mood labels remain 14px. Registration uses a 42px introduction heading, reduced to 26px on mobile.
+Every font size in the stylesheet comes from one scale: 14, 15, 16, 18, 22, 26 and 32px. Labels, meta and pills are 14px; field and button labels are 14px; supporting copy is 15px; body is 16px; row titles and sub-headings are 18px; section and panel headings are 22px; page and question headings are 26px on mobile and 32px on desktop. A new size snaps to this list. Paragraphs use a relaxed line-height of 1.75. Mobile mood labels remain 14px. Registration uses a 42px introduction heading, reduced to 26px on mobile.
 
 ## Layout
 

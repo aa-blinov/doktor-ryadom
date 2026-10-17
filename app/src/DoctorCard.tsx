@@ -46,7 +46,7 @@ export function DoctorPatientCard({patientId}:{patientId:string}){
     <div>
      <strong>{e.kindLabel}</strong><span className="muted small"> · {e.occurredOn} · {e.authorName}{e.mine?' (вы)':''}</span>
      {e.withdrawn?<p className="muted small">Отозвано: {e.withdrawReason}</p>:<p className="care-prose">{e.body}</p>}
-     {e.mine&&!e.withdrawn&&withdrawing!==e.id?<Button size="xs" variant="subtle" onClick={()=>setWithdrawing(e.id)}>Отозвать запись</Button>:null}
+     {e.mine&&!e.withdrawn&&withdrawing!==e.id?<Button size="sm" variant="subtle" onClick={()=>setWithdrawing(e.id)}>Отозвать запись</Button>:null}
      {withdrawing===e.id?<div className="card-withdraw">
       <TextInput label="Причина отзыва" value={reason} onChange={ev=>setReason(ev.currentTarget.value)} maxLength={500}/>
       <div className="connect-actions"><Button color="red" loading={busy} disabled={!reason.trim()} onClick={()=>void withdraw(e.id)}>Отозвать</Button><Button variant="default" onClick={()=>setWithdrawing(null)}>Отмена</Button></div>

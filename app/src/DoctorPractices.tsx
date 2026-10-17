@@ -73,9 +73,9 @@ export function DoctorPractices(){
      <h3>Шаги</h3>
      {draft.steps.map((s,i)=><div className="doctor-practice-step" key={i}>
       <div className="section-title"><strong>Шаг {i+1}</strong><Group gap="var(--sp-2)">
-       <Button size="xs" variant="subtle" disabled={i===0} aria-label={`Поднять шаг ${i+1}`} onClick={()=>moveStep(i,-1)}>Выше</Button>
-       <Button size="xs" variant="subtle" disabled={i===draft.steps.length-1} aria-label={`Опустить шаг ${i+1}`} onClick={()=>moveStep(i,1)}>Ниже</Button>
-       <Button size="xs" variant="subtle" disabled={draft.steps.length===1} aria-label={`Удалить шаг ${i+1}`} onClick={()=>setDraft(d=>({...d,steps:d.steps.filter((_,k)=>k!==i)}))}>Удалить</Button>
+       <Button size="sm" variant="subtle" disabled={i===0} aria-label={`Поднять шаг ${i+1}`} onClick={()=>moveStep(i,-1)}>Выше</Button>
+       <Button size="sm" variant="subtle" disabled={i===draft.steps.length-1} aria-label={`Опустить шаг ${i+1}`} onClick={()=>moveStep(i,1)}>Ниже</Button>
+       <Button size="sm" variant="subtle" disabled={draft.steps.length===1} aria-label={`Удалить шаг ${i+1}`} onClick={()=>setDraft(d=>({...d,steps:d.steps.filter((_,k)=>k!==i)}))}>Удалить</Button>
       </Group></div>
       <TextInput label={`Название шага ${i+1}`} value={s.title} onChange={e=>setStep(i,{title:e.currentTarget.value})} maxLength={80}/>
       <Textarea label={`Текст шага ${i+1}`} value={s.text} onChange={e=>setStep(i,{text:e.currentTarget.value})} minRows={2} maxLength={400}/>

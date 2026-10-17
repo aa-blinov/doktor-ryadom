@@ -69,7 +69,7 @@ function patientScreen({route,data,user,reload,onLogout,themeLabel,onToggleTheme
     <h1>Здравствуйте, {firstName}</h1>
     <p className="muted">{formatDate(today(),true)}</p>
    </header>
-   {invitation?<div className="inline-notice"><IconLink size={20}/><span>У вас есть приглашение от врача</span><Button size="xs" variant="subtle" onClick={()=>navigate('/settings/connect')}>Посмотреть</Button></div>:null}
+   {invitation?<div className="inline-notice"><IconLink size={20}/><span>У вас есть приглашение от врача</span><Button size="sm" variant="subtle" onClick={()=>navigate('/settings/connect')}>Посмотреть</Button></div>:null}
   {marked?<section className="today-simple-card today-done">
     <div className="today-done-main"><Face value={marked.mood} size={40}/><div><strong>{moods[marked.mood-1]}</strong><span className="muted small">Отметка за сегодня есть</span></div></div>
     <Button size="md" rightSection={<IconCheck size={18}/>} onClick={()=>navigate('/history')}>Открыть историю</Button>

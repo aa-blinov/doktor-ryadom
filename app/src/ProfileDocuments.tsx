@@ -32,7 +32,7 @@ export function ProfileDocuments({profile,disabled}:{profile:DoctorProfile;disab
   <strong>{doc.entry}</strong>
   <div className="profile-document-links">
    <a href={'/api/profile/documents/'+doc.id} download>{doc.filename}</a>
-   {isImage(doc)?<Button size="xs" variant="light" onClick={()=>setPreview(doc)}>Посмотреть</Button>:<Button size="xs" variant="light" component="a" href={'/api/profile/documents/'+doc.id} target="_blank" rel="noreferrer">Открыть</Button>}
+   {isImage(doc)?<Button size="sm" variant="light" onClick={()=>setPreview(doc)}>Посмотреть</Button>:<Button size="sm" variant="light" component="a" href={'/api/profile/documents/'+doc.id} target="_blank" rel="noreferrer">Открыть</Button>}
   </div>
   <Group justify="space-between" wrap="wrap">
    <Switch label="Показывать подключённым пациентам" checked={doc.shared} onChange={e=>void change(doc,e.currentTarget.checked)} disabled={busy||disabled}/>

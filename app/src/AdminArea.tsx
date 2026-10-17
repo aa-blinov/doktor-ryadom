@@ -33,7 +33,7 @@ function AdminDoctors(){
   {loading?<PageLoader/>:null}
   {error?<ErrorBox message={error} retry={load}/>:null}
   {!loading&&!error&&!doctors.length?<p className="muted">{q.trim()?'Поиск ничего не нашёл':'Врачей пока нет'}</p>:null}
-  {undone?<div className="admin-undo" role="status"><span>{undone.who} заблокирован. Это было сделано только что.</span><Button variant="subtle" size="xs" onClick={async()=>{const id=undone?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
+  {undone?<div className="admin-undo" role="status"><span>{undone.who} заблокирован. Это было сделано только что.</span><Button variant="subtle" size="sm" onClick={async()=>{const id=undone?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
   <div className="admin-list">{doctors.map(d=><article className="care-record admin-card" key={d.id}>
    <h2>{d.name}{d.blocked_at?' · заблокирован':''}</h2>
    <p className="muted small">{d.email} · создан {formatDate(new Date(d.created_at).toISOString().slice(0,10))}</p>
@@ -57,7 +57,7 @@ function AdminPatients(){
   {error?<ErrorBox message={error} retry={load}/>:null}
   {patients.length>=200?<p className="muted small list-cap">Показаны первые 200 пациентов.</p>:null}
   {!loading&&!error&&!patients.length?<p className="muted">Пациентов пока нет</p>:null}
-  {undone?<div className="admin-undo" role="status"><span>{undone.who} заблокирован. Это было сделано только что.</span><Button variant="subtle" size="xs" onClick={async()=>{const id=undone?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
+  {undone?<div className="admin-undo" role="status"><span>{undone.who} заблокирован. Это было сделано только что.</span><Button variant="subtle" size="sm" onClick={async()=>{const id=undone?.id;setUndone(null);if(id){setBusy(id);try{await api(`/admin/accounts/${id}/block`,{blocked:false});await load();}catch(e){setError(errorText(e));}finally{setBusy(null);}}}}>Отменить</Button></div>:null}
   <div className="admin-list">{patients.map((p,i)=><article className="care-record admin-card" key={p.id}>
    <h2>Пациент {i+1}{p.blocked_at?' · заблокирован':''}</h2>
    <p className="muted small">Аккаунт создан {formatDate(new Date(p.created_at).toISOString().slice(0,10))}</p>

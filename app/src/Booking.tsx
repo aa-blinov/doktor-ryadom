@@ -131,7 +131,7 @@ export function DoctorSchedule(){
   <section className="doctor-section" aria-labelledby="slots-title">
    <h2 id="slots-title">Слоты на две недели</h2>
    {!days.length?<p className="muted small">Слотов пока нет.</p>:null}
-   {days.map(([k,list])=><div key={k} className="schedule-day"><h3>{zoneDayTitle(list[0].startsAt,list[0].tz)}</h3>{list.map(s=><div className="schedule-slot" key={s.id}><span>{zoneTime(s.startsAt,s.tz)} · {s.minutes} мин</span>{s.request?<span className="muted small">Заявка: {s.request.patientName}</span>:s.status==='closed'?<span className="muted small">Закрыт</span>:<span className="small">Свободно</span>}<span className="request-actions">{s.request?null:<><Button size="xs" variant="default" disabled={busy} onClick={()=>void toggle(s.id,s.status!=='closed')}>{s.status==='closed'?'Открыть':'Закрыть'}</Button><Button size="xs" variant="subtle" disabled={busy} onClick={()=>void drop(s.id)}>Удалить</Button></>}</span></div>)}</div>)}
+   {days.map(([k,list])=><div key={k} className="schedule-day"><h3>{zoneDayTitle(list[0].startsAt,list[0].tz)}</h3>{list.map(s=><div className="schedule-slot" key={s.id}><span>{zoneTime(s.startsAt,s.tz)} · {s.minutes} мин</span>{s.request?<span className="muted small">Заявка: {s.request.patientName}</span>:s.status==='closed'?<span className="muted small">Закрыт</span>:<span className="small">Свободно</span>}<span className="request-actions">{s.request?null:<><Button size="sm" variant="default" disabled={busy} onClick={()=>void toggle(s.id,s.status!=='closed')}>{s.status==='closed'?'Открыть':'Закрыть'}</Button><Button size="sm" variant="subtle" disabled={busy} onClick={()=>void drop(s.id)}>Удалить</Button></>}</span></div>)}</div>)}
   </section>
  </section>;
 }

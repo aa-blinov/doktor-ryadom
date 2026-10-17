@@ -46,7 +46,7 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
   {active.length?active.map(goal=><article className="goal-card" key={goal.id}>
    <div className="goal-card-head">
     <Heading>{goal.title}</Heading>
-    {!doctor?<Button variant="subtle" size="xs" disabled={busy} onClick={()=>setClosing(goal)}>Завершить</Button>:null}
+    {!doctor?<Button variant="subtle" size="sm" disabled={busy} onClick={()=>setClosing(goal)}>Завершить</Button>:null}
    </div>
    {goal.reason?<p className="muted goal-reason">{goal.reason}</p>:null}
    {!doctor?<GoalProgress goal={goal} busy={busy} save={async(status,note)=>{
@@ -58,7 +58,7 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
     <p><strong>{goalStatusFull[log.status]}</strong><span className="muted small"> · {formatDate(new Date(log.created_at).toISOString().slice(0,10),true)}</span></p>
     {log.note?<p className="care-prose">{log.note}</p>:null}
     {log.reviewed_at?<p className="muted small">{log.reviewer_id===data.doctor?.id?(doctor?'Вы подтвердили просмотр':'Врач подтвердил просмотр'):'Просмотрено предыдущим врачом'}</p>:doctor?<p className="muted small">Новая отметка: вы её ещё не просмотрели</p>:null}
-     {doctor&&(!log.reviewed_at||log.reviewer_id!==data.doctor?.id)?<Button variant="outline" size="xs" mt="var(--sp-3)" onClick={async()=>{setError('');setMessage('');try{await api(`/doctor/patients/${id}/goal-logs/${log.id}/review`,{});await onSaved();setMessage('Просмотр отметки подтверждён');}catch(e){setError(errorText(e));}}}>Подтвердить просмотр отметки</Button>:null}
+     {doctor&&(!log.reviewed_at||log.reviewer_id!==data.doctor?.id)?<Button variant="outline" size="sm" mt="var(--sp-3)" onClick={async()=>{setError('');setMessage('');try{await api(`/doctor/patients/${id}/goal-logs/${log.id}/review`,{});await onSaved();setMessage('Просмотр отметки подтверждён');}catch(e){setError(errorText(e));}}}>Подтвердить просмотр отметки</Button>:null}
    </div>)}
   </article>):<p className="muted">{doctor?'Пациент пока не добавил цели.':'Активных целей нет. Добавьте одну, когда будет готовность заняться ею.'}</p>}
   {!doctor&&closed.length?<section className="goal-archive">
@@ -67,7 +67,7 @@ export function Goals({data,doctor=false,id,onSaved}:{data:PatientData;doctor?:b
    {closed.map(goal=><article className="goal-card closed" key={goal.id}>
     <div className="goal-card-head">
      <ArchivedHeading>{goal.title}</ArchivedHeading>
-     <Button variant="subtle" size="xs" loading={restoring===goal.id} disabled={busy||restoring!==null} onClick={()=>void restoreGoal(goal.id)}>Вернуть в список</Button>
+     <Button variant="subtle" size="sm" loading={restoring===goal.id} disabled={busy||restoring!==null} onClick={()=>void restoreGoal(goal.id)}>Вернуть в список</Button>
     </div>
     {goal.closed_at?<p className="muted small">Завершена {formatDate(new Date(goal.closed_at).toISOString().slice(0,10),true)}</p>:null}
    </article>)}
