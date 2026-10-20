@@ -69,7 +69,7 @@ export function DoctorDirectory(){
     <NativeSelect aria-label="Сортировка" value={sort} onChange={e=>setSort(e.currentTarget.value)} data={sortOptions}/>
     <NativeSelect aria-label="Формат приёма" value={format} onChange={e=>setFormat(e.currentTarget.value)} data={formatOptions}/>
     <NativeSelect aria-label="Стоимость" value={maxPrice} onChange={e=>setMaxPrice(e.currentTarget.value)} data={priceOptions}/>
-    
+
    </div>
   </div>
   <p className="muted small directory-note">Препараты назначает только психиатр. Психологи и психотерапевты работают разговором и практиками.</p>
