@@ -12,3 +12,8 @@ artifacts/
 *.ogg
 *.zip
 qa-*.png
+
+# The house standard's own files. The rule above
+# was meant for the repository's config, not for these.
+!.impeccable/config.json
+!.impeccable/design.json
