@@ -7,7 +7,7 @@ colors:
   surface: "#ffffff"
   canvas-tint: "#f5f6f2"
   ink: "#23382f"
-  muted: "#647168"
+  muted: "#5A6860"
   soft: "#e8efe7"
   line: "#dce3db"
   selected: "#edf3e9"
@@ -107,7 +107,7 @@ components:
     rounded: "11px"
 ---
 
-# Design System: Рядом
+# Design system: Рядом
 
 ## Overview
 
@@ -144,7 +144,7 @@ Every font size in the stylesheet comes from one scale: 14, 15, 16, 18, 22, 26 a
 
 ## Layout
 
-Desktop uses a fixed sidebar (240px), a top bar (76px) and a workspace with maximum width 1200px and horizontal padding 46px. Patient check-ins use a flexible main column and a narrower context column. The questionnaire column is capped at 720px. History and settings can use two columns.
+Desktop uses a fixed sidebar (240px), a top bar (76px) and a workspace with maximum width 1200px and horizontal padding 48px. Patient check-ins use a flexible main column and a narrower context column. The questionnaire column is capped at 720px. History and settings can use two columns.
 
 At 1150px the sidebar narrows to 210px and workspace padding to 28px; at 900px it narrows to 190px and primary task layouts become one column. At 700px the sidebar gives way to a compact header (68px) and fixed bottom navigation with safe-area padding. The patient bottom bar has five items: Сегодня, Практики, История, Врач, Настройки. History is its own destination, with an inner switch between check-ins and practice notes. The header carries a persistent «Мне плохо» pill that opens the distress dialog. Workspace padding becomes 20px horizontally. Every interactive control on a phone is at least 44px high (answer steps, buttons, inputs, password toggles, text links to 112). Charts, settings and plans become one column; patient rows expose their field labels.
 
@@ -198,10 +198,10 @@ The daily entry is a single flat panel. Mood comes first as five labelled face c
 **The Higher-Is-Better Rule.** Every scale reads from worse on the left or bottom to better on the right or top, with the end labels «хуже» and «лучше». Anxiety is 0–4 (4 means not noticed), daily functioning 1–3 (3 means no difficulty), energy and mood 1–5. Stored values follow the same direction, so charts, reports and exports never invert a scale.
 
 ### Charts
-History and overview charts show every point with a thin grey connecting line and a dashed 4px accent trend line for every metric and role. Points have a 16px invisible hit area and show a dark tooltip («26 сент.: Хорошо») on hover, keyboard focus or tap. The chart text alternative restates the trend and points to the list below for exact values. Chart captions state the direction of the axis in words.
+History and overview charts show every point with a thin grey connecting line and a dashed 4px accent trend line for every metric and role. Points have a 16px invisible hit area and show a dark tooltip («26 сент.: Хорошо») on hover, keyboard focus or tap. The chart text alternative restates the trend and points to the accompanying list for the exact values. Chart captions state the direction of the axis in words.
 
 ### SOS
-«Мне плохо» is a terracotta (`sos`) outline pill in the top bar at every screen size, using the theme radius. It opens a centred dialog straight on the confirm step — a separate screen made the patient press the same action twice before anything happened. The dialog keeps a sent state with the time and a 112 call link, and a retry on error; reopens inside 30 minutes land on the sent state rather than offering a duplicate send. Repeat sends within 60 seconds are de-duplicated on the server. Walking to another screen closes the dialog, and the old `#/sos` link still opens it. Without a connected doctor the dialog says so and offers the 112 call and doctor connection instead of a dead button.
+«Мне плохо» is a terracotta (`sos`) outline pill in the top bar at every screen size, using the theme radius. It opens a centred dialog straight on the confirm step — a separate screen made the patient press the same action twice before anything happened. The dialog keeps a sent state with the time and a 112 call link, and a retry on error; reopens inside 30 minutes land on the sent state rather than offering a duplicate send. Repeat sends within 60 seconds are de-duplicated on the server. Walking to another screen closes the dialog, and the old `#/sos` link still opens it. Without a connected doctor the dialog says so and gives the patient the 112 call and the doctor connection instead of a dead button.
 
 ### Clinician overview
 The overview reads top to bottom: a period switch (since recommendation, 14, 30 days) with the explicit date range, a three-line status list (last check-in, count, signals), the attention list with a named action per row, the period charts, then Состояние and Динамика as two columns, patient discussion notes, the agreed goal, and the explanation of how figures are counted. Missing data reads «нет данных», never a dash.
@@ -225,7 +225,7 @@ Each step is its own full-screen view on the canvas colour, hiding the shell: a 
 
 ### Practice scenes
 
-Every step of the twelve practices has its own native SVG scene tied to the instruction (37 in all: a person seated with feet on the floor, an eye over three objects, a doorway, a hand with four contact ripples, an ear with three sound arcs, a flower and a lemon slice, a path with a flag, a staircase of small steps, a circle with space around a feeling, and so on). Scenes use a 260 × 175 view box, 2.5-unit round linework in the category ink on its pale wash, with an occasional 14% soft fill and dashed lines for «space» or thoughts. A fixed vocabulary repeats across practices (seated figure, bust, cup, cloud, heart, floor line) so the set reads as one hand. Each scene has a text alternative. The introduction and the library use the hero scene of the practice; the library shows it compact (12px corners, 100px high). Step scenes use 20px corners, a 520px maximum width and a clamp(190px, 34vh, 320px) height; the introduction scene is 220px high (170px on phones).
+Every step of the twelve practices has its own native SVG scene bound to the instruction (37 in all: a person seated with feet on the floor, an eye over three objects, a doorway, a hand with four contact ripples, an ear with three sound arcs, a flower and a lemon slice, a path with a flag, a staircase of small steps, a circle with space around a feeling, and so on). Scenes use a 260 × 175 view box, 2.5-unit round linework in the category ink on its pale wash, with an occasional 14% soft fill and dashed lines for «space» or thoughts. A fixed vocabulary repeats across practices (seated figure, bust, cup, cloud, heart, floor line) so the set reads as one hand. Each scene has a text alternative. The introduction and the library use the hero scene of the practice; the library shows it compact (12px corners, 100px high). Step scenes use 20px corners, a 520px maximum width and a clamp(190px, 34vh, 320px) height; the introduction scene is 220px high (170px on phones).
 
 Scenes depict an action or an object, never a body in distress or a mood judgement; there is no timer, breathing pace or automatic animation. Plan availability, the stop action and the experience feedback remain part of the same flow. Library rows keep the explanation as a native disclosure capped at 60ch with 15px text.
 
@@ -276,7 +276,7 @@ The doctor's introduction uses a six-row, vertically resizable textarea with a 1
 
 The clinician code uses an existing settings panel with two labelled read-only fields, wrap-capable copy actions and explicit copy/activation status. The persistent twelve-character code is emphasised at 20px, weight 700 and 0.12em letter spacing. Patient connection becomes available only after clinician verification; the text explains that state without an urgency badge.
 
-The account screen offers sign-in with an authenticator code: password confirms setup, the key shows at 20px, weight 700 and 0.12em spacing in groups of four with an «Открыть в приложении» link, and a code confirms it. Doctors and administrators get a recommendation line, since they see patient records. With the code on, the login form adds a one-time-code field after a correct password and points a user without the phone to recovery codes.
+The account screen signs in with an authenticator code: password confirms setup, the key shows at 20px, weight 700 and 0.12em spacing in groups of four with an «Открыть в приложении» link, and a code confirms it. Doctors and administrators get a recommendation line, since they see patient records. With the code on, the login form adds a field for the authenticator code after a correct password and points a user without the phone to recovery codes.
 
 Registration uses a short labelled storage-consent checkbox. A separate helper explains permission to the doctor only for patient registration, keeping the consent control concise.
 
