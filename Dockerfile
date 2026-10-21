@@ -1,11 +1,11 @@
-FROM node:22-bookworm-slim AS build
+FROM node:25-bookworm-slim AS build
 WORKDIR /app
 COPY app/package.json app/package-lock.json ./
 RUN npm ci
 COPY app/ ./
 RUN npm run build:docker
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=3000 DATABASE_PATH=/data/ryadom.sqlite
 WORKDIR /app
 COPY --from=build --chown=node:node /app/dist/client ./dist/client
