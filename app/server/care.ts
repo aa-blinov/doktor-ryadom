@@ -34,6 +34,11 @@ export function patientCareRoutes(app:App){
   const result=await run(database(c.env),'UPDATE goals SET closed_at=NULL WHERE id=? AND patient_id=? AND closed_at IS NOT NULL',c.req.param('goalId'),c.get('user').id);
   return result.meta.changes?c.json({ok:true}):c.json({error:'Цель недоступна или ещё не завершена'},404);
  });
+ app.get('/api/patient/draft',async c=>{
+  const row=await one<{data:string}>(database(c.env),'SELECT data FROM drafts WHERE patient_id=?',c.get('user').id);
+  if(!row)return c.json({error:'Черновика нет.'},404);
+  return c.json({draft:JSON.parse(row.data)});
+ });
  app.put('/api/patient/draft',async c=>{
   const parsed=z.object({entry:entrySchema.extend({mood:z.number().int().min(0).max(5)}),plan:planSchema,step:z.number().int().min(0).max(8)}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Не удалось сохранить черновик.'},400);
   const db=database(c.env),id=c.get('user').id;if(Math.abs(Date.parse(parsed.data.entry.date)-Date.now())>2*86400000)return c.json({error:'Этот черновик относится к прошедшему дню.'},400);
@@ -46,12 +51,15 @@ export function patientCareRoutes(app:App){
   const db=database(c.env),id=c.get('user').id,entryId=c.req.param('entryId');
   const existing=await one<Entry>(db,'SELECT * FROM checkins WHERE id=? AND patient_id=?',entryId,id);if(!existing)return c.json({error:'Запись не найдена.'},404);
   const e=parsed.data;if(existing.date!==e.date)return c.json({error:'Дата сохранённой записи не меняется.'},400);
+  // Правило продукта: правка доступна только за сегодняшний день пациента (его часовой пояс).
+  const settings=await one<{data:string}>(db,'SELECT data FROM settings WHERE user_id=?',id);
+  if(existing.date!==patientDay(Date.now(),settings?.data))return c.json({error:'Исправить можно только сегодняшнюю запись.'},400);
   const now=Date.now();const results=await db.batch([
    db.prepare('INSERT INTO checkin_revisions SELECT ?,id,patient_id,?,version,? FROM checkins WHERE id=? AND patient_id=? AND version=?').bind(crypto.randomUUID(),JSON.stringify(existing),now,entryId,id,e.expectedVersion),
    db.prepare('UPDATE checkins SET mood=?,sleep=?,anxiety=?,energy=?,functioning=?,sleep_context=?,note=?,habit=?,version=version+1,updated_at=? WHERE id=? AND patient_id=? AND version=?').bind(e.mood,e.sleep,e.anxiety,e.energy,e.functioning,e.sleepContext,e.note,e.habit===null?null:Number(e.habit),now,entryId,id,e.expectedVersion)
   ]);
   if(!results[1].meta.changes)return c.json({error:'Запись уже изменена в другом окне. Обновите историю и откройте её заново.'},409);
-  await logAction(db,id,'edit_checkin',entryId);return c.json({ok:true});
+  await logAction(db,id,'edit_checkin',id);return c.json({ok:true});
  });
  app.post('/api/patient/assessments/:assessmentId',async c=>{
   const parsed=z.object({answers:z.array(z.union([z.number(),z.string().max(1000),z.null()])).min(1).max(12)}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Ответьте на все вопросы.'},400);
@@ -70,7 +78,25 @@ export function patientCareRoutes(app:App){
   const med=await one<{start_date:string;end_date:string|null;as_needed:number}>(db,'SELECT * FROM medications WHERE id=? AND patient_id=?',e.medicationId,id);if(!med)return c.json({error:'Назначение не найдено.'},404);
   if(e.status==='not_needed'&&!med.as_needed)return c.json({error:'Для этого назначения выберите приём по схеме или пропуск.'},400);
   if(e.date<med.start_date||(med.end_date&&e.date>med.end_date)||Math.abs(Date.parse(e.date)-Date.now())>2*86400000)return c.json({error:'Проверьте дату приёма.'},400);
-  await run(db,'INSERT INTO medication_logs VALUES (?,?,?,?,?,?,?) ON CONFLICT(medication_id,date) DO UPDATE SET status=excluded.status,note=excluded.note,created_at=excluded.created_at',crypto.randomUUID(),id,e.medicationId,e.date,e.status,e.note,Date.now());return c.json({ok:true});
+  // За день одна отметка: прежняя не перезаписывается молча, её удаляют явно.
+  if(await one(db,'SELECT id FROM medication_logs WHERE patient_id=? AND medication_id=? AND date=?',id,e.medicationId,e.date))return c.json({error:'Отметка за этот день уже сохранена. Удалите прежнюю, чтобы поставить новую.'},409);
+  await run(db,'INSERT INTO medication_logs VALUES (?,?,?,?,?,?,?)',crypto.randomUUID(),id,e.medicationId,e.date,e.status,e.note,Date.now());return c.json({ok:true});
+ });
+ app.delete('/api/patient/medication-logs/:logId',async c=>{
+  const result=await run(database(c.env),'DELETE FROM medication_logs WHERE id=? AND patient_id=?',c.req.param('logId'),c.get('user').id);
+  return result.meta.changes?c.json({ok:true}):c.json({error:'Отметка не найдена.'},404);
+ });
+ // Смена статуса отметки: атомарно, без удаления и создания заново.
+ app.put('/api/patient/medication-logs/:logId',async c=>{
+  const parsed=z.object({status:z.enum(['taken','missed','not_needed']),note:z.string().trim().max(500).default('')}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Проверьте отметку приёма.'},400);
+  const db=database(c.env),id=c.get('user').id;
+  const log=await one<{id:string;medication_id:string;date:string;status:string}>(db,'SELECT id,medication_id,date,status FROM medication_logs WHERE id=? AND patient_id=?',c.req.param('logId'),id);
+  if(!log)return c.json({error:'Отметка не найдена.'},404);
+  const med=await one<{as_needed:number}>(db,'SELECT as_needed FROM medications WHERE id=? AND patient_id=?',log.medication_id,id);if(!med)return c.json({error:'Назначение не найдено.'},404);
+  if(parsed.data.status==='not_needed'&&!med.as_needed)return c.json({error:'Для этого назначения выберите приём по схеме или пропуск.'},400);
+  await run(db,'UPDATE medication_logs SET status=?,note=? WHERE id=? AND patient_id=?',parsed.data.status,parsed.data.note,log.id,id);
+  await logAction(db,id,'update_medication_log',log.id);
+  return c.json({ok:true});
  });
  app.post('/api/patient/experiences',async c=>{
   const parsed=z.object({date,note:z.string().trim().min(1).max(1000)}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Опишите, что вы заметили.'},400);
@@ -86,6 +112,14 @@ export function doctorCareRoutes(app:App){
  app.post('/api/doctor/patients/:id/goal-logs/:logId/review',async c=>{
   const result=await run(database(c.env),'UPDATE goal_logs SET reviewed_at=CASE WHEN reviewer_id=? THEN COALESCE(reviewed_at,?) ELSE ? END,reviewer_id=? WHERE id=? AND patient_id=?',c.get('user').id,Date.now(),Date.now(),c.get('user').id,c.req.param('logId'),c.req.param('id'));
   return result.meta.changes?c.json({ok:true}):c.json({error:'Отметка недоступна'},404);
+ });
+ app.post('/api/doctor/patients/:id/goals',async c=>{
+  const parsed=goalSchema.safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Опишите цель: от 3 до 180 символов'},400);
+  const db=database(c.env),patient=c.req.param('id');
+  // Цель принадлежит пациенту, но создана врачом: пациент видит её в своих целях.
+  const result=await run(db,'INSERT INTO goals(id,patient_id,title,reason,created_at) SELECT ?,?,?,?,? WHERE (SELECT count(*) FROM goals WHERE patient_id=? AND closed_at IS NULL)<3',crypto.randomUUID(),patient,parsed.data.title,parsed.data.reason,Date.now(),patient);
+  if(!result.meta.changes)return c.json({error:'Можно вести до трёх целей одновременно. Завершите одну, прежде чем добавить новую'},409);
+  await logAction(db,c.get('user').id,'create_goal',patient);return c.json({ok:true},201);
  });
  app.post('/api/doctor/patients/:id/assessments',async c=>{
   const parsed=z.object({kind:z.enum(standardKinds),dueDate:date,safety:z.object({contact:z.string().trim().min(5).max(300),reviewNote:z.string().trim().min(5).max(500),confirmed:z.literal(true)}).optional()}).safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Выберите опросник и дату.'},400);
@@ -114,3 +148,5 @@ export function doctorCareRoutes(app:App){
  });
 }
 export function dateForTimezone(now:number,settingsJson?:string){const settings=settingsSchema.parse(settingsJson?JSON.parse(settingsJson):defaultSettings);return new Intl.DateTimeFormat('en-CA',{timeZone:settings.timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now));}
+// Сегодняшний день пациента по его часовому поясу; испорченные настройки не должны ломать правку записи.
+export function patientDay(now:number,settingsJson?:string){try{return dateForTimezone(now,settingsJson);}catch{return dateForTimezone(now);}}
