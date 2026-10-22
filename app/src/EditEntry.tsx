@@ -3,14 +3,15 @@ import {Button,Group,Textarea} from '@mantine/core';
 import {api,errorText} from './api';
 import {ErrorBox,PageHead,formatDate, ScaleRow, SleepInput} from './ui';
 import {navigate} from './App';
-import {moods,type Entry,type PatientData} from './shared';
+import {moods,today,todayInTimezone,type Entry,type PatientData} from './shared';
 
 function goBack(){if(window.history.length>1)window.history.back();else navigate('/history');}
 
-export function EditEntry({entry,plan,onSaved}:{entry:Entry;plan:PatientData['plan'];onSaved:()=>Promise<void>}){
+export function EditEntry({entry,plan,onSaved,timezone}:{entry:Entry;plan:PatientData['plan'];onSaved:()=>Promise<void>;timezone?:string}){
  const [value,setValue]=useState(entry),[busy,setBusy]=useState(false),[error,setError]=useState(''),[sleepOther,setSleepOther]=useState(entry.sleep!==null&&![4,5,6,7,8,9].includes(entry.sleep));
  const update=(key:keyof Entry,v:unknown)=>setValue(e=>({...e,[key]:v,...(key==='sleep'&&(v===null||Number(v)>=6)?{sleepContext:null}:{})}));
- async function save(){setBusy(true);setError('');try{await api(`/patient/checkins/${entry.id}`,{...value,expectedVersion:entry.version??1},'PUT');await onSaved();goBack();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ async function save(){setBusy(true);setError('');try{await api(`/patient/checkins/${entry.id}`,{...value,expectedVersion:entry.version??1},'PUT');await onSaved();goBack();}catch(e){// Текст ответа сервера показывается как есть: «Исправить можно только сегодняшнюю запись.» и прочие причины.
+  setError(errorText(e));}finally{setBusy(false);}}
  return <div className="edit-entry">
   <button className="back-link" onClick={()=>navigate('/history')}>История</button>
   <PageHead title="Исправить запись" description={formatDate(entry.date,true)}/>
@@ -59,6 +60,7 @@ export function EditEntry({entry,plan,onSaved}:{entry:Entry;plan:PatientData['pl
     </div>
    </fieldset>
    <Textarea label="Заметка" value={value.note} onChange={e=>update('note',e.currentTarget.value)} minRows={4} maxLength={2000}/>
+   {entry.date!==(timezone?todayInTimezone(timezone):today())?<p className="muted small">Исправить можно только сегодняшнюю запись. Прошлые записи остаются в истории без изменений.</p>:null}
    {error?<ErrorBox message={error}/>:null}
    <Group><Button type="submit" loading={busy}>Сохранить исправления</Button><Button variant="subtle" disabled={busy} onClick={()=>goBack()}>Отмена</Button></Group>
   </form>
