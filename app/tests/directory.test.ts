@@ -33,12 +33,15 @@ it('catalogue lists verified doctors with filters, rating and patient-only acces
  // reviews: rating required, one per patient, shown by first name only, average computed
  expect((await request(`/directory/${a.id}/review`,{rating:0,body:''},patient.cookie,'PUT')).status).toBe(400);
  expect((await request(`/directory/${a.id}/review`,{rating:5,body:'Внимательный врач'},a.cookie,'PUT')).status).toBe(403);
- expect((await request(`/directory/${a.id}/review`,{rating:5,body:'Внимательный врач'},patient.cookie,'PUT')).status).toBe(200);
- expect((await request(`/directory/${a.id}/review`,{rating:3,body:'Нормально'},other.cookie,'PUT')).status).toBe(200);
- expect((await request(`/directory/${a.id}/review`,{rating:4,body:'Обновил'},patient.cookie,'PUT')).status).toBe(200);
+ expect((await request(`/directory/${a.id}/review`,{rating:5,body:'Внимательный врач'},patient.cookie,'PUT')).status).toBe(201);
+ expect((await request(`/directory/${a.id}/review`,{rating:3,body:'Нормально'},other.cookie,'PUT')).status).toBe(201);
+ // One review per patient and doctor: a repeated publication is refused, the published one is not overwritten.
+ expect((await request(`/directory/${a.id}/review`,{rating:4,body:'Обновил'},patient.cookie,'PUT')).status).toBe(409);
  const detail=await request('/directory/'+a.id,undefined,patient.cookie);
- expect(detail.data.reviews).toHaveLength(2);expect(detail.data.doctor.rating).toBe(3.5);expect(detail.data.doctor.reviewCount).toBe(2);
- expect(detail.data.mine).toEqual({rating:4,body:'Обновил',hidden:false});expect(detail.data.reviews[0].author).toBe('Тест');
+ expect(detail.data.reviews).toHaveLength(2);expect(detail.data.doctor.rating).toBe(4);expect(detail.data.doctor.reviewCount).toBe(2);
+ expect(detail.data.mine).toEqual({rating:5,body:'Внимательный врач',hidden:false});
+ // The review is published under the first name only ("Фамилия Имя" at registration).
+ expect(detail.data.reviews.map((r:any)=>r.author).sort()).toEqual(['dir-p','dir-p2']);
  // admin can hide a review; it disappears from patients and the average
  const admin=await register('doctor','dir-admin');await db.binding.prepare("UPDATE users SET totp_enabled_at=1,role='admin' WHERE id=?").bind(admin.id).run();
  const rid=detail.data.reviews[0].id;expect((await request(`/admin/reviews/${rid}/hide`,{hidden:true},patient.cookie)).status).toBe(403);
