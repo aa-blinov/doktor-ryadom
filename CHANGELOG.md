@@ -17,6 +17,8 @@ All notable changes to doktor-ryadom. Versions are ordered newest first.
 
 - Nothing yet.
 
+## 0.2.0 — 2026-10-22
+
 ### Fixed
 
 - A blocked account no longer keeps its connection to the other side. A
