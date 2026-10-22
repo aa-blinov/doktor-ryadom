@@ -8,6 +8,7 @@ artifacts/
 .playwright-cli/
 .playwright-mcp/
 .impeccable/*
+app/.impeccable/
 .mimocode/
 *.ogg
 *.zip
