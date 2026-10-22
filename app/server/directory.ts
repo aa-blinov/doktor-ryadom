@@ -1,15 +1,17 @@
-import type {Hono} from 'hono';
+import type {Hono,Context} from 'hono';
 import {z} from 'zod';
 import type {Env} from './env';
-import {specialtyKinds,type User} from '../src/shared';
+import {specialtyKinds,firstNameOf,type User} from '../src/shared';
 import {one,many,run,logAction,database} from './db';
 import {doctorProfile,storedProfile} from './profiles';
 import {viewerZone} from './zones';
 type App=Hono<{Bindings:Env;Variables:{user:User}}>;
+type AppContext=Context<{Bindings:Env;Variables:{user:User}}>;
 
 const reviewSchema=z.object({rating:z.number().int().min(1).max(5),body:z.string().trim().max(1000).default('')});
+// A patient has one review per doctor: it is published once, and to change the text the old review is deleted first.
+const REVIEW_EXISTS='Отзыв уже опубликован. Удалите прежний, чтобы опубликовать новый.';
 
-const firstName=(name:string)=>name.trim().split(/\s+/)[0]||'Пациент';
 const VERIFIED="u.role='doctor' AND u.specialist_verified_at IS NOT NULL AND u.blocked_at IS NULL";
 
 type Row={id:string;name:string;specialty_kind:string|null;city:string|null;rating:number|null;review_count:number};
@@ -71,21 +73,27 @@ export function directoryRoutes(app:App){
    user.role==='patient'?one<{id:string}>(db,"SELECT id FROM connection_requests WHERE patient_id=? AND doctor_id=? AND status='pending'",user.id,id):null,
   ]);
   return c.json({doctor:{...base,about:profile.about,address:profile.address,education:profile.education,courses:profile.courses,workHistory:profile.workHistory,videoUrl:profile.videoUrl},
-   reviews:reviews.map(r=>({id:r.id,rating:r.rating,body:r.body,createdAt:r.created_at,author:firstName(r.name),hidden:!!r.hidden_at})),
+   reviews:reviews.map(r=>({id:r.id,rating:r.rating,body:r.body,createdAt:r.created_at,author:firstNameOf(r.name)||'Пациент',hidden:!!r.hidden_at})),
    mine:mine?{rating:mine.rating,body:mine.body,hidden:!!mine.hidden_at}:null,
    connection:{linkedToThis:link?.doctor_id===id,linkedToOther:!!link&&link.doctor_id!==id,pendingRequestId:pending?.id??null}});
  });
 
- app.put('/api/directory/:id/review',async c=>{
-  const user=c.get('user'),db=database(c.env),id=c.req.param('id');
+ // Publishing a review: one review per patient per doctor, published right away.
+ async function publishReview(c:AppContext,id:string){
+  const user=c.get('user'),db=database(c.env);
   if(user.role!=='patient')return c.json({error:'Отзыв может оставить пациент.'},403);
   const parsed=reviewSchema.safeParse(await c.req.json());if(!parsed.success)return c.json({error:'Поставьте оценку от 1 до 5. Текст отзыва не длиннее 1000 символов.'},400);
   if(!await one(db,`${SELECT_DOCTOR} AND u.id=?`,id))return c.json({error:'Врач не найден.'},404);
+  if(await one(db,'SELECT id FROM doctor_reviews WHERE doctor_id=? AND patient_id=?',id,user.id))return c.json({error:REVIEW_EXISTS},409);
   const now=Date.now();
-  await run(db,'INSERT INTO doctor_reviews (id,doctor_id,patient_id,rating,body,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(doctor_id,patient_id) DO UPDATE SET rating=excluded.rating,body=excluded.body,updated_at=excluded.updated_at',crypto.randomUUID(),id,user.id,parsed.data.rating,parsed.data.body,now,now);
+  // The insert is ignored on a repeated publication: the published review is never overwritten.
+  const inserted=await run(db,'INSERT OR IGNORE INTO doctor_reviews (id,doctor_id,patient_id,rating,body,created_at,updated_at) VALUES (?,?,?,?,?,?,?)',crypto.randomUUID(),id,user.id,parsed.data.rating,parsed.data.body,now,now);
+  if(!inserted.meta.changes)return c.json({error:REVIEW_EXISTS},409);
   await logAction(db,user.id,'review_doctor',id);
-  return c.json({ok:true});
- });
+  return c.json({ok:true},201);
+ }
+ app.put('/api/directory/:id/review',c=>publishReview(c,c.req.param('id')));
+ app.post('/api/directory/:id/review',c=>publishReview(c,c.req.param('id')));
  app.delete('/api/directory/:id/review',async c=>{
   const user=c.get('user'),db=database(c.env);
   if(user.role!=='patient')return c.json({error:'Отзыв может удалить его автор.'},403);
@@ -95,8 +103,9 @@ export function directoryRoutes(app:App){
  app.get('/api/admin/reviews',async c=>{
   const user=c.get('user'),db=database(c.env);
   if(user.role!=='admin')return c.json({error:'Раздел доступен только администратору.'},403);
-  const rows=await many<{id:string;rating:number;body:string;created_at:number;hidden_at:number|null;patient:string;doctor:string}>(db,'SELECT v.id,v.rating,v.body,v.created_at,v.hidden_at,p.name AS patient,d.name AS doctor FROM doctor_reviews v JOIN users p ON p.id=v.patient_id JOIN users d ON d.id=v.doctor_id ORDER BY v.created_at DESC LIMIT 200');
-  return c.json({reviews:rows.map((r,i)=>({id:r.id,rating:r.rating,body:r.body,createdAt:r.created_at,hidden:!!r.hidden_at,author:`Пациент ${rows.length-i}`,doctor:r.doctor}))});
+  const rows=await many<{id:string;rating:number;body:string;created_at:number;hidden_at:number|null;patient_id:string;doctor:string}>(db,'SELECT v.id,v.rating,v.body,v.created_at,v.hidden_at,v.patient_id,d.name AS doctor FROM doctor_reviews v JOIN users d ON d.id=v.doctor_id ORDER BY v.created_at DESC LIMIT 200');
+  // The author stays anonymous, but the label does not jump when reviews come and go: it is built from the id.
+  return c.json({reviews:rows.map(r=>({id:r.id,rating:r.rating,body:r.body,createdAt:r.created_at,hidden:!!r.hidden_at,patientId:r.patient_id,author:`Пациент ${r.patient_id.slice(0,4)}`,doctor:r.doctor}))});
  });
  app.post('/api/admin/reviews/:id/hide',async c=>{
   const user=c.get('user'),db=database(c.env);

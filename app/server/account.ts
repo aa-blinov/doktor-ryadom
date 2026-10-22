@@ -4,7 +4,7 @@ import {storedProfile} from './profiles';
 import {z} from 'zod';
 import {getCookie,deleteCookie} from 'hono/cookie';
 import type {Env} from './env';
-import type {User} from '../src/shared';
+import {DOCTOR_ONLY_FOLLOWUP_FIELDS,type User} from '../src/shared';
 import {digest,randomToken,hashPassword,verifyPassword} from './auth';
 import {database,one,many,run,logAction} from './db';
 import {newTotpSecret,otpauthUri,verifyTotp} from './totp';
@@ -110,11 +110,45 @@ export function accountRoutes(app:App){
   await run(db,'UPDATE users SET totp_secret=NULL,totp_enabled_at=NULL,totp_last_step=NULL WHERE id=?',id);await logAction(db,id,'totp_disable',id);return c.json({ok:true});
  });
  app.post('/api/account/logout-others',async c=>{await run(database(c.env),'DELETE FROM sessions WHERE user_id=? AND token<>?',c.get('user').id,await digest(getCookie(c,'ryadom_session')||''));return c.json({ok:true});});
- const EXPORT_TABLES=['goals','goal_logs','survey_templates','profile_documents','doctor_codes','profiles','settings','drafts','checkins','checkin_revisions','practices','assessments','followups','medications','medication_logs','experiences','reports','plans','patient_cards','card_entries','appointment_requests','notices'];
+ // The export mirrors the role: everyone gets the rows of his own account, a doctor also gets his library
+ // and the clinical data of the patients he leads right now, and nobody gets the clinical data of strangers.
+ type ExportRow=Record<string,unknown>;
+ // Tables of the account holder: settings, profile, documents, notifications.
+ const OWN_TABLES:readonly [string,string][]=[['settings','user_id'],['profiles','user_id'],['profile_documents','user_id'],['doctor_codes','user_id'],['notices','user_id']];
+ // Tables a doctor owns as an author: his questionnaires and his practice library.
+ const DOCTOR_TABLES:readonly [string,string][]=[['survey_templates','doctor_id'],['practice_templates','doctor_id']];
+ // Clinical tables of one patient.
+ const PATIENT_TABLES=['checkins','checkin_revisions','practices','plans','followups','assessments','medications','medication_logs','experiences','goals','goal_logs','reports','drafts','patient_cards','card_entries','appointment_requests'];
+ // The doctor's notes about a visit never reach the patient: the export cuts the same fields as /api/patient/data.
+ function withoutDoctorNotes(data:unknown){if(typeof data!=='string')return data;try{const parsed=JSON.parse(data) as Record<string,unknown>;for(const key of DOCTOR_ONLY_FOLLOWUP_FIELDS)delete parsed[key];return JSON.stringify(parsed);}catch{return data;}}
+ // A withdrawn card entry stays in the history, but the patient never reads its text.
+ function patientCardEntry(row:ExportRow){return row.withdrawn_at?{...row,body:''}:row;}
+ // The steps of a practice are stored as JSON: the archive keeps them readable.
+ function readableSteps(steps:unknown){if(typeof steps!=='string')return steps;try{return JSON.parse(steps);}catch{return steps;}}
  async function exportJson(db:D1Database,user:User){
-  const id=user.id,tables=EXPORT_TABLES;
-  const rows=await Promise.all(tables.map(t=>many(db,`SELECT * FROM ${t} WHERE ${t==='survey_templates'?'doctor_id':['settings','profiles','doctor_codes','profile_documents','notices'].includes(t)?'user_id':'patient_id'}=?`,id)));
-  return {schema:1,exportedAt:new Date().toISOString(),account:user,data:Object.fromEntries(tables.map((t,i)=>[t,rows[i]]))};
+  const id=user.id,data:Record<string,ExportRow[]>={};
+  for(const [table,column] of OWN_TABLES)data[table]=await many<ExportRow>(db,`SELECT * FROM ${table} WHERE ${column}=?`,id);
+  if(user.role==='doctor'){
+   for(const [table,column] of DOCTOR_TABLES)data[table]=await many<ExportRow>(db,`SELECT * FROM ${table} WHERE ${column}=?`,id);
+   data.practice_templates=data.practice_templates.map(row=>({...row,steps:readableSteps(row.steps)}));
+   // Only the patients the doctor leads at the moment: a revoked link ends the access to the data.
+   const patients=(await many<{patient_id:string}>(db,'SELECT patient_id FROM links WHERE doctor_id=? AND revoked_at IS NULL',id)).map(r=>r.patient_id);
+   if(patients.length){
+    const list=patients.map(()=>'?').join(',');
+    for(const table of PATIENT_TABLES)data[table]=await many<ExportRow>(db,`SELECT * FROM ${table} WHERE patient_id IN (${list})`,...patients);
+   }else for(const table of PATIENT_TABLES)data[table]=[];
+  }else if(user.role==='patient'){
+   data.survey_templates=await many<ExportRow>(db,'SELECT * FROM survey_templates WHERE doctor_id=?',id);
+   for(const table of PATIENT_TABLES){
+    const rows=await many<ExportRow>(db,`SELECT * FROM ${table} WHERE patient_id=?`,id);
+    data[table]=table==='followups'?rows.map(row=>({...row,data:withoutDoctorNotes(row.data)})):table==='card_entries'?rows.map(patientCardEntry):rows;
+   }
+  }else{
+   // The administrator gets his own service data only: the clinical content of other patients stays in the app.
+   data.survey_templates=[];
+   for(const table of PATIENT_TABLES)data[table]=[];
+  }
+  return {schema:1,exportedAt:new Date().toISOString(),account:user,data};
  }
  app.get('/api/account/export',async c=>{
   const body=await exportJson(database(c.env),c.get('user'));
@@ -135,7 +169,7 @@ export function accountRoutes(app:App){
    const ext=m.mime.includes('png')?'png':m.mime.includes('webp')?'webp':m.mime.includes('webm')?'webm':m.mime.includes('mp4')?'mp4':'jpg';
    files.push({name:`practices/${m.practice_id}-${m.kind}.${ext}`,data:Buffer.from(m.data)});
   }
-  files.push({name:'README.txt',data:Buffer.from('Архив Рядом.\n\ndata.json: все ваши записи, карточка, приёмы, опросники, препараты, цели и уведомления в виде JSON.\nmedia/: фото и видео профиля.\ndocuments/: документы профиля (образование, курсы, опыт работы).\npractices/: фото и видео ваших практик (для врачей).\n\nКарточка пациента содержит записи врачей, которые вас ведут; заметки врача в неё не входят.\n','utf8')});
+  files.push({name:'README.txt',data:Buffer.from('Архив Рядом.\n\ndata.json: все ваши записи, карточка, приёмы, опросники, препараты, цели и уведомления в виде JSON.\nmedia/: фото и видео профиля.\ndocuments/: документы профиля (образование, курсы, опыт работы).\npractices/: фото и видео ваших практик (для врачей).\n\nДля врача data.json содержит ещё библиотеку практик с шагами и клинические данные тех пациентов, которых он ведёт.\nКарточка пациента содержит записи врачей, которые вас ведут; заметки врача в неё не входят.\n','utf8')});
   return new Response(new Uint8Array(zipStore(files)),{headers:{'Content-Type':'application/zip','Content-Disposition':'attachment; filename="ryadom-archive.zip"','Cache-Control':'no-store'}});
  });
  app.delete('/api/account',async c=>{
