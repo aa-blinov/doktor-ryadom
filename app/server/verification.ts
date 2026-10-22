@@ -39,7 +39,8 @@ export function verificationRoutes(app:App){
  app.get('/api/admin/verifications',async c=>{
   const db=database(c.env);
   if(!isAdminUser(c.get('user')))return c.json({error:'Раздел доступен только администратору.'},403);
-  const rows=await many(db,"SELECT r.id,r.kind,r.specialty,r.license,r.city,r.note,r.status,r.admin_note,r.created_at,r.updated_at,u.name,u.email,u.specialist_verified_at FROM specialist_requests r JOIN users u ON u.id=r.doctor_id ORDER BY CASE r.status WHEN 'pending' THEN 0 WHEN 'needs_info' THEN 1 ELSE 2 END, r.created_at DESC LIMIT 200");
+  // Only the latest request of every doctor is in the queue: after a rejection the doctor files a new one, and the old row must not look current.
+  const rows=await many(db,"SELECT id,kind,specialty,license,city,note,status,admin_note,created_at,updated_at,name,email,specialist_verified_at FROM (SELECT r.id,r.kind,r.specialty,r.license,r.city,r.note,r.status,r.admin_note,r.created_at,r.updated_at,u.name,u.email,u.specialist_verified_at,ROW_NUMBER() OVER (PARTITION BY r.doctor_id ORDER BY r.created_at DESC) AS rn FROM specialist_requests r JOIN users u ON u.id=r.doctor_id) WHERE rn=1 ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'needs_info' THEN 1 ELSE 2 END, created_at DESC LIMIT 200");
   return c.json({requests:rows});
  });
  app.post('/api/admin/verifications/:id/decision',async c=>{

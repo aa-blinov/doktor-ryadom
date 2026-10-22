@@ -17,16 +17,17 @@ import { z } from 'zod';
 import { database, one, many, run, logAction } from './db';
 import { digest, randomToken, hashPassword, verifyPassword } from './auth';
 import { verifyTotp } from './totp';
-import { defaultPlan, defaultSettings, entrySchema, planSchema, settingsSchema, practiceRef, TERMS_VERSION, type User, type Entry, type PracticeLog, type Report } from '../src/shared';
+import { defaultPlan, defaultSettings, entrySchema, planSchema, settingsSchema, practiceRef, TERMS_VERSION, todayInTimezone, type User, type Entry, type PracticeLog, type Report } from '../src/shared';
+import { DEFAULT_TIMEZONE } from '../src/timezone';
 import type { Env } from './env';
 import {publicAccountRoutes,accountRoutes} from './account';
-import {careData,patientCareRoutes,doctorCareRoutes} from './care';
+import {careData,patientCareRoutes,doctorCareRoutes,dateForTimezone} from './care';
 import {notificationRoutes} from './notifications';
 const app = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 const sessionName = 'ryadom_session';
 const authSchema = z.object({ email: z.string().trim().email().max(200).transform(v => v.toLowerCase()), password: z.string().min(12, 'Пароль должен содержать минимум 12 символов').max(128) });
 const loginSchema = authSchema.extend({ code: z.string().trim().max(20).optional() });
-const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor']), consent: z.literal(true), adult: z.literal(true, { message: 'Регистрация доступна с 18 лет' }) });
+const registerSchema = authSchema.extend({ name: z.string().trim().min(2).max(80), role: z.enum(['patient','doctor'], { error: 'Выберите роль: пациент или врач.' }), consent: z.literal(true), adult: z.literal(true, { message: 'Регистрация доступна с 18 лет' }) });
 const CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 app.use('*', async (c,next) => { await next(); c.header('X-Content-Type-Options','nosniff'); c.header('Referrer-Policy','same-origin'); c.header('X-Frame-Options','DENY'); c.header('Content-Security-Policy',CSP); });
 app.use('/api/*', async(c,next)=>bodyLimit({maxSize:binaryUploadLimit(c.req.method,c.req.path,c.req.header('Content-Type')||'')||(c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000),onError:c=>c.json({error:'Слишком большой запрос'},413)})(c,next));
@@ -38,19 +39,29 @@ app.use('/api/*', async (c, next) => {
     // Binary uploads only on the routes listed in upload-limits; Origin and session checks still apply.
     const ct = c.req.header('Content-Type') || '';
     const binaryLimit = binaryUploadLimit(c.req.method, c.req.path, ct);
-    if (!ct.includes('application/json') && binaryLimit === null) return c.json({ error: 'Ожидается JSON' }, 415);
-    const length = Number(c.req.header('Content-Length') || 0); if (length > (binaryLimit ?? (c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000))) return c.json({ error: 'Слишком большой запрос' }, 413);
+    const length = Number(c.req.header('Content-Length') || 0);
+    // A DELETE without a body (removing a review) carries no JSON at all, so it must not be turned away as a bad request.
+    const bodyless = c.req.method==='DELETE' && length===0 && !ct.includes('multipart/') && !ct.includes('octet-stream');
+    if (!ct.includes('application/json') && binaryLimit === null && !bodyless) return c.json({ error: 'Ожидается JSON' }, 415);
+    if (length > (binaryLimit ?? (c.req.method==='POST'&&/^\/api\/patient\/assessments\/[^/]+$/.test(c.req.path)?65536:c.req.path==='/api/profile/documents'&&c.req.method==='POST'?7340032:c.req.path==='/api/profile/photo'&&c.req.method==='PUT'?200000:16000))) return c.json({ error: 'Слишком большой запрос' }, 413);
   }
   await next();
 });
-app.onError((err, c) => { console.error('API failure', err.name); return c.json({ error: 'Не удалось выполнить запрос. Данные формы сохранены на экране; попробуйте ещё раз.' }, 503); });
+app.onError((err, c) => {
+  // A broken JSON body is a bad request, not a server failure: c.req.json() throws SyntaxError.
+  if (err instanceof SyntaxError || err.name==='SyntaxError') return c.json({ error: 'Некорректный запрос: проверьте формат данных.' }, 400);
+  console.error('API failure', err.name); return c.json({ error: 'Не удалось выполнить запрос. Данные формы сохранены на экране; попробуйте ещё раз.' }, 503);
+});
 app.get('/api/health', async c => {await one(database(c.env),'SELECT 1 AS ok');return c.json({ok:true});});
 app.get('/api/invites/:token', async c => {
   if (!await limit(database(c.env), await digest('invite:'+(c.req.header('CF-Connecting-IP') || 'local')))) return c.json({ error: 'Слишком много попыток. Попробуйте позже.' }, 429);
   const token=c.req.param('token');
   if(!/^[a-f0-9]{64}$/i.test(token))return c.json({error:'Приглашение уже использовано или срок истёк. Попросите врача создать новое.'},404);
-  const row = await one<{ name: string;id:string }>(database(c.env), 'SELECT u.name,u.id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?', await digest(token), Date.now());
-  return row ? c.json({doctorName:row.name,doctorProfile:{...await doctorProfile(database(c.env),row.id),photoUrl:null,documents:[]}}) : c.json({ error:'Приглашение уже использовано или срок истёк. Попросите врача создать новое.' }, 404);
+  const row = await one<{ name: string;id:string;blocked_at:number|null;specialist_verified_at:number|null }>(database(c.env), 'SELECT u.name,u.id,u.blocked_at,u.specialist_verified_at FROM invites i JOIN users u ON u.id=i.doctor_id WHERE i.token=? AND i.used=0 AND i.expires>?', await digest(token), Date.now());
+  // A blocked doctor gets the same 404 as a spent invite, so the link does not tell that the doctor exists.
+  if (row?.blocked_at) return c.json({ error: 'Врач недоступен. Попросите другого врача.' }, 404);
+  if (!row?.specialist_verified_at) return c.json({error:'Приглашение уже использовано или срок истёк. Попросите врача создать новое.'},404);
+  return c.json({doctorName:row.name,doctorProfile:{...await doctorProfile(database(c.env),row.id),photoUrl:null,documents:[]}});
 });
 async function limit(db: D1Database, key: string, max = 12, windowMs = 600000) {
   const now = Date.now();
@@ -104,6 +115,10 @@ app.use('/api/*', async (c,next) => {
   if (staff && !totp_enabled_at && !setupOnly) return c.json({ error: 'Включите вход с кодом, чтобы пользоваться кабинетом.', code: 'totp_required' }, 403);
   c.set('user', { ...user, totp_enabled: !!totp_enabled_at } as User); await next();
 });
+// The doctor's cabinet opens only after the administrator confirms the specialist profile.
+// The guard sits before every /api/doctor/* route, so no part of the cabinet stays open by accident.
+// A patient is left to the role check below, and the verification request itself stays open - otherwise the doctor could not apply.
+app.use('/api/doctor/*', async (c,next) => { const user=c.get('user'); if(user.role!=='doctor') return next(); if(new URL(c.req.url).pathname==='/api/doctor/verification') return next(); if(!user.specialist_verified_at) return c.json({ error:'Кабинет врача открыт после проверки администратором.' },403); await next(); });
 app.post('/api/account/terms',async c=>{const db=database(c.env),user=c.get('user');await run(db,'UPDATE users SET terms_version=? WHERE id=?',TERMS_VERSION,user.id);await logAction(db,user.id,'terms_accept',user.id);return c.json({ok:true});});
 app.get('/api/me',async c=>{const user=c.get('user');return c.json({user:user.role==='doctor'?{...user,photoUrl:(await doctorProfile(database(c.env),user.id)).photoUrl}:user});});
 app.post('/api/auth/logout', async c => { const body=await c.req.json().catch(()=>({}));if(typeof body.endpoint==='string')await run(database(c.env),'DELETE FROM push_subscriptions WHERE endpoint=? AND user_id=?',body.endpoint,c.get('user').id); await run(database(c.env),'DELETE FROM sessions WHERE token=?',await digest(getCookie(c,sessionName) || '')); deleteCookie(c,sessionName,{ path:'/' }); return c.json({ ok:true }); });
@@ -128,18 +143,31 @@ async function patientData(db: D1Database, id: string, viewer: 'patient' | 'doct
   return { ...care,followups:viewer==='patient'?care.followups.map(patientFollowup):care.followups,customPractices,reports:reports.map(({payload,...row})=>({...row,...JSON.parse(payload)})) as Report[], entries: entries.map(e=>({...e,sleepContext:(e as unknown as {sleep_context:string}).sleep_context,habit:e.habit===null?null:Boolean(e.habit)})),practices,plan:plan?JSON.parse(plan.data):defaultPlan,settings:settingsSchema.parse(settings?JSON.parse(settings.data):defaultSettings),doctor:doctor?{...doctor,profile:await doctorProfile(db,doctor.id)}:null,lastSosAt:lastSos?.created_at??null,entriesTruncated:(count?.total??0)>entries.length };
 }
 patientCareRoutes(app);
+// The patient's own day: the check-in window follows the time zone from the settings.
+async function patientToday(db:D1Database,id:string){const row=await one<{data:string}>(db,'SELECT data FROM settings WHERE user_id=?',id);try{return dateForTimezone(Date.now(),row?.data);}catch{return todayInTimezone(DEFAULT_TIMEZONE);}}
 app.get('/api/patient/data', async c => c.json(await patientData(database(c.env),c.get('user').id)));
 app.post('/api/patient/checkins', async c => {
   const data=entrySchema.safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Проверьте ответы и дату.' },400);
-  if (Math.abs(Date.parse(data.data.date)-Date.now()) > 2*86400000) return c.json({ error:'Можно отметить только текущий день.' },400);
   const db=database(c.env),id=c.get('user').id,e=data.data;
-  if(await one(db,'SELECT id FROM checkins WHERE patient_id=? AND date=?',id,e.date)) return c.json({ error:'Сегодняшняя отметка уже сохранена. Она доступна в истории.' },409);
-  await db.batch([db.prepare('INSERT INTO checkins (id,patient_id,date,mood,sleep,anxiety,energy,functioning,sleep_context,note,habit,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,e.date,e.mood,e.sleep,e.anxiety,e.energy,e.functioning,e.sleepContext,e.note,e.habit===null?null:Number(e.habit),Date.now()),db.prepare('DELETE FROM drafts WHERE patient_id=?').bind(id)]);await logAction(db,id,'save_checkin',e.date);
+  // A check-in covers today or one of the two previous days, in the patient's own time zone; later days are refused.
+  const today=await patientToday(db,id);
+  const oldest=new Date(Date.parse(today)-2*86400000).toISOString().slice(0,10);
+  if(e.date>today||e.date<oldest) return c.json({ error:'Можно отметить сегодняшний день или один из двух прошедших.' },400);
+  if(await one(db,'SELECT id FROM checkins WHERE patient_id=? AND date=?',id,e.date)) return c.json({ error:'Отметка за эту дату уже сохранена. Она доступна в истории.' },409);
+  await db.batch([db.prepare('INSERT INTO checkins (id,patient_id,date,mood,sleep,anxiety,energy,functioning,sleep_context,note,habit,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),id,e.date,e.mood,e.sleep,e.anxiety,e.energy,e.functioning,e.sleepContext,e.note,e.habit===null?null:Number(e.habit),Date.now()),db.prepare('DELETE FROM drafts WHERE patient_id=?').bind(id)]);
+  // The subject of the audit entry is the patient, not the date of the check-in.
+  await logAction(db,id,'save_checkin',id);
   return c.json({ ok:true },201);
 });
 app.post('/api/patient/sos', async c => { const db=database(c.env),id=c.get('user').id;
   // A second tap within a minute is the same signal: one event, one notification to the doctor.
-  if(!await one(db,'SELECT id FROM sos_events WHERE patient_id=? AND created_at>?',id,Date.now()-60000)){await run(db,'INSERT INTO sos_events (id,patient_id,created_at) VALUES (?,?,?)',crypto.randomUUID(),id,Date.now());await logAction(db,id,'sos_alert',id);}
+  if(!await one(db,'SELECT id FROM sos_events WHERE patient_id=? AND created_at>?',id,Date.now()-60000)){
+    const now=Date.now();
+    await run(db,'INSERT INTO sos_events (id,patient_id,created_at) VALUES (?,?,?)',crypto.randomUUID(),id,now);await logAction(db,id,'sos_alert',id);
+    // The doctor has to learn about the signal; the text carries no diagnosis and no name.
+    const doctor=await one<{doctor_id:string}>(db,'SELECT doctor_id FROM links WHERE patient_id=? AND revoked_at IS NULL',id);
+    if(doctor){await queueNotice(db,`sos:${id}:${now}`,doctor.doctor_id,'Пациент отправил сигнал «Мне сейчас плохо». Откройте карточку пациента.','/#/patients',now);await sendNow(db,c.env);}
+  }
   return c.json({ ok:true }); });
 app.post('/api/patient/practices', async c => {
   const data=z.object({ practiceId:practiceRef,feedback:z.enum(['comfortable','same','unpleasant']),note:z.string().trim().max(1000).default('') }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Проверьте оценку практики.' },400);
@@ -170,10 +198,12 @@ app.post('/api/patient/reports', async c => {
 app.post('/api/patient/accept', async c => {
   const data=z.object({ token:z.string().refine(t=>/^[a-f0-9]{64}$/i.test(t)),consent:z.literal(true) }).safeParse(await c.req.json()); if(!data.success) return c.json({ error:'Ссылка-приглашение недействительна. Попросите врача создать новое.' },400);
   const db=database(c.env),id=c.get('user').id,token=await digest(data.data.token);
-  const invite=await one<{doctor_id:string}>(db,'SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?',token,Date.now()); if(!invite) return c.json({ error:'Приглашение недействительно или уже использовано.' },404);
+  const invite=await one<{doctor_id:string;blocked_at:number|null}>(db,'SELECT i.doctor_id,u.blocked_at FROM invites i JOIN users u ON u.id=i.doctor_id WHERE u.specialist_verified_at IS NOT NULL AND i.token=? AND i.used=0 AND i.expires>?',token,Date.now()); if(!invite) return c.json({ error:'Приглашение недействительно или уже использовано.' },404);
+  // A blocked doctor is refused with the same 404 as an unknown invite, so the patient learns nothing about the doctor.
+  if(invite.blocked_at) return c.json({ error:'Врач недоступен. Попросите другого врача.' },404);
   const link=await one(db,'SELECT patient_id FROM links WHERE patient_id=? AND revoked_at IS NULL',id); if(link) return c.json({ error:'У вас уже подключён врач. Сначала отзовите предыдущий доступ.' },409);
   const acceptedAt=Date.now();
-  const source='SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE i.token=? AND i.used=0 AND i.expires>? AND u.specialist_verified_at IS NOT NULL';
+  const source='SELECT i.doctor_id FROM invites i JOIN users u ON u.id=i.doctor_id WHERE i.token=? AND i.used=0 AND i.expires>? AND u.specialist_verified_at IS NOT NULL AND u.blocked_at IS NULL';
   const insert=db.prepare(`INSERT INTO links(patient_id,doctor_id,accepted_at,revoked_at) SELECT ?,doctor_id,?,NULL FROM (${source}) WHERE 1 ON CONFLICT(patient_id) DO UPDATE SET doctor_id=excluded.doctor_id,accepted_at=excluded.accepted_at,revoked_at=NULL WHERE links.revoked_at IS NOT NULL`);
   const statements=[insert.bind(id,acceptedAt,token,Date.now()),db.prepare('DELETE FROM plans WHERE patient_id=? AND changes()=1').bind(id),db.prepare('DELETE FROM drafts WHERE patient_id=? AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(id,id,invite.doctor_id,acceptedAt),db.prepare('UPDATE invites SET used=1,raw=NULL WHERE token=? AND used=0 AND EXISTS(SELECT 1 FROM links WHERE patient_id=? AND doctor_id=? AND accepted_at=? AND revoked_at IS NULL)').bind(token,id,invite.doctor_id,acceptedAt)];
   const result=await db.batch(statements);
