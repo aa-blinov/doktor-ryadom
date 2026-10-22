@@ -28,7 +28,7 @@ it('a doctor without a second factor reaches only the setup and sign-out routes'
  expect((await request('/me',{cookie:doctor.cookie})).status).toBe(200);
  expect((await request('/account/totp',{cookie:doctor.cookie})).status).toBe(200);
  expect((await request('/doctor/slots',{cookie:doctor.cookie})).status).toBe(403);
- db.binding.prepare('UPDATE users SET totp_enabled_at=1 WHERE id=?').bind(doctor.id).run();
+ db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=? WHERE id=?').bind(Date.now(),doctor.id).run();
  expect((await request('/doctor/patients',{cookie:doctor.cookie})).status).toBe(200);
 });
 
