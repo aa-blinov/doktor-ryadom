@@ -107,6 +107,10 @@ export function DoctorPractices(){
   }catch(e){setError(e instanceof Error?e.message:errorText(e));}finally{setBusy(false);}
  }
  async function archive(){if(!editingId||!window.confirm('Убрать практику из библиотеки? Пациенты, у которых она уже есть, смогут её открыть, но в новые планы её не добавить.'))return;setBusy(true);setError('');try{await api(`/doctor/practices/${editingId.slice(7)}/archive`,{},'POST');await reload();setMessage('Практика перенесена в архив');}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ // A practice that a patient already has in a plan cannot be deleted: the server refuses with the reason.
+ async function remove(){if(!editingId||!window.confirm('Удалить практику вместе с фото и видео? Отменить будет нельзя.'))return;setBusy(true);setError('');setMessage('');
+  try{await api(`/doctor/practices/${editingId.slice(7)}`,{},'DELETE');setEditingId(null);setMode('list');await reload();setMessage('Практика удалена');}
+  catch(e){setError(errorText(e));}finally{setBusy(false);}}
 
  if(mode==='list')return <>
   <PageHead title="Практики" description="Свои практики с описанием, шагами, фото и видео. Их можно добавить в план пациента."/>
@@ -161,7 +165,9 @@ export function DoctorPractices(){
       {current.videoUrl?<Button variant="subtle" size="sm" disabled={busy||readOnly} onClick={()=>void removeMedia('video')}>Удалить видео</Button>:null}
      </Group>
      <p className="muted small">Фото до 5 МБ, видео до 50 МБ и до 3 минут.</p>
-     {!readOnly?<Button variant="subtle" color="red" mt="var(--sp-5)" disabled={busy} onClick={()=>void archive()}>Убрать в архив</Button>:null}
+     {!readOnly?<><Button variant="subtle" color="red" mt="var(--sp-5)" disabled={busy} onClick={()=>void archive()}>Убрать в архив</Button>
+     <Button variant="subtle" color="red" mt="var(--sp-2)" disabled={busy} onClick={()=>void remove()}>Удалить практику</Button>
+     <p className="muted small">Если практика уже назначена пациентам, сначала уберите её из планов: назначенную практику удалить нельзя.</p></>:null}
     </>:<>
      <p className="muted small">Можно сразу выбрать фото и видео: они сохранятся вместе с практикой.</p>
      <Group gap="var(--sp-3)" mt="var(--sp-3)">

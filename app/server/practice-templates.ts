@@ -73,6 +73,15 @@ async function ownTemplate(db:D1Database,id:string,doctorId:string){
  return one<Row>(db,'SELECT * FROM practice_templates WHERE id=? AND doctor_id=?',id,doctorId);
 }
 
+// A practice is in use while a patient's plan refers to it or a patient wrote it into the practice log.
+// The log keeps the reference as custom:<id>; a bare id is checked too, so an old entry does not block the deletion.
+// The library hands out the practice as "custom:<id>" (that is how a plan refers to it), but a caller may also use the bare id.
+function templateId(raw:string){return raw.startsWith('custom:')?raw.slice(7):raw;}
+async function practiceInUse(db:D1Database,id:string){
+ if(await one(db,'SELECT patient_id FROM plans WHERE instr(data,?)>0',`"custom:${id}"`))return true;
+ return !!await one(db,'SELECT id FROM practices WHERE practice_id=? OR practice_id=?',`custom:${id}`,id);
+}
+
 export function practiceTemplateRoutes(app:App){
  app.get('/api/doctor/practices',async c=>{
   const user=c.get('user');if(user.role!=='doctor')return c.json({error:'Практики доступны врачу'},403);
@@ -90,7 +99,7 @@ export function practiceTemplateRoutes(app:App){
  });
  app.put('/api/doctor/practices/:id',async c=>{
   const user=c.get('user');if(user.role!=='doctor')return c.json({error:'Практики доступны врачу'},403);
-  const db=database(c.env),id=c.req.param('id');
+  const db=database(c.env),id=templateId(c.req.param('id'));
   const row=await ownTemplate(db,id,user.id);if(!row)return c.json({error:'Практика не найдена'},404);
   if(row.archived_at)return c.json({error:'Архивную практику нельзя менять. Создайте новую.'},409);
   const parsed=templateSchema.safeParse(await c.req.json());if(!parsed.success)return c.json({error:parsed.error.issues[0].message},400);
@@ -103,16 +112,26 @@ export function practiceTemplateRoutes(app:App){
  // Archiving keeps the practice for patients who already have it in a plan, and removes it from new plans.
  app.post('/api/doctor/practices/:id/archive',async c=>{
   const user=c.get('user');if(user.role!=='doctor')return c.json({error:'Практики доступны врачу'},403);
-  const db=database(c.env),id=c.req.param('id');
+  const db=database(c.env),id=templateId(c.req.param('id'));
   if(!await ownTemplate(db,id,user.id))return c.json({error:'Практика не найдена'},404);
   await run(db,'UPDATE practice_templates SET archived_at=COALESCE(archived_at,?) WHERE id=? AND doctor_id=?',Date.now(),id,user.id);
   await logAction(db,user.id,'archive_practice',id);
   return c.json({ok:true});
  });
+ // Deleting removes the practice and its media; a practice that patients still have stays until it leaves their plans.
+ app.delete('/api/doctor/practices/:id',async c=>{
+  const user=c.get('user');if(user.role!=='doctor')return c.json({error:'Практики доступны врачу'},403);
+  const db=database(c.env),id=templateId(c.req.param('id'));
+  if(!await ownTemplate(db,id,user.id))return c.json({error:'Практика не найдена'},404);
+  if(await practiceInUse(db,id))return c.json({error:'Практика назначена пациентам. Сначала уберите её из планов.'},409);
+  await db.batch([db.prepare('DELETE FROM practice_media WHERE practice_id=?').bind(id),db.prepare('DELETE FROM practice_templates WHERE id=? AND doctor_id=?').bind(id,user.id)]);
+  await logAction(db,user.id,'delete_practice',id);
+  return c.json({ok:true});
+ });
  app.put('/api/doctor/practices/:id/media/:kind',async c=>{
   const user=c.get('user');if(user.role!=='doctor')return c.json({error:'Практики доступны врачу'},403);
   const kind=c.req.param('kind');if(kind!=='photo'&&kind!=='video')return c.json({error:'Неизвестный тип файла'},400);
-  const db=database(c.env),id=c.req.param('id');
+  const db=database(c.env),id=templateId(c.req.param('id'));
   const row=await ownTemplate(db,id,user.id);if(!row)return c.json({error:'Практика не найдена'},404);
   if(row.archived_at)return c.json({error:'Архивную практику нельзя менять'},409);
   const declared=Number(c.req.header('Content-Length')||0);if(!declared||declared>practiceMediaLimit(kind))return c.json({error:kind==='video'?'Видео должно быть не больше 50 МБ':'Фото должно быть не больше 5 МБ'},413);
@@ -129,7 +148,7 @@ export function practiceTemplateRoutes(app:App){
  });
  app.delete('/api/doctor/practices/:id/media/:kind',async c=>{
   const user=c.get('user');if(user.role!=='doctor')return c.json({error:'Практики доступны врачу'},403);
-  const kind=c.req.param('kind');const db=database(c.env),id=c.req.param('id');
+  const kind=c.req.param('kind');const db=database(c.env),id=templateId(c.req.param('id'));
   if(!await ownTemplate(db,id,user.id))return c.json({error:'Практика не найдена'},404);
   await db.batch([db.prepare('DELETE FROM practice_media WHERE practice_id=? AND kind=?').bind(id,kind),db.prepare('UPDATE practice_templates SET updated_at=? WHERE id=?').bind(Date.now(),id)]);
   await logAction(db,user.id,'delete_practice_media',id);
