@@ -132,8 +132,13 @@ function ConnectPanel({name,connection}:{name:string;connection:Detail['connecti
 
 function Reviews({doctorId,reviews,mine,onChanged}:{doctorId:string;reviews:Review[];mine:Detail['mine'];onChanged:()=>Promise<void>}){
  const [rating,setRating]=useState(mine?.rating??0),[body,setBody]=useState(mine?.body??''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false);
- async function save(){setBusy(true);setError('');setSaved(false);try{await api(`/directory/${doctorId}/review`,{rating,body},'PUT');setSaved(true);await onChanged();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
- async function remove(){setBusy(true);setError('');try{await api(`/directory/${doctorId}/review`,undefined,'DELETE');setRating(0);setBody('');await onChanged();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ async function save(){setBusy(true);setError('');setSaved(false);let removed=false;try{
+  // Отзыв публикуется один раз: чтобы его изменить, прежний удаляют, затем публикуют заново.
+  if(mine){await api(`/directory/${doctorId}/review`,{},'DELETE');removed=true;}
+  await api(`/directory/${doctorId}/review`,{rating,body},'PUT');setSaved(true);await onChanged();}
+ catch(e){const message=removed?`Прежний отзыв удалён, новый не опубликован. ${errorText(e)}`:errorText(e);if(removed)await onChanged();setError(message);}
+ finally{setBusy(false);}}
+ async function remove(){setBusy(true);setError('');try{await api(`/directory/${doctorId}/review`,{},'DELETE');setRating(0);setBody('');await onChanged();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
  return <section className="doctor-section reviews">
   <h2>Отзывы</h2>
   {reviews.length?<div className="review-list">{reviews.map(r=><article className="review" key={r.id}><div className="review-head"><strong>{r.author}</strong><Stars value={r.rating} size={16}/><span className="muted small">{formatDate(new Date(r.createdAt).toISOString().slice(0,10))}</span></div>{r.body?<p className="care-prose">{r.body}</p>:null}</article>)}</div>:<p className="muted">{mine?.hidden?'Ваш отзыв скрыт модерацией. Остальные его не видят.':'Пока нет отзывов. Вы можете оставить первый.'}</p>}
