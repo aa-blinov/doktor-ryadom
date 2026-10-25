@@ -1006,3 +1006,5 @@ body:has(.pwa-notice) #root{padding-top:72px}
 .doctor-practice-step{background:var(--surface);border-radius:var(--mantine-radius-md)}
 .doctor-practice-step.is-dragging{box-shadow:0 8px 20px rgba(35,56,47,.16);opacity:.96}
 .practice-pending-photo{display:block;width:100%;max-width:320px;aspect-ratio:4/3;object-fit:cover;border-radius:var(--mantine-radius-md);margin-top:var(--sp-3)}
+.nav-item.locked,.bottom-nav>.locked{opacity:.45;cursor:not-allowed;display:flex;align-items:center}
+.bottom-nav>.locked{flex:1 1 0;min-height:50px;flex-direction:column;justify-content:center;gap:var(--sp-2);font-size:14px;color:var(--muted)}
