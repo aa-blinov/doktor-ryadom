@@ -1,6 +1,7 @@
 import {afterAll,expect,it} from 'vitest';
 import app from '../server/index';
 import {createDatabase} from './db-adapter';
+import {todayInTimezone} from '../src/shared';
 // Regression tests for the defects found by the QA round of 2026-10-21: each one pins the rule that was broken.
 const db=createDatabase(),origin='https://fixes.test',password='fixes-test-password-long';
 const env={DB:db.binding,ASSETS:{} as Fetcher,PUSH_PUBLIC_KEY:'key',PUSH_SEND:async()=>{}};
@@ -25,7 +26,7 @@ async function staff(id:string,kind:'psychiatrist'|'psychologist'='psychiatrist'
  await db.binding.prepare('UPDATE users SET totp_enabled_at=1,specialist_verified_at=?,specialty_kind=? WHERE id=?').bind(Date.now(),kind,id).run();
 }
 async function admin(id:string){await db.binding.prepare("UPDATE users SET totp_enabled_at=1,role='admin' WHERE id=?").bind(id).run();}
-const day=(offset:number)=>new Date(Date.now()+offset*86400000).toISOString().slice(0,10);
+const day=(offset:number)=>new Date(Date.parse(todayInTimezone('Asia/Almaty'))+offset*86400000).toISOString().slice(0,10);
 
 it('an unverified doctor does not reach the cabinet',async()=>{
  const doctor=await register('doctor','fix-unverified@example.com');

@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -10,5 +11,7 @@ export default defineConfig({
     zod: ['zod'],
     icons: ['@tabler/icons-react']
   } } } },
+  // The server counts a patient's day in Asia/Almaty, so the tests' own notion of today has to be the same zone or they fail between 19:00 and 24:00 UTC.
+  test: { env: { TZ: 'Asia/Almaty' } },
   server: { proxy: { '/api': 'http://127.0.0.1:8787' } },
 });
