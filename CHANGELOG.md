@@ -15,6 +15,12 @@ All notable changes to doktor-ryadom. Versions are ordered newest first.
 
 ### Added
 
+- Nothing yet.
+
+## 0.3.0 — 2026-10-29
+
+### Added
+
 - A doctor can leave a phone number or a messenger name in the qualification
   request, and the administrator sees it in the queue. Until now the only way
   to reach a doctor was the comment in the request, and there was no way to
