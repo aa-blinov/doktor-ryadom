@@ -34,12 +34,15 @@ export async function deliverNotifications(db:D1Database,services:ReturnType<typ
  const sos=await many<{id:string;doctor_id:string;email:string;email_verified_at:string|null}>(db,'SELECT s.id,l.doctor_id,d.email,d.email_verified_at FROM sos_events s JOIN links l ON l.patient_id=s.patient_id AND l.revoked_at IS NULL JOIN users d ON d.id=l.doctor_id WHERE s.notified_at IS NULL');
  const sosEvents=[...new Set(sos.map(row=>row.id))];
  for(const eventId of sosEvents){
+  let delivered=false;
   for(const row of sos.filter(item=>item.id===eventId)){
    const subscriptions=await many<{endpoint:string;data:string}>(db,'SELECT endpoint,data FROM push_subscriptions WHERE user_id=?',row.doctor_id);
-   for(const sub of subscriptions){if(!allowedPushEndpoint(sub.endpoint))continue;try{await services.push(JSON.parse(sub.data),'Пациенту сейчас плохо. Откройте дашборд.','/#/patients');}catch(e){const status=(e as {statusCode?:number}).statusCode;if(status===404||status===410)await run(db,'DELETE FROM push_subscriptions WHERE endpoint=?',sub.endpoint);}}
-   if(row.email_verified_at&&services.mail){try{await services.mail.send({to:row.email,subject:'Рядом: сигнал от пациента',text:`Пациенту сейчас плохо. Откройте дашборд, чтобы увидеть список и отреагировать.\n${process.env.PUBLIC_ORIGIN||'https://doktor-ryadom.duckdns.org'}/`});}catch{console.error('SOS email failed');}}
+   for(const sub of subscriptions){if(!allowedPushEndpoint(sub.endpoint))continue;try{await services.push(JSON.parse(sub.data),'Пациенту сейчас плохо. Откройте дашборд.','/#/patients');delivered=true;}catch(e){const status=(e as {statusCode?:number}).statusCode;if(status===404||status===410)await run(db,'DELETE FROM push_subscriptions WHERE endpoint=?',sub.endpoint);}}
+   if(row.email_verified_at&&services.mail){try{await services.mail.send({to:row.email,subject:'Рядом: сигнал от пациента',text:`Пациенту сейчас плохо. Откройте дашборд, чтобы увидеть список и отреагировать.\n${process.env.PUBLIC_ORIGIN||'https://doktor-ryadom.duckdns.org'}/`});delivered=true;}catch{console.error('SOS email failed');}}
   }
-  await run(db,'UPDATE sos_events SET notified_at=? WHERE id=?',now,eventId);
+  // The flag says the signal was handed to a channel, not that a channel existed. A doctor
+  // without a confirmed address and without a device would otherwise lose the signal for good.
+  if(delivered)await run(db,'UPDATE sos_events SET notified_at=? WHERE id=?',now,eventId);
  }
  const users=await many<User&{settings:string|null;plan:string|null;last_date:string|null}>(db,'SELECT u.*,s.data AS settings,p.data AS plan,(SELECT max(date) FROM checkins WHERE patient_id=u.id) AS last_date FROM users u LEFT JOIN settings s ON s.user_id=u.id LEFT JOIN plans p ON p.patient_id=u.id WHERE EXISTS(SELECT 1 FROM push_subscriptions WHERE user_id=u.id) OR u.email_verified_at IS NOT NULL');
  for(const user of users){

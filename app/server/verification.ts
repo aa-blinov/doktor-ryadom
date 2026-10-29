@@ -10,6 +10,7 @@ const requestSchema=z.object({
  specialty:z.string().trim().min(2).max(80),
  license:z.string().trim().min(3).max(60),
  city:z.string().trim().min(2).max(80),
+ contact:z.string().trim().max(120).default(''),
  note:z.string().trim().max(500).default(''),
 });
 const decisionSchema=z.object({decision:z.enum(['approve','needs_info','reject']),note:z.string().trim().max(500).default('')});
@@ -17,7 +18,7 @@ const isAdminUser=(user:User)=>user.role==='admin';
 export function verificationRoutes(app:App){
  app.get('/api/doctor/verification',async c=>{
   const user=c.get('user'),db=database(c.env);
-  const request=await one(db,'SELECT id,kind,specialty,license,city,note,status,admin_note,created_at,updated_at FROM specialist_requests WHERE doctor_id=? ORDER BY created_at DESC LIMIT 1',user.id);
+  const request=await one(db,'SELECT id,kind,specialty,license,city,contact,note,status,admin_note,created_at,updated_at FROM specialist_requests WHERE doctor_id=? ORDER BY created_at DESC, updated_at DESC LIMIT 1',user.id);
   return c.json({verified:!!user.specialist_verified_at,request});
  });
  app.post('/api/doctor/verification',async c=>{
@@ -28,11 +29,11 @@ export function verificationRoutes(app:App){
   if(!parsed.success)return c.json({error:'Проверьте специальность, номер лицензии и город.'},400);
   const e=parsed.data,now=Date.now();
   const open=await one<{id:string}>(db,"SELECT id FROM specialist_requests WHERE doctor_id=? AND status IN ('pending','needs_info') ORDER BY created_at DESC LIMIT 1",user.id);
-  if(open){await run(db,"UPDATE specialist_requests SET kind=?,specialty=?,license=?,city=?,note=?,status='pending',updated_at=? WHERE id=?",e.kind,e.specialty,e.license,e.city,e.note,now,open.id);}
-  else{await run(db,"INSERT INTO specialist_requests (id,doctor_id,kind,specialty,license,city,note,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'pending',?,?)",crypto.randomUUID(),user.id,e.kind,e.specialty,e.license,e.city,e.note,now,now);}
+  if(open){await run(db,"UPDATE specialist_requests SET kind=?,specialty=?,license=?,city=?,contact=?,note=?,status='pending',updated_at=? WHERE id=?",e.kind,e.specialty,e.license,e.city,e.contact,e.note,now,open.id);}
+  else{await run(db,"INSERT INTO specialist_requests (id,doctor_id,kind,specialty,license,city,contact,note,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,'pending',?,?)",crypto.randomUUID(),user.id,e.kind,e.specialty,e.license,e.city,e.contact,e.note,now,now);}
   await logAction(db,user.id,'submit_specialist_request',user.id);
   const latest=await one<{id:string}>(db,'SELECT id FROM specialist_requests WHERE doctor_id=? ORDER BY updated_at DESC LIMIT 1',user.id);
-  for(const admin of await many<{id:string}>(db,"SELECT id FROM users WHERE role='admin'"))await queueNotice(db,`verif:${latest?.id}:${now}:admin:${admin.id}`,admin.id,'Новая заявка на проверку врача. Откройте раздел «Врачи».','/#/admin/doctors',now);
+  for(const admin of await many<{id:string}>(db,"SELECT id FROM users WHERE role='admin'"))await queueNotice(db,`verif:${latest?.id}:${now}:admin:${admin.id}`,admin.id,'Новая заявка на проверку врача. Откройте раздел «Заявки».','/#/admin',now);
   await sendNow(db,c.env);
   return c.json({ok:true});
  });
@@ -40,7 +41,7 @@ export function verificationRoutes(app:App){
   const db=database(c.env);
   if(!isAdminUser(c.get('user')))return c.json({error:'Раздел доступен только администратору.'},403);
   // Only the latest request of every doctor is in the queue: after a rejection the doctor files a new one, and the old row must not look current.
-  const rows=await many(db,"SELECT id,kind,specialty,license,city,note,status,admin_note,created_at,updated_at,name,email,specialist_verified_at FROM (SELECT r.id,r.kind,r.specialty,r.license,r.city,r.note,r.status,r.admin_note,r.created_at,r.updated_at,u.name,u.email,u.specialist_verified_at,ROW_NUMBER() OVER (PARTITION BY r.doctor_id ORDER BY r.created_at DESC) AS rn FROM specialist_requests r JOIN users u ON u.id=r.doctor_id) WHERE rn=1 ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'needs_info' THEN 1 ELSE 2 END, created_at DESC LIMIT 200");
+  const rows=await many(db,"SELECT id,kind,specialty,license,city,contact,note,status,admin_note,created_at,updated_at,name,email,email_verified_at,specialist_verified_at FROM (SELECT r.id,r.kind,r.specialty,r.license,r.city,r.contact,r.note,r.status,r.admin_note,r.created_at,r.updated_at,u.name,u.email,u.email_verified_at,u.specialist_verified_at,ROW_NUMBER() OVER (PARTITION BY r.doctor_id ORDER BY r.created_at DESC, r.updated_at DESC) AS rn FROM specialist_requests r JOIN users u ON u.id=r.doctor_id) WHERE rn=1 ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'needs_info' THEN 1 ELSE 2 END, created_at DESC LIMIT 200");
   return c.json({requests:rows});
  });
  app.post('/api/admin/verifications/:id/decision',async c=>{
@@ -65,13 +66,15 @@ export function verificationRoutes(app:App){
   // the audit join looks users up by subject id, so a request id showed no name at all.
   const decisionAction={approve:'approve_specialist',needs_info:'request_specialist_info',reject:'reject_specialist'}[decision]!;
   await logAction(db,admin,decisionAction,req.doctor_id);
-  const outcome={approve:'Профиль подтверждён. Теперь вы в каталоге врачей.',reject:'Заявка на проверку отклонена. Откройте профиль, чтобы посмотреть комментарий.',needs_info:'Администратор просит уточнить данные в заявке. Откройте профиль.'} as Record<string,string>;
-  await queueNotice(db,`verif:${c.req.param('id')}:decision:${now}:${req.doctor_id}`,req.doctor_id,outcome[decision]??'Решение по заявке на проверку изменилось. Откройте профиль.','/#/profile',now);
+  // The comment of the administrator lives on the connection screen, not on the profile,
+  // so the notice has to point there. The profile is where the doctor edits his own data.
+  const outcome={approve:'Профиль подтверждён. Теперь вы в каталоге врачей.',reject:'Заявка на проверку отклонена. Откройте раздел «Подключение», чтобы посмотреть комментарий.',needs_info:'Администратор просит уточнить данные в заявке. Откройте раздел «Подключение».'} as Record<string,string>;
+  await queueNotice(db,`verif:${c.req.param('id')}:decision:${now}:${req.doctor_id}`,req.doctor_id,outcome[decision]??'Решение по заявке на проверку изменилось. Откройте раздел «Подключение».','/#/patients',now);
   await sendNow(db,c.env);
   const doctor=await one<{email:string;email_verified_at:number|null}>(db,'SELECT email,email_verified_at FROM users WHERE id=?',req.doctor_id);
   const mail=c.env.MAIL;
   if(mail&&doctor?.email_verified_at){
-   const text=decision==='approve'?'Заявка на подключение к Рядом подтверждена. Войдите в кабинет, чтобы приглашать пациентов.':decision==='needs_info'?`Администратор просит уточнить данные заявки${cleanNote?`: ${cleanNote}`:'.'} Войдите в кабинет и отправьте заявку снова.`:`Заявка на подключение к Рядом отклонена${cleanNote?`: ${cleanNote}`:'.'} Войдите в кабинет, чтобы посмотреть комментарий.`;
+   const text=decision==='approve'?'Заявка на подключение к Рядом подтверждена. Войдите в кабинет, чтобы приглашать пациентов.':decision==='needs_info'?`Администратор просит уточнить данные заявки${cleanNote?`: ${cleanNote}`:'.'} Откройте раздел «Подключение» в приложении и отправьте заявку снова.`:`Заявка на подключение к Рядом отклонена${cleanNote?`: ${cleanNote}`:'.'} Откройте раздел «Подключение» в приложении, чтобы посмотреть комментарий.`;
    try{await mail.send({to:doctor.email,subject:'Рядом: заявка рассмотрена',text});}catch{console.error('Verification email failed');}
   }
   return c.json({ok:true});
