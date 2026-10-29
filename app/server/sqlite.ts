@@ -10,10 +10,25 @@ export function openDatabase(path:string, migrations=resolve('drizzle')) {
  db.exec('CREATE TABLE IF NOT EXISTS _ryadom_migrations (name TEXT PRIMARY KEY, checksum TEXT NOT NULL)');
  try{
  for(const name of readdirSync(migrations).filter(f=>f.endsWith('.sql')).sort()){
-  const sql=readFileSync(resolve(migrations,name),'utf8');const checksum=createHash('sha256').update(sql).digest('hex');
+  const sql=readFileSync(resolve(migrations,name),'utf8');
+  // The checksum covers the SQL, not the whitespace around it. A file that only
+  // gained or lost its trailing newline is the same migration, and the house
+  // style asks for that newline in every file. The canonical hash is the one
+  // that counts, and a row written by the old runner is brought to it the
+  // first time it is seen, so the check works in both directions from then on.
+  const raw=createHash('sha256').update(sql).digest('hex');
+  const canonical=createHash('sha256').update(sql.replace(/\s+$/,'')).digest('hex');
   const previous=db.prepare('SELECT checksum FROM _ryadom_migrations WHERE name=?').get(name);
-  if(previous){if(previous.checksum!==checksum)throw new Error(`Applied migration changed: ${name}`);continue;}
-  db.exec('BEGIN IMMEDIATE');try{db.exec(sql);db.prepare('INSERT INTO _ryadom_migrations VALUES (?,?)').run(name,checksum);db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}
+  if(previous){
+   if(previous.checksum!==canonical){
+    // The row holds the hash of the file as it was, so the file itself did not
+    // change and the row can be brought to the canonical form.
+    if(previous.checksum!==raw)throw new Error(`Applied migration changed: ${name}`);
+    db.prepare('UPDATE _ryadom_migrations SET checksum=? WHERE name=?').run(canonical,name);
+   }
+   continue;
+  }
+  db.exec('BEGIN IMMEDIATE');try{db.exec(sql);db.prepare('INSERT INTO _ryadom_migrations VALUES (?,?)').run(name,canonical);db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}
  }
  }catch(e){db.close();throw e;}
  class Prepared{

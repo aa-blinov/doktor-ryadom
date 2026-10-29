@@ -17,6 +17,17 @@ All notable changes to doktor-ryadom. Versions are ordered newest first.
 
 - Nothing yet.
 
+## 0.3.1 — 2026-10-29
+
+### Fixed
+
+- The house style check in CI no longer fails on the migrations that were
+  written without a trailing newline. The check wants that newline in every
+  file, and the migration runner refused to start when the bytes of an applied
+  migration changed, so the two rules could not both be obeyed. The checksum
+  now covers the SQL and not the whitespace around it, and the four files got
+  the newline they were missing.
+
 ## 0.3.0 — 2026-10-29
 
 ### Added
