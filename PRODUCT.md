@@ -59,9 +59,10 @@ Confirmed by the code:
 - A plan of up to 40 practices, a frequency of every day, three times a week or once a week, and a habit line.
 - Up to three goals at a time, with a mark for a step taken, a difficulty, or a goal reached.
 - A summary for a chosen period, sent to the doctor and marked as read by the doctor, with the patient seeing that it was read.
-- The distress signal, delivered to every doctor the patient is connected to, by push and email, whatever the patient's own reminder settings are.
+- The distress signal, delivered to every doctor the patient is connected to, by push and email, whatever the patient's own reminder settings are. A signal is marked as delivered only after a channel actually carried it, and the patient is told that the signal reaches the doctor only if the doctor has a confirmed address or notifications on the device.
 - A patient card that the doctor appends to, with visit summary, diagnosis, treatment and referral entries that are withdrawn with a reason and never erased.
 - A catalogue of verified specialists, with one review per patient and the next free slot on each card. Slots run from 15 to 120 minutes and are generated 62 days at a time, booking opens 14 days ahead, a patient may have five requests without an answer, and a request expires after 24 hours.
+- A qualification request that the doctor files and the administrator decides, with a licence number, a city and an optional contact for the administrator. The doctor picks the type of specialist, the administrator confirms the request, and the decision reaches the doctor in the app and by mail when the address is confirmed. A change of the name or the specialty sends the profile back for a new check.
 - Notifications by web push and email, in the user's own time zone, with at most ten push endpoints per account and an allowlist of the FCM, Mozilla and Apple push hosts.
 - Export of the account as JSON or as a zip with the photos, the video and the documents, and deletion of the account.
 

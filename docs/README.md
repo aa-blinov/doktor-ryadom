@@ -31,6 +31,7 @@ README, AGENTS.md and PRODUCT.md, are in English.
 | --- | --- |
 | [METHODOLOGY.md](METHODOLOGY.md) | The separate documents for the patient's and the doctor's screens, the questions and the answer options, the basis of the practices, the doctor's access and the limits of the first version. |
 | [USER-FLOWS.md](USER-FLOWS.md) | The user transitions: the daily mark, the sending of the summary, the doctor's reading of it and the errors. |
+| [ROLE-FLOWS.md](ROLE-FLOWS.md) | The routes by role and by state: what each side sees in every state, where the state takes them and what the application promises. |
 | [CLINICIAN-AUDIT.md](CLINICIAN-AUDIT.md) | An independent review of the doctor's cabinet down to the mobile menu, with the open remarks. |
 | [UX-AUDIT.md](UX-AUDIT.md) | The review of the convenience: the changes to the scripts and the number of actions. |
 | [SCREENS.md](SCREENS.md) | The map of the transitions and the rules of the interface. |

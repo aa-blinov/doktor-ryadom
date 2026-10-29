@@ -16,6 +16,9 @@
 
 - [Вход и регистрация](methodology/auth.md)
 
+- [Маршруты по ролям и состояниям](ROLE-FLOWS.md): что пациент, врач и
+  администратор видят в каждом состоянии и куда ведёт каждый переход.
+
 ## Кабинет пациента
 
 - [Личные цели и продвижение](methodology/goals.md)
@@ -31,6 +34,7 @@
 
 ## Кабинет врача
 
+- [Врач: проверка квалификации](methodology/doctor/verification.md)
 - [Врач: пациенты](methodology/doctor/patients.md)
 - [Врач: приглашение](methodology/doctor/invitation.md)
 - [Врач: сводка перед приёмом](methodology/doctor/report.md)
